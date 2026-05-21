@@ -129,6 +129,24 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
                   'Vencimento: ${LoanSimulator.formatDate(item.dueDate)}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                if (item.isPaid && item.paidDate != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Pago em: ${LoanSimulator.formatDate(item.paidDate!)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  if (item.paymentTimingLabel != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.paymentTimingLabel!,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: _timingColor(item),
+                          ),
+                    ),
+                  ],
+                ],
               ],
             ),
           ),
@@ -159,6 +177,23 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
       ),
     );
   }
+}
+
+Color _timingColor(LoanInstallmentItem item) {
+  if (item.paidDate == null) return AppColors.lightTextSecondary;
+  final due = DateTime(
+    item.dueDate.year,
+    item.dueDate.month,
+    item.dueDate.day,
+  );
+  final paid = DateTime(
+    item.paidDate!.year,
+    item.paidDate!.month,
+    item.paidDate!.day,
+  );
+  if (paid.isAfter(due)) return AppColors.error;
+  if (paid.isBefore(due)) return AppColors.accent;
+  return AppColors.lightTextSecondary;
 }
 
 class _InstallmentBadge extends StatelessWidget {

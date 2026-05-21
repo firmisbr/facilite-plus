@@ -80,15 +80,19 @@ abstract final class LoanScheduleBuilder {
       final direct = byInstallment[preview.number];
       LoanInstallmentStatus status;
       String? paymentId;
+      DateTime? paidDate;
 
       if (direct != null) {
         status = LoanInstallmentStatus.paid;
         paymentId = direct.id;
+        paidDate = _paymentDate(direct);
         paidCount++;
         paidAmount += LoanSimulator.parseAmount(direct.amount) ?? preview.amount;
       } else {
+        DateTime? lastLegacyPaymentDate;
         while (legacyPoolAmount + 0.009 < preview.amount &&
             legacyIndex < legacyPool.length) {
+          lastLegacyPaymentDate = _paymentDate(legacyPool[legacyIndex]);
           legacyPoolAmount += LoanSimulator.parseAmount(
                 legacyPool[legacyIndex].amount,
               ) ??
@@ -98,6 +102,7 @@ abstract final class LoanScheduleBuilder {
 
         if (legacyPoolAmount + 0.009 >= preview.amount) {
           status = LoanInstallmentStatus.paid;
+          paidDate = lastLegacyPaymentDate;
           legacyPoolAmount -= preview.amount;
           paidCount++;
           paidAmount += preview.amount;
@@ -119,6 +124,7 @@ abstract final class LoanScheduleBuilder {
           status: status,
           paidAmount: status == LoanInstallmentStatus.paid ? preview.amount : 0,
           paymentId: paymentId,
+          paidDate: paidDate,
         ),
       );
     }

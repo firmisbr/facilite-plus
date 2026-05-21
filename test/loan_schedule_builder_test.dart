@@ -36,6 +36,8 @@ void main() {
     expect(detail, isNotNull);
     expect(detail!.installments[0].status, LoanInstallmentStatus.paid);
     expect(detail.installments[0].paymentId, 'p1');
+    expect(detail.installments[0].paidDate, DateTime(2026, 1, 5));
+    expect(detail.installments[0].paymentTimingLabel, '4 dia(s) após o vencimento');
     expect(detail.installments[1].status, LoanInstallmentStatus.overdue);
     expect(detail.overview.paidInstallments, 1);
   });

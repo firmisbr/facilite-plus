@@ -17,6 +17,7 @@ class LoanInstallmentItem {
     required this.status,
     this.paidAmount = 0,
     this.paymentId,
+    this.paidDate,
   });
 
   final int number;
@@ -25,10 +26,22 @@ class LoanInstallmentItem {
   final LoanInstallmentStatus status;
   final double paidAmount;
   final String? paymentId;
+  final DateTime? paidDate;
 
   bool get isPaid => status == LoanInstallmentStatus.paid;
   bool get canPay => !isPaid;
   bool get canUndo => isPaid && paymentId != null;
+
+  /// Texto curto: no dia, X dias em atraso, ou antecipado.
+  String? get paymentTimingLabel {
+    if (paidDate == null) return null;
+    final due = DateTime(dueDate.year, dueDate.month, dueDate.day);
+    final paid = DateTime(paidDate!.year, paidDate!.month, paidDate!.day);
+    final diff = paid.difference(due).inDays;
+    if (diff == 0) return 'No dia do vencimento';
+    if (diff > 0) return '$diff dia(s) após o vencimento';
+    return '${diff.abs()} dia(s) antes do vencimento';
+  }
 }
 
 class LoanOverviewStats {
