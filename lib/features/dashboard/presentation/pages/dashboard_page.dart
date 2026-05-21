@@ -29,15 +29,6 @@ class DashboardPage extends ConsumerWidget {
       ],
       body: statsAsync.when(
         data: (stats) {
-          if (stats.activeLoansCount == 0) {
-            return const AppEmptyState(
-              icon: Icons.dashboard_outlined,
-              title: 'Comece por aqui',
-              subtitle:
-                  'Cadastre um cliente e crie o primeiro empréstimo para ver seus números.',
-            );
-          }
-
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(allLoansProvider);
@@ -54,6 +45,18 @@ class DashboardPage extends ConsumerWidget {
                         'Resumo dos empréstimos ativos e cobranças em aberto.',
                   ),
                 ),
+                const SliverToBoxAdapter(child: _DashboardQuickActions()),
+                if (stats.activeLoansCount == 0)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: AppEmptyState(
+                      icon: Icons.dashboard_outlined,
+                      title: 'Comece por aqui',
+                      subtitle:
+                          'Use os atalhos acima para cadastrar cliente e empréstimo.',
+                    ),
+                  )
+                else ...[
                 if (stats.overdueInstallments > 0)
                   SliverToBoxAdapter(
                     child: Padding(
@@ -204,6 +207,7 @@ class DashboardPage extends ConsumerWidget {
                       },
                     ),
                   ),
+                ],
               ],
             ),
           );
@@ -214,6 +218,41 @@ class DashboardPage extends ConsumerWidget {
           title: 'Erro ao carregar',
           subtitle: e.toString(),
         ),
+      ),
+    );
+  }
+}
+
+class _DashboardQuickActions extends StatelessWidget {
+  const _DashboardQuickActions();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        0,
+        AppSpacing.lg,
+        AppSpacing.lg,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: () => context.push(AppRoutes.loanCreate),
+              icon: const Icon(Icons.add, size: 20),
+              label: const Text('Novo empréstimo'),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => context.push(AppRoutes.clientNew),
+              icon: const Icon(Icons.person_add_outlined, size: 20),
+              label: const Text('Novo cliente'),
+            ),
+          ),
+        ],
       ),
     );
   }
