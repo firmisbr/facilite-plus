@@ -9,6 +9,7 @@ import '../../features/clients/presentation/pages/clients_list_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_placeholder_page.dart';
 import '../../features/loans/presentation/pages/all_loans_list_page.dart';
 import '../../features/loans/presentation/pages/loan_create_page.dart';
+import '../../features/loans/presentation/pages/loan_detail_page.dart';
 import '../../features/loans/presentation/pages/loan_form_page.dart';
 import '../../features/loans/presentation/pages/loans_list_page.dart';
 import '../../features/payments/presentation/pages/payment_form_page.dart';
@@ -124,9 +125,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return LoanFormPage(loanId: id);
+          return LoanDetailPage(loanId: id);
         },
         routes: [
+          GoRoute(
+            path: 'edit',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return LoanFormPage(loanId: id);
+            },
+          ),
           GoRoute(
             path: 'payments',
             parentNavigatorKey: _rootNavigatorKey,

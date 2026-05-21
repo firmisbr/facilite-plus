@@ -6,13 +6,12 @@ import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
-import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/app_page_scaffold.dart';
 import '../../domain/entities/loan_with_client.dart';
-import '../../domain/loan_periodicity.dart';
 import '../providers/loans_providers.dart';
+import '../widgets/loan_list_card.dart';
 
 enum _LoanFilter { ativos, todos, quitados, atrasados }
 
@@ -35,22 +34,6 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
         items.where((e) => e.loan.status == 'quitado').toList(),
       _LoanFilter.atrasados =>
         items.where((e) => e.loan.status == 'atrasado').toList(),
-    };
-  }
-
-  String _statusLabel(String? status) {
-    return switch (status) {
-      'quitado' => 'Quitado',
-      'atrasado' => 'Atrasado',
-      _ => 'Ativo',
-    };
-  }
-
-  Color _statusColor(String? status) {
-    return switch (status) {
-      'quitado' => AppColors.lightTextSecondary,
-      'atrasado' => AppColors.error,
-      _ => AppColors.accent,
     };
   }
 
@@ -150,106 +133,7 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
                     separatorBuilder: (_, _) =>
                         const SizedBox(height: AppSpacing.md),
                     itemBuilder: (context, index) {
-                      final item = loans[index];
-                      final loan = item.loan;
-                      final status = loan.status ?? 'ativo';
-                      final details = [
-                        if (loan.installments != null)
-                          '${loan.installments}x',
-                        if (loan.periodicity != null)
-                          LoanPeriodicity.fromValue(loan.periodicity).label
-                              .toLowerCase(),
-                        if (loan.interest != null) 'juros ${loan.interest}%',
-                      ].join(' · ');
-
-                      return AppCard(
-                        onTap: () => context.push(AppRoutes.loanEdit(loan.id)),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(AppSpacing.sm),
-                              decoration: BoxDecoration(
-                                color: AppColors.accent
-                                    .withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(
-                                  AppSpacing.radiusSm,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.account_balance_wallet_outlined,
-                                color: AppColors.accent,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.clientName,
-                                    style:
-                                        Theme.of(context).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: AppSpacing.xs),
-                                  Text(
-                                    'R\$ ${loan.amount}',
-                                    style:
-                                        Theme.of(context).textTheme.bodyLarge,
-                                  ),
-                                  if (details.isNotEmpty) ...[
-                                    const SizedBox(height: AppSpacing.xs),
-                                    Text(
-                                      details,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.sm,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _statusColor(status)
-                                        .withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(
-                                      AppSpacing.radiusSm,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _statusLabel(status),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: _statusColor(status),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                IconButton(
-                                  tooltip: 'Pagamentos',
-                                  onPressed: () => context.push(
-                                    AppRoutes.loanPayments(loan.id),
-                                  ),
-                                  icon: const Icon(
-                                    Icons.receipt_long_outlined,
-                                  ),
-                                  color: AppColors.accent,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
+                      return LoanListCard(item: loans[index]);
                     },
                   ),
                 ),

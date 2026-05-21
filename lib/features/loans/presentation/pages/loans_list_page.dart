@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/routes.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
-import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../providers/loans_providers.dart';
+import '../widgets/loan_list_card.dart';
+import '../../domain/entities/loan_with_client.dart';
 
 class LoansListPage extends ConsumerWidget {
   const LoansListPage({super.key, required this.clientId});
@@ -44,55 +44,10 @@ class LoansListPage extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
             itemBuilder: (context, index) {
               final loan = loans[index];
-              return AppCard(
-                onTap: () => context.push(AppRoutes.loanEdit(loan.id)),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        color: AppColors.accent.withValues(alpha: 0.12),
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusSm),
-                      ),
-                      child: const Icon(
-                        Icons.payments_outlined,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'R\$ ${loan.amount}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            [
-                              if (loan.installments != null)
-                                '${loan.installments}x',
-                              if (loan.interest != null)
-                                'juros ${loan.interest}%',
-                              if (loan.status != null) loan.status,
-                            ].join(' · '),
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Pagamentos',
-                      onPressed: () => context.push(
-                        AppRoutes.loanPayments(loan.id),
-                      ),
-                      icon: const Icon(Icons.receipt_long_outlined),
-                      color: AppColors.accent,
-                    ),
-                    const Icon(Icons.chevron_right_rounded),
-                  ],
+              return LoanListCard(
+                item: LoanWithClient(
+                  loan: loan,
+                  clientName: clientName,
                 ),
               );
             },

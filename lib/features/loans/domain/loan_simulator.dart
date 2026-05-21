@@ -97,6 +97,34 @@ abstract final class LoanSimulator {
     );
   }
 
+  /// Cronograma completo de parcelas (para detalhe do empréstimo).
+  static List<LoanInstallmentPreview>? buildFullSchedule({
+    required double principal,
+    required int installments,
+    required double monthlyInterestPercent,
+    required LoanPeriodicity periodicity,
+    required DateTime firstDueDate,
+  }) {
+    final sim = simulate(
+      principal: principal,
+      installments: installments,
+      monthlyInterestPercent: monthlyInterestPercent,
+      periodicity: periodicity,
+      firstDueDate: firstDueDate,
+      maxScheduleRows: installments,
+    );
+    if (sim == null) return null;
+
+    return List.generate(
+      installments,
+      (i) => LoanInstallmentPreview(
+        number: i + 1,
+        dueDate: _nextDueDate(firstDueDate, periodicity, i),
+        amount: sim.installmentAmount,
+      ),
+    );
+  }
+
   static DateTime _nextDueDate(
     DateTime first,
     LoanPeriodicity periodicity,
