@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/brand_logo.dart';
 import '../providers/auth_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -39,105 +44,125 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+    final surface = Theme.of(context).colorScheme.surface;
 
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.xl,
+            ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Facilite Plus',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _isSignUp ? 'Criar conta' : 'Entrar na sua conta',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 32),
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      decoration: const InputDecoration(
-                        labelText: 'E-mail',
-                        border: OutlineInputBorder(),
+              constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+              child: Column(
+                children: [
+                  BrandLogo(
+                    size: BrandLogoSize.medium,
+                    showSubtitle: true,
+                    subtitle: _isSignUp
+                        ? 'Crie sua conta para começar'
+                        : 'Gestão de empréstimos offline-first',
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: surface,
+                      borderRadius:
+                          BorderRadius.circular(AppSpacing.radiusLg),
+                      border: Border.all(
+                        color: context.appTheme.border.withValues(alpha: 0.9),
                       ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Informe o e-mail';
-                        }
-                        if (!v.contains('@')) return 'E-mail inválido';
-                        return null;
-                      },
+                      boxShadow: context.appTheme.cardShadow,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Senha',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            _isSignUp ? 'Cadastro' : 'Entrar',
+                            style: Theme.of(context).textTheme.titleLarge,
                           ),
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
+                          const SizedBox(height: AppSpacing.lg),
+                          AppTextField(
+                            controller: _emailController,
+                            label: 'E-mail',
+                            keyboardType: TextInputType.emailAddress,
+                            autocorrect: false,
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) {
+                                return 'Informe o e-mail';
+                              }
+                              if (!v.contains('@')) return 'E-mail inválido';
+                              return null;
+                            },
                           ),
-                        ),
+                          const SizedBox(height: AppSpacing.md),
+                          AppTextField(
+                            controller: _passwordController,
+                            label: 'Senha',
+                            obscureText: _obscurePassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                              ),
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
+                            ),
+                            validator: (v) {
+                              if (v == null || v.length < 6) {
+                                return 'Mínimo 6 caracteres';
+                              }
+                              return null;
+                            },
+                          ),
+                          if (auth.error != null) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .errorContainer,
+                                borderRadius: BorderRadius.circular(
+                                  AppSpacing.radiusSm,
+                                ),
+                              ),
+                              child: Text(
+                                auth.error!,
+                                style: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: AppSpacing.lg),
+                          AppPrimaryButton(
+                            label: _isSignUp ? 'Criar conta' : 'Entrar',
+                            isLoading: auth.isLoading,
+                            onPressed: _submit,
+                          ),
+                        ],
                       ),
-                      validator: (v) {
-                        if (v == null || v.length < 6) {
-                          return 'Mínimo 6 caracteres';
-                        }
-                        return null;
-                      },
                     ),
-                    if (auth.error != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        auth.error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: auth.isLoading ? null : _submit,
-                      child: auth.isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(_isSignUp ? 'Cadastrar' : 'Entrar'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: auth.isLoading
-                          ? null
-                          : () => setState(() => _isSignUp = !_isSignUp),
-                      child: Text(
-                        _isSignUp
-                            ? 'Já tenho conta — entrar'
-                            : 'Não tenho conta — cadastrar',
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextLinkButton(
+                    label: _isSignUp
+                        ? 'Já tenho conta — entrar'
+                        : 'Não tenho conta — cadastrar',
+                    onPressed: auth.isLoading
+                        ? null
+                        : () => setState(() => _isSignUp = !_isSignUp),
+                  ),
+                ],
               ),
             ),
           ),

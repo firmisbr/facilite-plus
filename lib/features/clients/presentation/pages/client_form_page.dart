@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
+import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../providers/clients_providers.dart';
 
 class ClientFormPage extends ConsumerStatefulWidget {
@@ -25,12 +28,15 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
   final _addressController = TextEditingController();
   final _notesController = TextEditingController();
   bool _loading = false;
+  bool _initialLoad = true;
 
   @override
   void initState() {
     super.initState();
     if (widget.isEditing) {
       _loadClient();
+    } else {
+      _initialLoad = false;
     }
   }
 
@@ -43,7 +49,7 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
     _documentController.text = client.document ?? '';
     _addressController.text = client.address ?? '';
     _notesController.text = client.notes ?? '';
-    setState(() {});
+    setState(() => _initialLoad = false);
   }
 
   @override
@@ -110,76 +116,77 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_initialLoad) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Editar cliente' : 'Novo cliente'),
       ),
-      body: _loading && widget.isEditing && _nameController.text.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nome *',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Obrigatório' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'Telefone',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _documentController,
-                      decoration: const InputDecoration(
-                        labelText: 'Documento',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _addressController,
-                      decoration: const InputDecoration(
-                        labelText: 'Endereço',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _notesController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Observações',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: _loading ? null : _save,
-                      child: _loading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Salvar'),
-                    ),
-                  ],
-                ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Center(
+          child: ConstrainedBox(
+            constraints:
+                const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Dados do cliente',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Salvo no dispositivo e enviado ao Supabase quando online.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppTextField(
+                    controller: _nameController,
+                    label: 'Nome *',
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Obrigatório' : null,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
+                    controller: _phoneController,
+                    label: 'Telefone',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
+                    controller: _documentController,
+                    label: 'Documento',
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
+                    controller: _addressController,
+                    label: 'Endereço',
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
+                    controller: _notesController,
+                    label: 'Observações',
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  AppPrimaryButton(
+                    label: 'Salvar',
+                    isLoading: _loading,
+                    onPressed: _save,
+                  ),
+                ],
               ),
             ),
+          ),
+        ),
+      ),
     );
   }
 }
