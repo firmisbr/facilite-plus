@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/auth/presentation/pages/login_placeholder_page.dart';
-import '../../features/home/presentation/pages/home_placeholder_page.dart';
+import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/clients/presentation/pages/client_form_page.dart';
+import '../../features/clients/presentation/pages/clients_list_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../services/supabase/supabase_providers.dart';
 import 'routes.dart';
@@ -43,11 +44,22 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) => const LoginPlaceholderPage(),
+        builder: (context, state) => const LoginPage(),
       ),
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) => const HomePlaceholderPage(),
+        builder: (context, state) => const ClientsListPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.clientNew,
+        builder: (context, state) => const ClientFormPage(),
+      ),
+      GoRoute(
+        path: '/clients/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ClientFormPage(clientId: id);
+        },
       ),
     ],
   );

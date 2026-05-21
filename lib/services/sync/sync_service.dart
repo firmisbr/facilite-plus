@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -10,16 +11,19 @@ import 'sync_queue_repository.dart';
 
 final _log = Logger('sync-service');
 
-/// Orquestra envio da fila local → Supabase quando há rede e sessão.
+/// Orquestra fila local → Supabase e download Supabase → SQLite.
 class SyncService {
   SyncService({
     required SyncQueueRepository queueRepository,
+    required AppDatabase database,
     required this._supabase,
     Connectivity? connectivity,
   })  : _queue = queueRepository,
+        _db = database,
         _connectivity = connectivity ?? Connectivity();
 
   final SyncQueueRepository _queue;
+  final AppDatabase _db;
   final SupabaseClient _supabase;
   final Connectivity _connectivity;
 
@@ -67,6 +71,66 @@ class SyncService {
     }
   }
 
+  Future<void> pullRemoteChanges() async {
+    if (_supabase.auth.currentSession == null || !await hasConnectivity) {
+      return;
+    }
+
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await _pullClients(userId);
+  }
+
+  Future<void> _pullClients(String userId) async {
+    final rows = await _supabase
+        .from('clients')
+        .select()
+        .eq('user_id', userId);
+
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return;
+
+    await _db.batch((batch) {
+      for (final raw in list) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final id = row['id'] as String;
+        batch.insert(
+          _db.clientsTable,
+          ClientsTableCompanion.insert(
+            id: id,
+            userId: row['user_id'] as String,
+            name: row['name'] as String,
+            phone: Value(row['phone'] as String?),
+            document: Value(row['document'] as String?),
+            address: Value(row['address'] as String?),
+            notes: Value(row['notes'] as String?),
+            createdAt: Value(_formatRemoteDate(row['created_at'])),
+          ),
+          onConflict: DoUpdate(
+            (old) => ClientsTableCompanion(
+              name: Value(row['name'] as String),
+              phone: Value(row['phone'] as String?),
+              document: Value(row['document'] as String?),
+              address: Value(row['address'] as String?),
+              notes: Value(row['notes'] as String?),
+              createdAt: Value(_formatRemoteDate(row['created_at'])),
+            ),
+          ),
+        );
+      }
+    });
+
+    _log.info('Pull clients: ${list.length} registro(s)');
+  }
+
+  String? _formatRemoteDate(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is DateTime) return value.toUtc().toIso8601String();
+    return value.toString();
+  }
+
   Future<void> _applyToSupabase(SyncQueueTableData item) async {
     final table = _supabase.from(item.entityType);
     final payload = jsonDecode(item.payload) as Map<String, dynamic>;
@@ -80,11 +144,6 @@ class SyncService {
       case SyncOperationType.delete:
         await table.delete().eq('id', item.entityId);
     }
-  }
-
-  /// Download remoto → local (fase posterior).
-  Future<void> pullRemoteChanges() async {
-    _log.info('pullRemoteChanges: não implementado nesta etapa');
   }
 }
 

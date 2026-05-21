@@ -12,6 +12,7 @@ final syncQueueRepositoryProvider = Provider<SyncQueueRepository>((ref) {
 final syncServiceProvider = Provider<SyncService>((ref) {
   return SyncService(
     queueRepository: ref.watch(syncQueueRepositoryProvider),
+    database: ref.watch(appDatabaseProvider),
     supabase: ref.watch(supabaseClientProvider),
   );
 });
