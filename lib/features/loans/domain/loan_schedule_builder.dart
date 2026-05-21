@@ -186,10 +186,21 @@ abstract final class LoanScheduleBuilder {
       );
     }
 
+    LoanInstallmentItem? nextOpen;
+    for (final installment in detail.installments) {
+      if (!installment.isPaid) {
+        nextOpen = installment;
+        break;
+      }
+    }
+
     return LoanCardSummary(
       paidInstallments: detail.overview.paidInstallments,
       totalInstallments: detail.overview.totalInstallments,
-      nextDueDate: detail.overview.nextDueDate,
+      nextDueDate: nextOpen?.dueDate ?? detail.overview.nextDueDate,
+      isNextDueOverdue:
+          nextOpen?.status == LoanInstallmentStatus.overdue,
+      overdueInstallments: detail.overview.overdueInstallments,
     );
   }
 

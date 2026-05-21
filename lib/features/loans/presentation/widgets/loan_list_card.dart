@@ -24,13 +24,21 @@ class LoanListCard extends ConsumerWidget {
     final loan = item.loan;
     final summary = ref.watch(loanCardSummaryProvider(loan.id));
 
-    final nextDueText = summary?.nextDueDate != null
-        ? LoanSimulator.formatDate(summary!.nextDueDate!)
+    final nextDue = summary?.nextDueDate;
+    final nextDueText = nextDue != null
+        ? LoanSimulator.formatDate(nextDue)
         : (loan.firstDueDate != null
             ? LoanSimulator.formatDate(
                 DateTime.tryParse(loan.firstDueDate!) ?? DateTime.now(),
               )
             : '—');
+
+    final isOverdue = summary?.isNextDueOverdue ?? false;
+    final overdueCount = summary?.overdueInstallments ?? 0;
+
+    final dueLabel = isOverdue
+        ? 'Pagamento venceu em $nextDueText'
+        : 'Próximo pagamento: $nextDueText';
 
     final paid = summary?.paidInstallments ?? 0;
     final total = summary?.totalInstallments ?? loan.installments ?? 0;
@@ -78,18 +86,32 @@ class LoanListCard extends ConsumerWidget {
               ),
             ],
           ),
+          if (overdueCount > 0) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _OverdueBadge(count: overdueCount),
+          ],
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Icon(
-                Icons.event_outlined,
+                isOverdue
+                    ? Icons.warning_amber_rounded
+                    : Icons.event_outlined,
                 size: 16,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: isOverdue
+                    ? AppColors.error
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: AppSpacing.xs),
-              Text(
-                'Próximo pagamento: $nextDueText',
-                style: Theme.of(context).textTheme.bodySmall,
+              Expanded(
+                child: Text(
+                  dueLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isOverdue ? AppColors.error : null,
+                        fontWeight:
+                            isOverdue ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                ),
               ),
             ],
           ),
@@ -101,6 +123,35 @@ class LoanListCard extends ConsumerWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _OverdueBadge extends StatelessWidget {
+  const _OverdueBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      ),
+      child: Text(
+        count == 1
+            ? '1 parcela em atraso'
+            : '$count parcelas em atraso',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.error,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }

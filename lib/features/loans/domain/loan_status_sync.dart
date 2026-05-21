@@ -34,4 +34,19 @@ abstract final class LoanStatusSync {
 
     await loansRepo.update(loan.copyWith(status: nextStatus));
   }
+
+  /// Corrige status gravado no banco conforme o cronograma atual.
+  static Future<void> reconcileOpenLoans({
+    required LoansRepository loansRepo,
+    required PaymentsRepository paymentsRepo,
+    required List<String> loanIds,
+  }) async {
+    for (final loanId in loanIds) {
+      await refresh(
+        loansRepo: loansRepo,
+        paymentsRepo: paymentsRepo,
+        loanId: loanId,
+      );
+    }
+  }
 }

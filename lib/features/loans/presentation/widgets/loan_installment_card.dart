@@ -58,6 +58,7 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
         paymentsRepo: paymentsRepo,
         loanId: widget.loanId,
       );
+      ref.invalidate(allLoansProvider);
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,6 +112,7 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
         paymentsRepo: paymentsRepo,
         loanId: widget.loanId,
       );
+      ref.invalidate(allLoansProvider);
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) {
         ScaffoldMessenger.of(

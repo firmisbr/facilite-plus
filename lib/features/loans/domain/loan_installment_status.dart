@@ -103,11 +103,15 @@ class LoanCardSummary {
     required this.paidInstallments,
     required this.totalInstallments,
     this.nextDueDate,
+    this.isNextDueOverdue = false,
+    this.overdueInstallments = 0,
   });
 
   final int paidInstallments;
   final int totalInstallments;
   final DateTime? nextDueDate;
+  final bool isNextDueOverdue;
+  final int overdueInstallments;
 
   String get progressLabel {
     final paid = paidInstallments.toString().padLeft(2, '0');

@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_spacing.dart';
+import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
+import '../../domain/loan_status_sync.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../domain/loan_periodicity.dart';
@@ -111,6 +113,13 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
           status: _status,
         ),
       );
+
+      await LoanStatusSync.refresh(
+        loansRepo: repo,
+        paymentsRepo: ref.read(paymentsRepositoryProvider),
+        loanId: widget.loanId!,
+      );
+      ref.invalidate(allLoansProvider);
 
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) context.pop();

@@ -112,7 +112,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime.now(),
+      firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
     );
     if (picked != null) {
