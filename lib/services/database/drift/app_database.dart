@@ -14,7 +14,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -34,6 +34,17 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(
               paymentsTable,
               paymentsTable.installmentNumber,
+            );
+          }
+          if (from < 5) {
+            await customStatement(
+              'CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_id ON clients(id)',
+            );
+            await customStatement(
+              'CREATE UNIQUE INDEX IF NOT EXISTS idx_loans_id ON loans(id)',
+            );
+            await customStatement(
+              'CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_id ON payments(id)',
             );
           }
         },

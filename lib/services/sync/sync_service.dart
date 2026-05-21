@@ -127,6 +127,7 @@ class SyncService {
               status: Value(row['status'] as String?),
               createdAt: Value(_formatRemoteDate(row['created_at'])),
             ),
+            target: [_db.loansTable.id],
           ),
         );
       }
@@ -179,6 +180,7 @@ class SyncService {
               method: Value(row['method'] as String?),
               createdAt: Value(_formatRemoteDate(row['created_at'])),
             ),
+            target: [_db.paymentsTable.id],
           ),
         );
       }
@@ -223,6 +225,7 @@ class SyncService {
               notes: Value(row['notes'] as String?),
               createdAt: Value(_formatRemoteDate(row['created_at'])),
             ),
+            target: [_db.clientsTable.id],
           ),
         );
       }

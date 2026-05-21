@@ -5,6 +5,9 @@ class LoansTable extends Table {
   @override
   String get tableName => 'loans';
 
+  @override
+  Set<Column> get primaryKey => {id};
+
   TextColumn get id => text()();
   TextColumn get clientId => text().named('client_id').references(ClientsTable, #id)();
   TextColumn get amount => text()();

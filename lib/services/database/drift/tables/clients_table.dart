@@ -4,6 +4,9 @@ class ClientsTable extends Table {
   @override
   String get tableName => 'clients';
 
+  @override
+  Set<Column> get primaryKey => {id};
+
   TextColumn get id => text()();
   TextColumn get userId => text().named('user_id')();
   TextColumn get name => text()();

@@ -105,15 +105,11 @@ class AppDrawer extends ConsumerWidget {
               leading: const Icon(Icons.sync_rounded),
               title: const Text('Sincronizar agora'),
               onTap: () async {
+                final container = ProviderScope.containerOf(context);
+                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(context);
-                final sync = ref.read(syncServiceProvider);
-                final result = await sync.processQueue();
-                await sync.pullRemoteChanges();
-                ref.invalidate(syncQueueSummaryProvider);
-                ref.invalidate(pendingSyncCountProvider);
-                if (context.mounted) {
-                  showSyncSnackBar(context, result);
-                }
+                final result = await runFullSync(container);
+                showSyncSnackBarWithMessenger(messenger, result);
               },
             ),
             Consumer(

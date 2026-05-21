@@ -48,13 +48,9 @@ class AppBarActions extends ConsumerWidget {
   }
 
   Future<void> _syncNow(BuildContext context, WidgetRef ref) async {
-    final sync = ref.read(syncServiceProvider);
-    final queueResult = await sync.processQueue();
-    await sync.pullRemoteChanges();
-    ref.invalidate(syncQueueSummaryProvider);
-    ref.invalidate(pendingSyncCountProvider);
+    final result = await runFullSync(ProviderScope.containerOf(context));
     if (context.mounted) {
-      showSyncSnackBar(context, queueResult);
+      showSyncSnackBar(context, result);
     }
   }
 }
