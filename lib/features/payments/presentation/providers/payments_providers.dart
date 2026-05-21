@@ -6,6 +6,7 @@ import '../../data/repositories/payments_repository_impl.dart';
 import '../../domain/entities/payment.dart';
 import '../../domain/repositories/payments_repository.dart';
 import '../../../../services/database/drift/drift_providers.dart';
+import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
 
 final paymentsRepositoryProvider = Provider<PaymentsRepository>((ref) {
@@ -13,6 +14,14 @@ final paymentsRepositoryProvider = Provider<PaymentsRepository>((ref) {
     database: ref.watch(appDatabaseProvider),
     syncQueue: ref.watch(syncQueueRepositoryProvider),
   );
+});
+
+final allPaymentsForUserProvider = StreamProvider<List<Payment>>((ref) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) {
+    return const Stream.empty();
+  }
+  return ref.watch(paymentsRepositoryProvider).watchAllForUser(userId);
 });
 
 final paymentsByLoanProvider =

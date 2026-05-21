@@ -1,6 +1,8 @@
 import '../entities/payment.dart';
 
 abstract class PaymentsRepository {
+  Stream<List<Payment>> watchAllForUser(String userId);
+
   Stream<List<Payment>> watchByLoan(String loanId);
 
   Future<Payment?> getById(String id);

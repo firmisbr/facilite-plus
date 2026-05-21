@@ -201,11 +201,19 @@ Permitir que gerentes realizem controle completo de clientes, empréstimos, cobr
 - Comprovantes
 
 ## Dashboard
-- Total emprestado
-- Total recebido
-- Lucro
-- Inadimplência
-- Fluxo de caixa
+**Tela inicial após login** (`/dashboard`).
+
+Implementado (v1):
+- Total emprestado (empréstimos ativos)
+- Total recebido e a receber
+- Lucro previsto (juros dos ativos)
+- Alerta de inadimplência (parcelas e valor em atraso)
+- Próximos vencimentos (14 dias + atrasadas), toque abre o empréstimo
+- Pull-to-refresh e sync na AppBar
+
+Pendente:
+- Fluxo de caixa histórico
+- Gráficos
 
 ## Relatórios
 - PDF
@@ -302,7 +310,7 @@ created_at
 - Pagamentos
 
 ## Fase 3
-- Dashboard
+- Dashboard (v1 implementado)
 - Relatórios
 - PDFs
 

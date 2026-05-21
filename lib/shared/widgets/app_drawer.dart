@@ -34,6 +34,15 @@ class AppDrawer extends ConsumerWidget {
             ),
             const Divider(height: 1),
             _DrawerTile(
+              icon: Icons.dashboard_outlined,
+              label: 'Dashboard',
+              selected: location == AppRoutes.dashboard,
+              onTap: () {
+                Navigator.pop(context);
+                context.go(AppRoutes.dashboard);
+              },
+            ),
+            _DrawerTile(
               icon: Icons.people_outline,
               label: 'Clientes',
               selected: location == AppRoutes.clients,
@@ -49,16 +58,6 @@ class AppDrawer extends ConsumerWidget {
               onTap: () {
                 Navigator.pop(context);
                 context.go(AppRoutes.loans);
-              },
-            ),
-            _DrawerTile(
-              icon: Icons.dashboard_outlined,
-              label: 'Dashboard',
-              selected: location == AppRoutes.dashboard,
-              badge: 'Em breve',
-              onTap: () {
-                Navigator.pop(context);
-                context.go(AppRoutes.dashboard);
               },
             ),
             const Spacer(),
@@ -144,14 +143,12 @@ class _DrawerTile extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
-    this.badge,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  final String? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -169,22 +166,6 @@ class _DrawerTile extends StatelessWidget {
           color: selected ? AppColors.accent : scheme.onSurface,
         ),
       ),
-      trailing: badge != null
-          ? Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                color: scheme.secondary.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-              ),
-              child: Text(
-                badge!,
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            )
-          : null,
       selected: selected,
       selectedTileColor: AppColors.accent.withValues(alpha: 0.1),
       onTap: onTap,

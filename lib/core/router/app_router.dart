@@ -6,7 +6,7 @@ import '../../core/navigation/app_shell.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/clients/presentation/pages/client_form_page.dart';
 import '../../features/clients/presentation/pages/clients_list_page.dart';
-import '../../features/dashboard/presentation/pages/dashboard_placeholder_page.dart';
+import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/loans/presentation/pages/all_loans_list_page.dart';
 import '../../features/loans/presentation/pages/loan_create_page.dart';
 import '../../features/loans/presentation/pages/loan_detail_page.dart';
@@ -42,11 +42,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (location == AppRoutes.splash || location == AppRoutes.login) {
-        return AppRoutes.clients;
+        return AppRoutes.dashboard;
       }
 
       if (location == AppRoutes.home) {
-        return AppRoutes.clients;
+        return AppRoutes.dashboard;
       }
 
       return null;
@@ -65,6 +65,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) => AppShell(child: child),
         routes: [
           GoRoute(
+            path: AppRoutes.dashboard,
+            builder: (context, state) => const DashboardPage(),
+          ),
+          GoRoute(
             path: AppRoutes.clients,
             builder: (context, state) => const ClientsListPage(),
           ),
@@ -72,15 +76,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.loans,
             builder: (context, state) => const AllLoansListPage(),
           ),
-          GoRoute(
-            path: AppRoutes.dashboard,
-            builder: (context, state) => const DashboardPlaceholderPage(),
-          ),
         ],
       ),
       GoRoute(
         path: AppRoutes.home,
-        redirect: (context, state) => AppRoutes.clients,
+        redirect: (context, state) => AppRoutes.dashboard,
       ),
       GoRoute(
         path: AppRoutes.clientNew,

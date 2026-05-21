@@ -21,6 +21,24 @@ class PaymentsRepositoryImpl extends SyncableRepository
   final _uuid = const Uuid();
 
   @override
+  Stream<List<Payment>> watchAllForUser(String userId) {
+    final payments = _db.paymentsTable;
+    final loans = _db.loansTable;
+    final clients = _db.clientsTable;
+
+    final query = _db.select(payments).join([
+      innerJoin(loans, loans.id.equalsExp(payments.loanId)),
+      innerJoin(clients, clients.id.equalsExp(loans.clientId)),
+    ])
+      ..where(clients.userId.equals(userId))
+      ..orderBy([OrderingTerm.desc(payments.createdAt)]);
+
+    return query
+        .watch()
+        .map((rows) => rows.map((row) => _mapRow(row.readTable(payments))).toList());
+  }
+
+  @override
   Stream<List<Payment>> watchByLoan(String loanId) {
     return (_db.select(_db.paymentsTable)
           ..where((p) => p.loanId.equals(loanId))

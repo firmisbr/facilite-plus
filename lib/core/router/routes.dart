@@ -7,7 +7,7 @@ abstract final class AppRoutes {
   static const loans = '/loans';
   static const dashboard = '/dashboard';
 
-  /// Legado: redireciona para [clients]
+  /// Legado: redireciona para [dashboard]
   static const home = '/home';
 
   /// Telas em stack (sem drawer)
