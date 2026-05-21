@@ -35,9 +35,9 @@ abstract final class WhatsAppUtils {
     required String? nextDueFormatted,
   }) {
     final buffer = StringBuffer()
-      ..writeln('Olá, $clientName! Tudo bem?')
+      ..writeln('Fala, $clientName! Tranquilo aí?')
       ..writeln()
-      ..writeln('Sou do *Facilite Plus* e estou entrando em contato sobre seu empréstimo.')
+      ..writeln('Aqui é do *Facilite Plus* e estou entrando em contato sobre seu empréstimo.')
       ..writeln()
       ..writeln('📋 *Situação:*')
       ..writeln('• Parcela(s) em atraso: $overdueInstallments')
@@ -49,7 +49,7 @@ abstract final class WhatsAppUtils {
 
     buffer
       ..writeln()
-      ..writeln('Podemos combinar o pagamento? Fico no aguardo do seu retorno.')
+      ..writeln('Vamos acertar o pagamento? Fico no aguardo do seu retorno.')
       ..writeln()
       ..writeln('Obrigado!');
 

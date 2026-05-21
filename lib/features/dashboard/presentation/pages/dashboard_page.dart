@@ -8,8 +8,10 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/app_metric_card.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/app_page_scaffold.dart';
+import '../../../../shared/widgets/app_section_title.dart';
 import '../../../loans/domain/loan_simulator.dart';
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
@@ -66,12 +68,17 @@ class DashboardPage extends ConsumerWidget {
                         AppSpacing.lg,
                         AppSpacing.md,
                       ),
-                      child: _AlertBanner(
-                        icon: Icons.warning_amber_rounded,
-                        color: AppColors.error,
-                        title:
-                            '${stats.overdueInstallments} parcela(s) em atraso',
-                        subtitle: LoanSimulator.formatMoney(stats.overdueAmount),
+                      child: AppCard(
+                        accent: AppCardAccent.error,
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: _AlertBanner(
+                          icon: Icons.warning_amber_rounded,
+                          color: AppColors.error,
+                          title:
+                              '${stats.overdueInstallments} parcela(s) em atraso',
+                          subtitle:
+                              LoanSimulator.formatMoney(stats.overdueAmount),
+                        ),
                       ),
                     ),
                   ),
@@ -82,27 +89,27 @@ class DashboardPage extends ConsumerWidget {
                       crossAxisCount: 2,
                       mainAxisSpacing: AppSpacing.md,
                       crossAxisSpacing: AppSpacing.md,
-                      childAspectRatio: 1.35,
+                      childAspectRatio: 1.15,
                     ),
                     delegate: SliverChildListDelegate([
-                      _MetricCard(
+                      AppMetricCard(
                         icon: Icons.account_balance_wallet_outlined,
                         label: 'Emprestado',
                         value: LoanSimulator.formatMoney(stats.totalLent),
                         subtitle: '${stats.activeLoansCount} ativo(s)',
                       ),
-                      _MetricCard(
+                      AppMetricCard(
                         icon: Icons.payments_outlined,
                         label: 'Recebido',
                         value: LoanSimulator.formatMoney(stats.totalReceived),
                         color: AppColors.success,
                       ),
-                      _MetricCard(
+                      AppMetricCard(
                         icon: Icons.schedule_outlined,
                         label: 'A receber',
                         value: LoanSimulator.formatMoney(stats.totalRemaining),
                       ),
-                      _MetricCard(
+                      AppMetricCard(
                         icon: Icons.trending_up_rounded,
                         label: 'Lucro previsto',
                         value: LoanSimulator.formatMoney(stats.expectedProfit),
@@ -113,25 +120,11 @@ class DashboardPage extends ConsumerWidget {
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.xl,
-                      AppSpacing.lg,
-                      AppSpacing.md,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Próximos vencimentos',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text(
-                          '${stats.clientsCount} cliente(s)',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                  child: AppSectionTitle(
+                    title: 'Próximos vencimentos',
+                    trailing: Text(
+                      '${stats.clientsCount} cliente(s)',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
                 ),
@@ -235,74 +228,27 @@ class _DashboardQuickActions extends StatelessWidget {
         AppSpacing.lg,
         AppSpacing.lg,
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: () => context.push(AppRoutes.loanCreate),
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('Novo empréstimo'),
+      child: AppCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: () => context.push(AppRoutes.loanCreate),
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Novo empréstimo'),
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => context.push(AppRoutes.clientNew),
-              icon: const Icon(Icons.person_add_outlined, size: 20),
-              label: const Text('Novo cliente'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.subtitle,
-    this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final String? subtitle;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = color ?? AppColors.accent;
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: accent, size: 22),
-          const Spacer(),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: accent,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle!,
-              style: Theme.of(context).textTheme.labelSmall,
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => context.push(AppRoutes.clientNew),
+                icon: const Icon(Icons.person_add_outlined, size: 20),
+                label: const Text('Novo cliente'),
+              ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -323,36 +269,30 @@ class _AlertBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 28),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
-            ),
-          ],
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

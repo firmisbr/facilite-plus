@@ -11,6 +11,7 @@ abstract final class AppSpacing {
   static const double radiusMd = 12;
   static const double radiusLg = 16;
   static const double radiusXl = 20;
+  static const double radius2xl = 24;
 
   static const double buttonHeight = 52;
   static const double maxContentWidth = 440;

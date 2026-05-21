@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/routes.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
@@ -12,6 +11,7 @@ import '../../../../shared/widgets/app_page_scaffold.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../domain/loan_list_filter.dart';
 import '../providers/loans_providers.dart';
+import '../../../../shared/widgets/app_filter_chip.dart';
 import '../widgets/loan_list_card.dart';
 
 class AllLoansListPage extends ConsumerStatefulWidget {
@@ -65,37 +65,37 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
                           ),
                           child: Row(
                             children: [
-                              _FilterChip(
-                                label: 'Ativos',
-                                selected: _filter == LoanListFilter.ativos,
-                                onSelected: () => setState(
-                                  () => _filter = LoanListFilter.ativos,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              _FilterChip(
-                                label: 'Todos',
-                                selected: _filter == LoanListFilter.todos,
-                                onSelected: () => setState(
-                                  () => _filter = LoanListFilter.todos,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              _FilterChip(
-                                label: 'Quitados',
-                                selected: _filter == LoanListFilter.quitados,
-                                onSelected: () => setState(
-                                  () => _filter = LoanListFilter.quitados,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              _FilterChip(
-                                label: 'Atrasados',
-                                selected: _filter == LoanListFilter.atrasados,
-                                onSelected: () => setState(
-                                  () => _filter = LoanListFilter.atrasados,
-                                ),
-                              ),
+                          AppFilterChip(
+                            label: 'Ativos',
+                            selected: _filter == LoanListFilter.ativos,
+                            onSelected: () => setState(
+                              () => _filter = LoanListFilter.ativos,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          AppFilterChip(
+                            label: 'Todos',
+                            selected: _filter == LoanListFilter.todos,
+                            onSelected: () => setState(
+                              () => _filter = LoanListFilter.todos,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          AppFilterChip(
+                            label: 'Quitados',
+                            selected: _filter == LoanListFilter.quitados,
+                            onSelected: () => setState(
+                              () => _filter = LoanListFilter.quitados,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          AppFilterChip(
+                            label: 'Atrasados',
+                            selected: _filter == LoanListFilter.atrasados,
+                            onSelected: () => setState(
+                              () => _filter = LoanListFilter.atrasados,
+                            ),
+                          ),
                             ],
                           ),
                         ),
@@ -151,29 +151,6 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
           subtitle: e.toString(),
         ),
       ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onSelected(),
-      selectedColor: AppColors.accent.withValues(alpha: 0.2),
-      checkmarkColor: AppColors.accent,
     );
   }
 }

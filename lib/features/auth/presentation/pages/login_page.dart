@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/routes.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/brand_logo.dart';
@@ -46,10 +47,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
-    final surface = Theme.of(context).colorScheme.surface;
+    final brightness = Theme.of(context).brightness;
 
     return Scaffold(
-      body: SafeArea(
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: AppDecorations.screenBackground(brightness),
+        ),
+        child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
@@ -68,17 +73,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         : 'Gestão de empréstimos offline-first',
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  Container(
+                  AppCard(
                     padding: const EdgeInsets.all(AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: surface,
-                      borderRadius:
-                          BorderRadius.circular(AppSpacing.radiusLg),
-                      border: Border.all(
-                        color: context.appTheme.border.withValues(alpha: 0.9),
-                      ),
-                      boxShadow: context.appTheme.cardShadow,
-                    ),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -184,6 +180,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
             ),
           ),
+        ),
         ),
       ),
     );

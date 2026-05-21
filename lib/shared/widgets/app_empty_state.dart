@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_decorations.dart';
 import '../../core/theme/app_spacing.dart';
 
 class AppEmptyState extends StatelessWidget {
@@ -24,23 +26,34 @@ class AppEmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 48,
-              color: colors.onSurfaceVariant.withValues(alpha: 0.5),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: AppDecorations.iconBadge(
+                color: AppColors.accent,
+                radius: AppSpacing.radius2xl,
+              ),
+              child: Icon(
+                icon,
+                size: 40,
+                color: AppColors.accent.withValues(alpha: 0.85),
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             if (subtitle != null) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
               ),
             ],
           ],

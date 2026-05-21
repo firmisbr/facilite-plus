@@ -157,10 +157,40 @@ abstract final class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.accent,
         foregroundColor: Colors.white,
-        elevation: 2,
-        highlightElevation: 4,
+        elevation: 3,
+        highlightElevation: 6,
+        extendedSizeConstraints: const BoxConstraints(minHeight: 52),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          borderRadius: BorderRadius.circular(AppSpacing.radius2xl),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.accent,
+          minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          side: BorderSide(color: outline.withValues(alpha: 0.9)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      navigationDrawerTheme: NavigationDrawerThemeData(
+        backgroundColor: surface,
+        indicatorColor: AppColors.accent.withValues(alpha: 0.14),
+        elevation: 0,
+      ),
+      drawerTheme: DrawerThemeData(
+        backgroundColor: surface,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.horizontal(
+            right: Radius.circular(AppSpacing.radius2xl),
+          ),
         ),
       ),
       dividerTheme: DividerThemeData(color: outline, thickness: 1),

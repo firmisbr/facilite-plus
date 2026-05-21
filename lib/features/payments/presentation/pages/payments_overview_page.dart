@@ -9,8 +9,10 @@ import '../../../../shared/utils/whatsapp_utils.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/app_metric_card.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/app_page_scaffold.dart';
+import '../../../../shared/widgets/app_section_title.dart';
 import '../../../loans/domain/loan_simulator.dart';
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../domain/payments_overview.dart';
@@ -56,28 +58,29 @@ class PaymentsOverviewPage extends ConsumerWidget {
                       crossAxisCount: 2,
                       mainAxisSpacing: AppSpacing.md,
                       crossAxisSpacing: AppSpacing.md,
-                      childAspectRatio: 1.25,
+                      childAspectRatio: 1.15,
                     ),
                     delegate: SliverChildListDelegate([
-                      _MetricTile(
+                      AppMetricCard(
                         icon: Icons.schedule_outlined,
                         label: 'Total a receber',
                         value: LoanSimulator.formatMoney(overview.totalToReceive),
                         color: AppColors.accent,
                       ),
-                      _MetricTile(
+                      AppMetricCard(
                         icon: Icons.warning_amber_rounded,
                         label: 'Total em atraso',
                         value: LoanSimulator.formatMoney(overview.totalOverdue),
                         color: AppColors.error,
+                        accent: AppCardAccent.error,
                       ),
-                      _MetricTile(
+                      AppMetricCard(
                         icon: Icons.person_off_outlined,
                         label: 'Clientes em atraso',
                         value: '${overview.clientsOverdueCount}',
                         subtitle: 'com parcela vencida',
                       ),
-                      _MetricTile(
+                      AppMetricCard(
                         icon: Icons.event_available_outlined,
                         label: 'A vencer (7 dias)',
                         value: '${overview.clientsDueSoonCount}',
@@ -98,19 +101,8 @@ class PaymentsOverviewPage extends ConsumerWidget {
                     ),
                   )
                 else
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.xl,
-                        AppSpacing.lg,
-                        AppSpacing.sm,
-                      ),
-                      child: Text(
-                        'Empréstimos',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
+                  const SliverToBoxAdapter(
+                    child: AppSectionTitle(title: 'Empréstimos'),
                   ),
                 if (overview.loanCards.isNotEmpty)
                   SliverPadding(
@@ -141,56 +133,6 @@ class PaymentsOverviewPage extends ConsumerWidget {
           title: 'Erro ao carregar',
           subtitle: e.toString(),
         ),
-      ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  const _MetricTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.subtitle,
-    this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final String? subtitle;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = color ?? AppColors.accent;
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: accent, size: 22),
-          const Spacer(),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: accent,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle!,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -248,6 +190,7 @@ class _PaymentLoanCard extends StatelessWidget {
         item.hasOverdue && WhatsAppUtils.normalizeBrazilPhone(item.clientPhone) != null;
 
     return AppCard(
+      accent: item.hasOverdue ? AppCardAccent.error : AppCardAccent.none,
       onTap: () => context.push(AppRoutes.loanDetail(loan.id)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

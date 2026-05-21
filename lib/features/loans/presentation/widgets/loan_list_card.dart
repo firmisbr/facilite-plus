@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loan_installment_progress.dart';
@@ -44,6 +45,7 @@ class LoanListCard extends ConsumerWidget {
     final total = summary?.totalInstallments ?? loan.installments ?? 0;
 
     return AppCard(
+      accent: isOverdue ? AppCardAccent.error : AppCardAccent.none,
       onTap: () => context.push(AppRoutes.loanDetail(loan.id)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,14 +53,12 @@ class LoanListCard extends ConsumerWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                ),
+                padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                decoration: AppDecorations.iconBadge(color: AppColors.accent),
                 child: const Icon(
                   Icons.account_balance_wallet_outlined,
                   color: AppColors.accent,
+                  size: 22,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),

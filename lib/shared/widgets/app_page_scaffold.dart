@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/navigation/app_shell.dart';
+import '../../core/theme/app_decorations.dart';
 
 /// Scaffold de telas principais do shell (menu + AppBar).
 class AppPageScaffold extends StatelessWidget {
@@ -19,7 +20,10 @@ class AppPageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.menu_rounded),
@@ -29,7 +33,15 @@ class AppPageScaffold extends StatelessWidget {
         title: Text(title),
         actions: actions,
       ),
-      body: body,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: AppDecorations.screenBackground(brightness),
+        ),
+        child: SafeArea(
+          top: false,
+          child: body,
+        ),
+      ),
       floatingActionButton: floatingActionButton,
     );
   }
