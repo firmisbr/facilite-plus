@@ -15,4 +15,7 @@ abstract final class AppRoutes {
   static String clientLoans(String clientId) => '/clients/$clientId/loans';
   static String loanNew(String clientId) => '/clients/$clientId/loans/new';
   static String loanEdit(String id) => '/loans/$id';
+  static String loanPayments(String loanId) => '/loans/$loanId/payments';
+  static String paymentNew(String loanId) => '/loans/$loanId/payments/new';
+  static String paymentEdit(String id) => '/payments/$id';
 }

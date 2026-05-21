@@ -14,6 +14,8 @@ class AppTextField extends StatelessWidget {
     this.suffixIcon,
     this.autocorrect = true,
     this.inputFormatters,
+    this.readOnly = false,
+    this.onTap,
   });
 
   final TextEditingController? controller;
@@ -26,6 +28,8 @@ class AppTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final bool autocorrect;
   final List<TextInputFormatter>? inputFormatters;
+  final bool readOnly;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +41,8 @@ class AppTextField extends StatelessWidget {
       validator: validator,
       autocorrect: autocorrect,
       inputFormatters: inputFormatters,
+      readOnly: readOnly,
+      onTap: onTap,
       style: Theme.of(context).textTheme.bodyLarge,
       decoration: InputDecoration(
         labelText: label,

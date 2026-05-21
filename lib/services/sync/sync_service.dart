@@ -81,6 +81,7 @@ class SyncService {
 
     await _pullClients(userId);
     await _pullLoans(userId);
+    await _pullPayments(userId);
   }
 
   Future<void> _pullLoans(String userId) async {
@@ -127,6 +128,56 @@ class SyncService {
     });
 
     _log.info('Pull loans: ${list.length} registro(s)');
+  }
+
+  Future<void> _pullPayments(String userId) async {
+    final clientRows = await (_db.select(_db.clientsTable)
+          ..where((c) => c.userId.equals(userId)))
+        .get();
+    if (clientRows.isEmpty) return;
+
+    final clientIds = clientRows.map((c) => c.id).toList();
+    final loanRows = await (_db.select(_db.loansTable)
+          ..where((l) => l.clientId.isIn(clientIds)))
+        .get();
+    if (loanRows.isEmpty) return;
+
+    final loanIds = loanRows.map((l) => l.id).toList();
+    final rows = await _supabase
+        .from('payments')
+        .select()
+        .inFilter('loan_id', loanIds);
+
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return;
+
+    await _db.batch((batch) {
+      for (final raw in list) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final id = row['id'] as String;
+        batch.insert(
+          _db.paymentsTable,
+          PaymentsTableCompanion.insert(
+            id: id,
+            loanId: row['loan_id'] as String,
+            amount: row['amount'] as String,
+            paymentDate: Value(row['payment_date'] as String?),
+            method: Value(row['method'] as String?),
+            createdAt: Value(_formatRemoteDate(row['created_at'])),
+          ),
+          onConflict: DoUpdate(
+            (old) => PaymentsTableCompanion(
+              amount: Value(row['amount'] as String),
+              paymentDate: Value(row['payment_date'] as String?),
+              method: Value(row['method'] as String?),
+              createdAt: Value(_formatRemoteDate(row['created_at'])),
+            ),
+          ),
+        );
+      }
+    });
+
+    _log.info('Pull payments: ${list.length} registro(s)');
   }
 
   Future<void> _pullClients(String userId) async {

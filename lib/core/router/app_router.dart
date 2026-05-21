@@ -9,6 +9,8 @@ import '../../features/clients/presentation/pages/clients_list_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_placeholder_page.dart';
 import '../../features/loans/presentation/pages/loan_form_page.dart';
 import '../../features/loans/presentation/pages/loans_list_page.dart';
+import '../../features/payments/presentation/pages/payment_form_page.dart';
+import '../../features/payments/presentation/pages/payments_list_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../services/supabase/supabase_providers.dart';
 import 'routes.dart';
@@ -112,6 +114,34 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return LoanFormPage(loanId: id);
+        },
+        routes: [
+          GoRoute(
+            path: 'payments',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) {
+              final loanId = state.pathParameters['id']!;
+              return PaymentsListPage(loanId: loanId);
+            },
+            routes: [
+              GoRoute(
+                path: 'new',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final loanId = state.pathParameters['id']!;
+                  return PaymentFormPage(loanId: loanId);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/payments/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return PaymentFormPage(paymentId: id);
         },
       ),
     ],
