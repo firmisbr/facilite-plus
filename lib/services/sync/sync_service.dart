@@ -1,0 +1,111 @@
+import 'dart:convert';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:logging/logging.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/sync/sync_operation_type.dart';
+import '../database/drift/app_database.dart';
+import 'sync_queue_repository.dart';
+
+final _log = Logger('sync-service');
+
+/// Orquestra envio da fila local → Supabase quando há rede e sessão.
+class SyncService {
+  SyncService({
+    required SyncQueueRepository queueRepository,
+    required this._supabase,
+    Connectivity? connectivity,
+  })  : _queue = queueRepository,
+        _connectivity = connectivity ?? Connectivity();
+
+  final SyncQueueRepository _queue;
+  final SupabaseClient _supabase;
+  final Connectivity _connectivity;
+
+  bool _isProcessing = false;
+
+  Future<bool> get hasConnectivity async {
+    final result = await _connectivity.checkConnectivity();
+    return !result.contains(ConnectivityResult.none);
+  }
+
+  Future<SyncRunResult> processQueue() async {
+    if (_isProcessing) {
+      return SyncRunResult.skipped('Sync já em andamento');
+    }
+
+    if (_supabase.auth.currentSession == null) {
+      return SyncRunResult.skipped('Sem sessão autenticada');
+    }
+
+    if (!await hasConnectivity) {
+      return SyncRunResult.skipped('Sem conexão');
+    }
+
+    _isProcessing = true;
+    var synced = 0;
+    var failed = 0;
+
+    try {
+      final items = await _queue.pending();
+      for (final item in items) {
+        await _queue.markSyncing(item.id);
+        try {
+          await _applyToSupabase(item);
+          await _queue.markSynced(item.id);
+          synced++;
+        } catch (e, st) {
+          _log.warning('Falha ao sincronizar item ${item.id}', e, st);
+          await _queue.markFailed(item.id, e.toString());
+          failed++;
+        }
+      }
+      return SyncRunResult.completed(synced: synced, failed: failed);
+    } finally {
+      _isProcessing = false;
+    }
+  }
+
+  Future<void> _applyToSupabase(SyncQueueTableData item) async {
+    final table = _supabase.from(item.entityType);
+    final payload = jsonDecode(item.payload) as Map<String, dynamic>;
+    final op = SyncOperationType.fromValue(item.operation);
+
+    switch (op) {
+      case SyncOperationType.insert:
+      case SyncOperationType.update:
+        payload['id'] = item.entityId;
+        await table.upsert(payload);
+      case SyncOperationType.delete:
+        await table.delete().eq('id', item.entityId);
+    }
+  }
+
+  /// Download remoto → local (fase posterior).
+  Future<void> pullRemoteChanges() async {
+    _log.info('pullRemoteChanges: não implementado nesta etapa');
+  }
+}
+
+class SyncRunResult {
+  const SyncRunResult._({
+    required this.skipped,
+    this.reason,
+    this.synced = 0,
+    this.failed = 0,
+  });
+
+  factory SyncRunResult.skipped(String reason) =>
+      SyncRunResult._(skipped: true, reason: reason);
+
+  factory SyncRunResult.completed({required int synced, required int failed}) =>
+      SyncRunResult._(skipped: false, synced: synced, failed: failed);
+
+  final bool skipped;
+  final String? reason;
+  final int synced;
+  final int failed;
+
+  bool get success => !skipped && failed == 0;
+}
