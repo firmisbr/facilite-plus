@@ -61,6 +61,15 @@ class AppDrawer extends ConsumerWidget {
                 context.go(AppRoutes.loans);
               },
             ),
+            _DrawerTile(
+              icon: Icons.payments_outlined,
+              label: 'Pagamentos',
+              selected: location == AppRoutes.payments,
+              onTap: () {
+                Navigator.pop(context);
+                context.go(AppRoutes.payments);
+              },
+            ),
             const Spacer(),
             const Divider(height: 1),
             syncSummary.when(

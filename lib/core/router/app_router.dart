@@ -17,6 +17,7 @@ import '../../features/loans/presentation/pages/loan_form_page.dart';
 import '../../features/loans/presentation/pages/loans_list_page.dart';
 import '../../features/payments/presentation/pages/payment_form_page.dart';
 import '../../features/payments/presentation/pages/payments_list_page.dart';
+import '../../features/payments/presentation/pages/payments_overview_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../services/supabase/supabase_providers.dart';
 import 'routes.dart';
@@ -106,6 +107,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.loans,
             builder: (context, state) => const AllLoansListPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.payments,
+            builder: (context, state) => const PaymentsOverviewPage(),
           ),
         ],
       ),
