@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
 import '../../../clients/presentation/providers/clients_providers.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
-import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../domain/loan_periodicity.dart';
 import '../../domain/loan_simulator.dart';
@@ -18,7 +19,6 @@ import '../providers/loans_providers.dart';
 class LoanCreatePage extends ConsumerStatefulWidget {
   const LoanCreatePage({super.key, this.clientId});
 
-  /// Cliente já existente (ex.: fluxo pela lista do cliente).
   final String? clientId;
 
   @override
@@ -43,6 +43,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   bool _loading = false;
   bool _showFullSchedule = false;
   bool _lockPersonalFields = false;
+  bool _clientSectionExpanded = true;
   String? _matchedClientName;
 
   @override
@@ -74,6 +75,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
     setState(() {
       _lockPersonalFields = true;
       _matchedClientName = client.name;
+      _clientSectionExpanded = false;
     });
   }
 
@@ -287,247 +289,546 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   Widget build(BuildContext context) {
     final simulation = _simulation;
     final installments = int.tryParse(_installmentsController.text.trim());
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Novo empréstimo'),
         actions: const [
           AppBarActions(showSync: false, showLogout: false),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: AppDecorations.screenBackground(brightness),
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _CreateHeroHeader(
+                        hasClient: _lockPersonalFields,
+                        clientName: _matchedClientName,
+                        hasSimulation: simulation != null,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (_lockPersonalFields && _matchedClientName != null)
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.md,
-                            ),
-                            child: Material(
-                              color: AppColors.accent.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(
-                                AppSpacing.radiusSm,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(AppSpacing.md),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.person_outline,
-                                      color: AppColors.accent,
-                                    ),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    Expanded(
-                                      child: Text(
-                                        'Cliente: $_matchedClientName',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleSmall,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        _SectionTitle(
-                          title: 'Dados pessoais',
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.md,
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: _SectionCard(
+                          step: 1,
+                          icon: LucideIcons.user_round,
+                          title: 'Quem vai receber?',
                           subtitle: _lockPersonalFields
-                              ? 'Vinculado ao cliente selecionado'
-                              : 'Para vincular ou cadastrar o cliente',
-                        ),
-                        AppTextField(
-                          controller: _nameController,
-                          label: 'Nome *',
-                          readOnly: _lockPersonalFields,
-                          validator: (v) => v == null || v.trim().isEmpty
-                              ? 'Obrigatório'
-                              : null,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppTextField(
-                          controller: _cpfController,
-                          label: 'CPF (opcional)',
-                          keyboardType: TextInputType.number,
-                          readOnly: _lockPersonalFields,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppTextField(
-                          controller: _whatsappController,
-                          label: 'WhatsApp *',
-                          keyboardType: TextInputType.phone,
-                          readOnly: _lockPersonalFields,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppTextField(
-                          controller: _emailController,
-                          label: 'E-mail (opcional)',
-                          keyboardType: TextInputType.emailAddress,
-                          readOnly: _lockPersonalFields,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppTextField(
-                          controller: _addressController,
-                          label: 'Endereço (opcional)',
-                          maxLines: 2,
-                          readOnly: _lockPersonalFields,
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        const _SectionTitle(
-                          title: 'Informações do empréstimo',
-                          subtitle: null,
-                        ),
-                        AppTextField(
-                          controller: _amountController,
-                          label: 'Valor do empréstimo (R\$) *',
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: (v) =>
-                              v == null || v.trim().isEmpty ? 'Obrigatório' : null,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppTextField(
-                          controller: _installmentsController,
-                          label: 'Número de parcelas *',
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          validator: (v) {
-                            final n = int.tryParse(v?.trim() ?? '');
-                            if (n == null || n < 1) return 'Mínimo 1 parcela';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        DropdownButtonFormField<LoanPeriodicity>(
-                          initialValue: _periodicity,
-                          decoration: const InputDecoration(
-                            labelText: 'Periodicidade *',
-                          ),
-                          items: LoanPeriodicity.values
-                              .map(
-                                (p) => DropdownMenuItem(
-                                  value: p,
-                                  child: Text(p.label),
+                              ? 'Cliente já vinculado'
+                              : 'Vincule por CPF/WhatsApp ou cadastre novo',
+                          expanded: _clientSectionExpanded,
+                          onToggle: _lockPersonalFields
+                              ? null
+                              : () => setState(
+                                    () => _clientSectionExpanded =
+                                        !_clientSectionExpanded,
+                                  ),
+                          child: Column(
+                            children: [
+                              if (_lockPersonalFields &&
+                                  _matchedClientName != null)
+                                _LinkedClientChip(name: _matchedClientName!),
+                              AppTextField(
+                                controller: _nameController,
+                                label: 'Nome *',
+                                readOnly: _lockPersonalFields,
+                                validator: (v) =>
+                                    v == null || v.trim().isEmpty
+                                        ? 'Obrigatório'
+                                        : null,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: AppTextField(
+                                      controller: _cpfController,
+                                      label: 'CPF',
+                                      keyboardType: TextInputType.number,
+                                      readOnly: _lockPersonalFields,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.md),
+                                  Expanded(
+                                    flex: 2,
+                                    child: AppTextField(
+                                      controller: _whatsappController,
+                                      label: 'WhatsApp *',
+                                      keyboardType: TextInputType.phone,
+                                      readOnly: _lockPersonalFields,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_clientSectionExpanded) ...[
+                                const SizedBox(height: AppSpacing.md),
+                                AppTextField(
+                                  controller: _emailController,
+                                  label: 'E-mail',
+                                  keyboardType: TextInputType.emailAddress,
+                                  readOnly: _lockPersonalFields,
                                 ),
-                              )
-                              .toList(),
-                          onChanged: (v) {
-                            if (v != null) setState(() => _periodicity = v);
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppTextField(
-                          controller: _interestController,
-                          label: 'Taxa de juros (% ao mês) *',
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: (v) =>
-                              v == null || v.trim().isEmpty ? 'Obrigatório' : null,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppTextField(
-                          controller: _dueDateController,
-                          label: 'Data do 1º vencimento *',
-                          readOnly: true,
-                          onTap: _pickDueDate,
-                          suffixIcon: const Icon(Icons.calendar_today_outlined),
-                          validator: (v) =>
-                              v == null || v.trim().isEmpty ? 'Obrigatório' : null,
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        if (simulation != null) ...[
-                          _SimulationPanel(
-                            result: simulation,
-                            totalInstallments: installments ?? 0,
-                            showFullSchedule: _showFullSchedule,
-                            onToggleSchedule: () {
-                              setState(
-                                () => _showFullSchedule = !_showFullSchedule,
-                              );
-                            },
-                          ),
-                        ] else
-                          AppCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Simulação',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  'Preencha valor, parcelas, taxa e vencimento '
-                                  'para ver a simulação em tempo real.',
-                                  style: Theme.of(context).textTheme.bodyMedium,
+                                const SizedBox(height: AppSpacing.md),
+                                AppTextField(
+                                  controller: _addressController,
+                                  label: 'Endereço',
+                                  maxLines: 2,
+                                  readOnly: _lockPersonalFields,
                                 ),
                               ],
-                            ),
+                            ],
                           ),
-                        const SizedBox(height: AppSpacing.xxl),
-                      ],
+                        ),
+                      ),
                     ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: _SectionCard(
+                          step: 2,
+                          icon: LucideIcons.percent,
+                          title: 'Condições do empréstimo',
+                          subtitle: 'Valor, parcelas e vencimento',
+                          expanded: true,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _AmountHighlightField(
+                                controller: _amountController,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: AppTextField(
+                                      controller: _installmentsController,
+                                      label: 'Parcelas *',
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      validator: (v) {
+                                        final n = int.tryParse(v?.trim() ?? '');
+                                        if (n == null || n < 1) {
+                                          return 'Mín. 1';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.md),
+                                  Expanded(
+                                    child: AppTextField(
+                                      controller: _interestController,
+                                      label: 'Juros %/mês *',
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                      validator: (v) => v == null ||
+                                              v.trim().isEmpty
+                                          ? 'Obrigatório'
+                                          : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Text(
+                                'Periodicidade',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              _PeriodicitySelector(
+                                value: _periodicity,
+                                onChanged: (v) =>
+                                    setState(() => _periodicity = v),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              _DueDateTile(
+                                label: _dueDateController.text,
+                                onTap: _pickDueDate,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.md,
+                        AppSpacing.lg,
+                        AppSpacing.xxl,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: simulation != null
+                            ? _SimulationShowcase(
+                                result: simulation,
+                                totalInstallments: installments ?? 0,
+                                showFullSchedule: _showFullSchedule,
+                                isDark: isDark,
+                                onToggleSchedule: () => setState(
+                                  () => _showFullSchedule = !_showFullSchedule,
+                                ),
+                              )
+                            : _SimulationPlaceholder(isDark: isDark),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _CreateActionDock(
+                loading: _loading,
+                onCancel: () => context.pop(),
+                onCreateLoan: () => _save(createNewClient: false),
+                onCreateWithClient: () => _save(createNewClient: true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateHeroHeader extends StatelessWidget {
+  const _CreateHeroHeader({
+    required this.hasClient,
+    required this.clientName,
+    required this.hasSimulation,
+  });
+
+  final bool hasClient;
+  final String? clientName;
+  final bool hasSimulation;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        MediaQuery.paddingOf(context).top + kToolbarHeight + AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.sm,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.accent.withValues(alpha: 0.22),
+              AppColors.accentSecondary.withValues(alpha: 0.35),
+            ],
+          ),
+          border: Border.all(
+            color: AppColors.accent.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: AppDecorations.iconBadge(color: AppColors.accent),
+                  child: const Icon(
+                    LucideIcons.sparkles,
+                    color: AppColors.accent,
+                    size: 22,
                   ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    'Monte seu empréstimo',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              hasClient && clientName != null
+                  ? 'Contrato para $clientName — ajuste valores e veja a simulação ao vivo.'
+                  : 'Preencha cliente e condições. A simulação aparece em tempo real.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                _HeroPill(
+                  icon: LucideIcons.user_round,
+                  label: 'Cliente',
+                  active: hasClient,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _HeroPill(
+                  icon: LucideIcons.calculator,
+                  label: 'Condições',
+                  active: true,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _HeroPill(
+                  icon: LucideIcons.chart_line,
+                  label: 'Preview',
+                  active: hasSimulation,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({
+    required this.icon,
+    required this.label,
+    required this.active,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.sm,
+          horizontal: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: active
+              ? AppColors.accent.withValues(alpha: 0.18)
+              : Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          border: Border.all(
+            color: active
+                ? AppColors.accent.withValues(alpha: 0.4)
+                : Colors.transparent,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: active
+                  ? AppColors.accent
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: active
+                        ? AppColors.accent
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.step,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    required this.expanded,
+    this.onToggle,
+  });
+
+  final int step;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget child;
+  final bool expanded;
+  final VoidCallback? onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+      elevation: 0,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: onToggle,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppSpacing.radiusLg),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    _StepBadge(number: step),
+                    const SizedBox(width: AppSpacing.md),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: AppDecorations.iconBadge(
+                        color: AppColors.accent,
+                      ),
+                      child: Icon(icon, size: 20, color: AppColors.accent),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            subtitle,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (onToggle != null)
+                      Icon(
+                        expanded
+                            ? Icons.expand_less_rounded
+                            : Icons.expand_more_rounded,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                  ],
                 ),
               ),
             ),
-            Material(
-              elevation: 8,
-              color: Theme.of(context).colorScheme.surface,
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      OutlinedButton(
-                        onPressed: _loading ? null : () => context.pop(),
-                        child: const Text('Cancelar'),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      FilledButton(
-                        onPressed: _loading
-                            ? null
-                            : () => _save(createNewClient: false),
-                        child: _loading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Criar empréstimo'),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      FilledButton.tonal(
-                        onPressed: _loading
-                            ? null
-                            : () => _save(createNewClient: true),
-                        child: const Text('Criar empréstimo + cliente'),
-                      ),
-                    ],
-                  ),
+            if (expanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  0,
+                  AppSpacing.md,
+                  AppSpacing.md,
                 ),
+                child: child,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StepBadge extends StatelessWidget {
+  const _StepBadge({required this.number});
+
+  final int number;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.accent,
+      ),
+      child: Text(
+        '$number',
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: const Color(0xFF1A221C),
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+}
+
+class _LinkedClientChip extends StatelessWidget {
+  const _LinkedClientChip({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.accent.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        ),
+        child: Row(
+          children: [
+            const Icon(LucideIcons.badge_check, color: AppColors.accent, size: 20),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                name,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
             ),
           ],
@@ -537,125 +838,197 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, this.subtitle});
+class _AmountHighlightField extends StatelessWidget {
+  const _AmountHighlightField({required this.controller});
 
-  final String title;
-  final String? subtitle;
+  final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          if (subtitle != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.accent.withValues(alpha: 0.08),
+            AppColors.accentSecondary.withValues(alpha: 0.12),
           ],
-        ],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.accent,
+            ),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 4, right: 8),
+            child: Text(
+              'R\$',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent,
+                  ),
+            ),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          hintText: '0,00',
+          hintStyle: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.accent.withValues(alpha: 0.35),
+              ),
+          labelText: 'Valor emprestado *',
+          floatingLabelStyle: Theme.of(context).textTheme.labelMedium,
+        ),
+        validator: (v) =>
+            v == null || v.trim().isEmpty ? 'Informe o valor' : null,
       ),
     );
   }
 }
 
-class _SimulationPanel extends StatelessWidget {
-  const _SimulationPanel({
-    required this.result,
-    required this.totalInstallments,
-    required this.showFullSchedule,
-    required this.onToggleSchedule,
+class _PeriodicitySelector extends StatelessWidget {
+  const _PeriodicitySelector({
+    required this.value,
+    required this.onChanged,
   });
 
-  final LoanSimulationResult result;
-  final int totalInstallments;
-  final bool showFullSchedule;
-  final VoidCallback onToggleSchedule;
+  final LoanPeriodicity value;
+  final ValueChanged<LoanPeriodicity> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final hidden = totalInstallments - result.schedule.length;
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: LoanPeriodicity.values.map((p) {
+        final selected = p == value;
+        return FilterChip(
+          label: Text(p.label),
+          selected: selected,
+          onSelected: (_) => onChanged(p),
+          showCheckmark: false,
+          selectedColor: AppColors.accent.withValues(alpha: 0.22),
+          labelStyle: TextStyle(
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected
+                ? AppColors.accent
+                : Theme.of(context).colorScheme.onSurface,
+          ),
+          side: BorderSide(
+            color: selected
+                ? AppColors.accent
+                : Theme.of(context).dividerColor,
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
 
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+class _DueDateTile extends StatelessWidget {
+  const _DueDateTile({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
             children: [
-              const Icon(Icons.calculate_outlined, color: AppColors.accent),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'Simulação do empréstimo',
-                style: Theme.of(context).textTheme.titleMedium,
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: AppDecorations.iconBadge(color: AppColors.info),
+                child: const Icon(
+                  LucideIcons.calendar_days,
+                  size: 20,
+                  color: AppColors.info,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '1º vencimento *',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SimulationPlaceholder extends StatelessWidget {
+  const _SimulationPlaceholder({required this.isDark});
+
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: Theme.of(context).dividerColor,
+          style: BorderStyle.solid,
+        ),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            LucideIcons.chart_line,
+            size: 40,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: AppSpacing.md),
-          _SimRow(
-            label: 'Valor emprestado',
-            value: LoanSimulator.formatMoney(result.principal),
-          ),
-          _SimRow(
-            label: 'Parcela',
-            value: LoanSimulator.formatMoney(result.installmentAmount),
-            highlight: true,
-          ),
-          _SimRow(
-            label: 'Total a pagar',
-            value: LoanSimulator.formatMoney(result.totalAmount),
-          ),
-          _SimRow(
-            label: 'Total de juros',
-            value: LoanSimulator.formatMoney(result.totalInterest),
-          ),
-          const Divider(height: AppSpacing.lg),
           Text(
-            'Cronograma',
-            style: Theme.of(context).textTheme.titleSmall,
+            'Preview da simulação',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          ...result.schedule.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-              child: Row(
-                children: [
-                  Text(
-                    '${item.number}ª',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Text(LoanSimulator.formatDate(item.dueDate)),
-                  ),
-                  Text(
-                    LoanSimulator.formatMoney(item.amount),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (hidden > 0 && !showFullSchedule)
-            Text(
-              '… e mais $hidden parcela(s)',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          if (totalInstallments > 6)
-            TextButton(
-              onPressed: onToggleSchedule,
-              child: Text(
-                showFullSchedule
-                    ? 'Mostrar menos'
-                    : 'Ver todas as parcelas',
-              ),
-            ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Taxa mensal convertida conforme a periodicidade (sistema Price).',
+            'Informe valor, parcelas, juros e vencimento para ver parcela, total e cronograma.',
+            textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
@@ -664,35 +1037,331 @@ class _SimulationPanel extends StatelessWidget {
   }
 }
 
-class _SimRow extends StatelessWidget {
-  const _SimRow({
-    required this.label,
-    required this.value,
-    this.highlight = false,
+class _SimulationShowcase extends StatelessWidget {
+  const _SimulationShowcase({
+    required this.result,
+    required this.totalInstallments,
+    required this.showFullSchedule,
+    required this.isDark,
+    required this.onToggleSchedule,
   });
 
-  final String label;
-  final String value;
-  final bool highlight;
+  final LoanSimulationResult result;
+  final int totalInstallments;
+  final bool showFullSchedule;
+  final bool isDark;
+  final VoidCallback onToggleSchedule;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          Text(
-            value,
-            style: highlight
-                ? Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.accent,
-                      fontWeight: FontWeight.w700,
-                    )
-                : Theme.of(context).textTheme.bodyLarge,
+    final hidden = totalInstallments - result.schedule.length;
+    final surface = isDark ? const Color(0xFF1E2420) : const Color(0xFF2C2C2A);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        color: surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      LucideIcons.sparkles,
+                      color: AppColors.accent,
+                      size: 20,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'Sua simulação',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: const Color(0xFFF4F1EA),
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Parcela',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF8E8E8A),
+                      ),
+                ),
+                Text(
+                  LoanSimulator.formatMoney(result.installmentAmount),
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _DarkMetric(
+                        label: 'Total',
+                        value: LoanSimulator.formatMoney(result.totalAmount),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: _DarkMetric(
+                        label: 'Juros',
+                        value: LoanSimulator.formatMoney(result.totalInterest),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: _DarkMetric(
+                        label: 'Emprestado',
+                        value: LoanSimulator.formatMoney(result.principal),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFF3D3D3A)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cronograma',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: const Color(0xFFF4F1EA),
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ...result.schedule.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.15),
+                            borderRadius:
+                                BorderRadius.circular(AppSpacing.radiusSm),
+                          ),
+                          child: Text(
+                            '${item.number}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: AppColors.accent,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Text(
+                            LoanSimulator.formatDate(item.dueDate),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: const Color(0xFFC8C5BE)),
+                          ),
+                        ),
+                        Text(
+                          LoanSimulator.formatMoney(item.amount),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color: const Color(0xFFF4F1EA),
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (hidden > 0 && !showFullSchedule)
+                  Text(
+                    '… e mais $hidden parcela(s)',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF8E8E8A),
+                        ),
+                  ),
+                if (totalInstallments > 6)
+                  TextButton(
+                    onPressed: onToggleSchedule,
+                    child: Text(
+                      showFullSchedule
+                          ? 'Mostrar menos'
+                          : 'Ver todas as parcelas',
+                    ),
+                  ),
+                Text(
+                  'Taxa mensal convertida conforme periodicidade (Price).',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF8E8E8A),
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DarkMetric extends StatelessWidget {
+  const _DarkMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: const Color(0xFF8E8E8A),
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: const Color(0xFFF4F1EA),
+                  fontWeight: FontWeight.w700,
+                ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreateActionDock extends StatelessWidget {
+  const _CreateActionDock({
+    required this.loading,
+    required this.onCancel,
+    required this.onCreateLoan,
+    required this.onCreateWithClient,
+  });
+
+  final bool loading;
+  final VoidCallback onCancel;
+  final VoidCallback onCreateLoan;
+  final VoidCallback onCreateWithClient;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 12,
+      shadowColor: Colors.black26,
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FilledButton(
+                onPressed: loading ? null : onCreateLoan,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  ),
+                ),
+                child: loading
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.check, size: 20),
+                          SizedBox(width: AppSpacing.sm),
+                          Text('Criar empréstimo'),
+                        ],
+                      ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: loading ? null : onCancel,
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.tonal(
+                      onPressed: loading ? null : onCreateWithClient,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.user_plus, size: 18),
+                          SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              '+ cliente',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

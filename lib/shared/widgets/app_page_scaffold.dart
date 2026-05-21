@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../core/navigation/app_shell.dart';
 import '../../core/theme/app_decorations.dart';
 
-/// Scaffold de telas principais do shell (menu + AppBar).
+/// Scaffold de telas principais do shell (barra inferior).
 class AppPageScaffold extends StatelessWidget {
   const AppPageScaffold({
     super.key,
@@ -11,12 +10,14 @@ class AppPageScaffold extends StatelessWidget {
     required this.body,
     this.actions,
     this.floatingActionButton,
+    this.showBackButton = false,
   });
 
   final String title;
   final Widget body;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
+  final bool showBackButton;
 
   @override
   Widget build(BuildContext context) {
@@ -25,11 +26,8 @@ class AppPageScaffold extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu_rounded),
-          tooltip: 'Menu',
-          onPressed: openAppDrawer,
-        ),
+        automaticallyImplyLeading: showBackButton,
+        leading: showBackButton ? const BackButton() : null,
         title: Text(title),
         actions: actions,
       ),
@@ -39,6 +37,7 @@ class AppPageScaffold extends StatelessWidget {
         ),
         child: SafeArea(
           top: false,
+          bottom: false,
           child: body,
         ),
       ),

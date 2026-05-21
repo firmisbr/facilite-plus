@@ -6,13 +6,13 @@ import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/utils/whatsapp_utils.dart';
-import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_metric_card.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/app_page_scaffold.dart';
 import '../../../../shared/widgets/app_section_title.dart';
+import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../loans/domain/loan_simulator.dart';
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../domain/payments_overview.dart';
@@ -20,17 +20,19 @@ import '../providers/payments_overview_providers.dart';
 import '../providers/payments_providers.dart';
 
 class PaymentsOverviewPage extends ConsumerWidget {
-  const PaymentsOverviewPage({super.key});
+  const PaymentsOverviewPage({super.key, this.inShell = false});
+
+  /// Aba da barra inferior (sem botão voltar).
+  final bool inShell;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final overviewAsync = ref.watch(paymentsOverviewProvider);
+    final bottomPad = inShell ? kBottomNavReservedHeight + AppSpacing.lg : AppSpacing.lg;
 
     return AppPageScaffold(
-      title: 'Pagamentos',
-      actions: const [
-        AppBarActions(showSync: true, showLogout: false),
-      ],
+      title: 'Cobranças',
+      showBackButton: !inShell,
       body: overviewAsync.when(
         data: (overview) {
           return RefreshIndicator(
@@ -106,11 +108,11 @@ class PaymentsOverviewPage extends ConsumerWidget {
                   ),
                 if (overview.loanCards.isNotEmpty)
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
+                    padding: EdgeInsets.fromLTRB(
                       AppSpacing.lg,
                       0,
                       AppSpacing.lg,
-                      AppSpacing.xxl,
+                      bottomPad,
                     ),
                     sliver: SliverList.separated(
                       itemCount: overview.loanCards.length,

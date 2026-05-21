@@ -1,26 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../shared/widgets/app_drawer.dart';
+import '../../core/router/routes.dart';
+import '../../shared/widgets/floating_notched_nav_bar.dart';
 
-/// Chave do Scaffold do shell — abre o drawer das telas internas.
-final GlobalKey<ScaffoldState> appShellScaffoldKey = GlobalKey<ScaffoldState>();
-
-void openAppDrawer() {
-  appShellScaffoldKey.currentState?.openDrawer();
-}
-
-/// Layout autenticado com menu lateral.
+/// Layout autenticado com barra inferior flutuante (referência).
 class AppShell extends StatelessWidget {
-  const AppShell({super.key, required this.child});
+  const AppShell({required this.navigationShell, super.key});
 
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
+
+  void _goBranch(int index) {
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: appShellScaffoldKey,
-      drawer: const AppDrawer(),
-      body: child,
+      extendBody: true,
+      body: Stack(
+        children: [
+          navigationShell,
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: FloatingNotchedNavBar(
+              currentIndex: navigationShell.currentIndex,
+              onTabSelected: _goBranch,
+              onCreateLoan: () => context.push(AppRoutes.loanCreate),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

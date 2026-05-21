@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../shared/widgets/app_bar_actions.dart';
+import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/app_page_scaffold.dart';
@@ -31,12 +28,6 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
 
     return AppPageScaffold(
       title: 'Empréstimos',
-      actions: const [AppBarActions(showSync: false, showLogout: false)],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.loanCreate),
-        icon: const Icon(Icons.add),
-        label: const Text('Novo empréstimo'),
-      ),
       body: loansAsync.when(
         data: (allLoans) {
           return paymentsAsync.when(
@@ -122,7 +113,7 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
                         AppSpacing.lg,
                         0,
                         AppSpacing.lg,
-                        AppSpacing.xxl + 72,
+                        AppSpacing.xxl + kBottomNavReservedHeight,
                       ),
                       sliver: SliverList.separated(
                         itemCount: loans.length,

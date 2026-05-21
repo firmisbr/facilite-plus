@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
@@ -36,9 +35,6 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
 
     return AppPageScaffold(
       title: 'Clientes',
-      actions: const [
-        AppBarActions(showSync: false, showLogout: false),
-      ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.clientNew),
         icon: const Icon(Icons.add),
@@ -107,7 +103,7 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
                     AppSpacing.lg,
                     0,
                     AppSpacing.lg,
-                    AppSpacing.xxl + 72,
+                    AppSpacing.xxl + 48,
                   ),
                   sliver: SliverList.separated(
                     itemCount: filtered.length,

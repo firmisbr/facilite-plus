@@ -4,11 +4,14 @@ abstract final class AppRoutes {
   static const forgotPassword = '/login/forgot-password';
   static const resetPassword = '/login/reset-password';
 
-  /// Shell — menu lateral
-  static const clients = '/clients';
-  static const loans = '/loans';
-  static const payments = '/payments';
+  /// Shell — barra inferior
   static const dashboard = '/dashboard';
+  static const payments = '/payments';
+  static const loans = '/loans';
+  static const settings = '/settings';
+
+  /// Stack (fora do shell)
+  static const clients = '/clients';
 
   /// Legado: redireciona para [dashboard]
   static const home = '/home';

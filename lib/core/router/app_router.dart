@@ -18,12 +18,12 @@ import '../../features/loans/presentation/pages/loans_list_page.dart';
 import '../../features/payments/presentation/pages/payment_form_page.dart';
 import '../../features/payments/presentation/pages/payments_list_page.dart';
 import '../../features/payments/presentation/pages/payments_overview_page.dart';
+import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../services/supabase/supabase_providers.dart';
 import 'routes.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(sessionProvider);
@@ -92,31 +92,61 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      ShellRoute(
-        navigatorKey: _shellNavigatorKey,
-        builder: (context, state, child) => AppShell(child: child),
-        routes: [
-          GoRoute(
-            path: AppRoutes.dashboard,
-            builder: (context, state) => const DashboardPage(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return AppShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.dashboard,
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: DashboardPage(),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.clients,
-            builder: (context, state) => const ClientsListPage(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.payments,
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: PaymentsOverviewPage(inShell: true),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.loans,
-            builder: (context, state) => const AllLoansListPage(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.loans,
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: AllLoansListPage(),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.payments,
-            builder: (context, state) => const PaymentsOverviewPage(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.settings,
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: SettingsPage(),
+                ),
+              ),
+            ],
           ),
         ],
       ),
       GoRoute(
         path: AppRoutes.home,
         redirect: (context, state) => AppRoutes.dashboard,
+      ),
+      GoRoute(
+        path: AppRoutes.clients,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ClientsListPage(),
       ),
       GoRoute(
         path: AppRoutes.clientNew,

@@ -30,6 +30,7 @@ dependencies:
 
   # UI
   google_fonts: ^6.2.1
+  flutter_lucide: ^1.11.0
   shared_preferences: ^2.5.5
 
   # Utilitários

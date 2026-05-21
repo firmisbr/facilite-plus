@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../shared/widgets/app_bar_actions.dart';
+import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_metric_card.dart';
@@ -26,9 +26,6 @@ class DashboardPage extends ConsumerWidget {
 
     return AppPageScaffold(
       title: 'Dashboard',
-      actions: const [
-        AppBarActions(showSync: true, showLogout: false),
-      ],
       body: statsAsync.when(
         data: (stats) {
           return RefreshIndicator(
@@ -145,8 +142,8 @@ class DashboardPage extends ConsumerWidget {
                       AppSpacing.lg,
                       0,
                       AppSpacing.lg,
-                      AppSpacing.xxl,
-                    ),
+                    AppSpacing.xxl + kBottomNavReservedHeight,
+                  ),
                     sliver: SliverList.separated(
                       itemCount: stats.upcomingDues.length,
                       separatorBuilder: (_, _) =>
