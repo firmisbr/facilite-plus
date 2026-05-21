@@ -2,45 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/routes.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/brand_logo.dart';
 import '../providers/auth_controller.dart';
 
-class LoginPage extends ConsumerStatefulWidget {
-  const LoginPage({super.key});
+class ForgotPasswordPage extends ConsumerStatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
+  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isSignUp = false;
-  bool _obscurePassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final auth = ref.read(authControllerProvider.notifier);
-    final email = _emailController.text;
-    final password = _passwordController.text;
-    if (_isSignUp) {
-      await auth.signUp(email, password);
-    } else {
-      await auth.signIn(email, password);
-    }
+    await ref
+        .read(authControllerProvider.notifier)
+        .sendPasswordResetEmail(_emailController.text);
   }
 
   @override
@@ -49,6 +38,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final surface = Theme.of(context).colorScheme.surface;
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Recuperar senha'),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -57,15 +49,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               vertical: AppSpacing.xl,
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+              constraints:
+                  const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
               child: Column(
                 children: [
-                  BrandLogo(
+                  const BrandLogo(
                     size: BrandLogoSize.medium,
                     showSubtitle: true,
-                    subtitle: _isSignUp
-                        ? 'Crie sua conta para começar'
-                        : 'Gestão de empréstimos offline-first',
+                    subtitle: 'Redefina o acesso à sua conta',
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   Container(
@@ -75,9 +66,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       borderRadius:
                           BorderRadius.circular(AppSpacing.radiusLg),
                       border: Border.all(
-                        color: context.appTheme.border.withValues(alpha: 0.9),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withValues(alpha: 0.3),
                       ),
-                      boxShadow: context.appTheme.cardShadow,
                     ),
                     child: Form(
                       key: _formKey,
@@ -85,8 +78,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            _isSignUp ? 'Cadastro' : 'Entrar',
+                            'Enviar link por e-mail',
                             style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            'Informe o e-mail cadastrado. Você receberá '
+                            'um link para criar uma nova senha.',
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           AppTextField(
@@ -102,65 +101,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: AppSpacing.md),
-                          AppTextField(
-                            controller: _passwordController,
-                            label: 'Senha',
-                            obscureText: _obscurePassword,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                            ),
-                            validator: (v) {
-                              if (v == null || v.length < 6) {
-                                return 'Mínimo 6 caracteres';
-                              }
-                              return null;
-                            },
-                          ),
                           if (auth.error != null) ...[
                             const SizedBox(height: AppSpacing.md),
-                            _AuthMessageBox(
+                            _MessageBox(
                               text: auth.error!,
                               isError: true,
                             ),
                           ],
                           if (auth.successMessage != null) ...[
                             const SizedBox(height: AppSpacing.md),
-                            _AuthMessageBox(
+                            _MessageBox(
                               text: auth.successMessage!,
                               isError: false,
                             ),
                           ],
-                          if (!_isSignUp) ...[
-                            const SizedBox(height: AppSpacing.sm),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: AppTextLinkButton(
-                                label: 'Esqueci minha senha',
-                                onPressed: auth.isLoading
-                                    ? null
-                                    : () {
-                                        ref
-                                            .read(authControllerProvider
-                                                .notifier)
-                                            .clearMessages();
-                                        context.push(AppRoutes.forgotPassword);
-                                      },
-                              ),
-                            ),
-                          ],
                           const SizedBox(height: AppSpacing.lg),
                           AppPrimaryButton(
-                            label: _isSignUp ? 'Criar conta' : 'Entrar',
+                            label: 'Enviar link',
                             isLoading: auth.isLoading,
-                            onPressed: _submit,
+                            onPressed: auth.isLoading ? null : _submit,
                           ),
                         ],
                       ),
@@ -168,17 +127,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextLinkButton(
-                    label: _isSignUp
-                        ? 'Já tenho conta — entrar'
-                        : 'Não tenho conta — cadastrar',
-                    onPressed: auth.isLoading
-                        ? null
-                        : () {
-                            ref
-                                .read(authControllerProvider.notifier)
-                                .clearMessages();
-                            setState(() => _isSignUp = !_isSignUp);
-                          },
+                    label: 'Voltar para entrar',
+                    onPressed: () => context.pop(),
                   ),
                 ],
               ),
@@ -190,8 +140,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 }
 
-class _AuthMessageBox extends StatelessWidget {
-  const _AuthMessageBox({required this.text, required this.isError});
+class _MessageBox extends StatelessWidget {
+  const _MessageBox({required this.text, required this.isError});
 
   final String text;
   final bool isError;

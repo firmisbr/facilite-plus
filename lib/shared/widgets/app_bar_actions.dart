@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/presentation/providers/auth_controller.dart';
 import '../../services/sync/sync_providers.dart';
+import 'sync_feedback.dart';
 import 'sync_status_chip.dart';
 
 /// Ações padrão da AppBar: sync pendente, sincronizar, sair.
@@ -18,16 +19,16 @@ class AppBarActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pendingSync = ref.watch(pendingSyncCountProvider);
+    final syncSummary = ref.watch(syncQueueSummaryProvider);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (showSync) ...[
-          pendingSync.when(
-            data: (n) => SyncStatusChip(pendingCount: n),
+          syncSummary.when(
+            data: (summary) => SyncStatusChip(summary: summary),
             loading: () => const SizedBox.shrink(),
-            error: (e, _) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
           IconButton(
             icon: const Icon(Icons.sync_rounded),
@@ -48,12 +49,12 @@ class AppBarActions extends ConsumerWidget {
 
   Future<void> _syncNow(BuildContext context, WidgetRef ref) async {
     final sync = ref.read(syncServiceProvider);
-    await sync.processQueue();
+    final queueResult = await sync.processQueue();
     await sync.pullRemoteChanges();
+    ref.invalidate(syncQueueSummaryProvider);
+    ref.invalidate(pendingSyncCountProvider);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sincronização concluída')),
-      );
+      showSyncSnackBar(context, queueResult);
     }
   }
 }

@@ -1,6 +1,8 @@
 abstract final class AppRoutes {
   static const splash = '/';
   static const login = '/login';
+  static const forgotPassword = '/login/forgot-password';
+  static const resetPassword = '/login/reset-password';
 
   /// Shell — menu lateral
   static const clients = '/clients';

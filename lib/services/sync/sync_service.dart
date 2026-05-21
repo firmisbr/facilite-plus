@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/sync/sync_operation_type.dart';
 import '../database/drift/app_database.dart';
+import 'sync_messages.dart';
 import 'sync_queue_repository.dart';
 
 final _log = Logger('sync-service');
@@ -61,7 +62,7 @@ class SyncService {
           synced++;
         } catch (e, st) {
           _log.warning('Falha ao sincronizar item ${item.id}', e, st);
-          await _queue.markFailed(item.id, e.toString());
+          await _queue.markFailed(item.id, SyncMessages.forError(e));
           failed++;
         }
       }

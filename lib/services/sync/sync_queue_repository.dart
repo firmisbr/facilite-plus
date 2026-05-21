@@ -40,14 +40,33 @@ class SyncQueueRepository {
         .get();
   }
 
-  Future<int> countPending() async {
+  Future<int> countPending() => _countByStatuses([
+        SyncQueueStatus.pending,
+        SyncQueueStatus.failed,
+      ]);
+
+  Future<int> countFailed() =>
+      _countByStatuses([SyncQueueStatus.failed]);
+
+  Future<int> countAwaitingUpload() =>
+      _countByStatuses([SyncQueueStatus.pending]);
+
+  Future<int> _countByStatuses(List<SyncQueueStatus> statuses) async {
     final count = _db.syncQueueTable.id.count();
-    final query = _db.selectOnly(_db.syncQueueTable)
-      ..addColumns([count])
-      ..where(
-        _db.syncQueueTable.status.equals(SyncQueueStatus.pending.value) |
-            _db.syncQueueTable.status.equals(SyncQueueStatus.failed.value),
+    final query = _db.selectOnly(_db.syncQueueTable)..addColumns([count]);
+    if (statuses.length == 1) {
+      query.where(
+        _db.syncQueueTable.status.equals(statuses.first.value),
       );
+    } else {
+      Expression<bool>? combined;
+      for (final status in statuses) {
+        final expr =
+            _db.syncQueueTable.status.equals(status.value);
+        combined = combined == null ? expr : combined | expr;
+      }
+      query.where(combined!);
+    }
     final row = await query.getSingle();
     return row.read(count) ?? 0;
   }

@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/navigation/app_shell.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/reset_password_page.dart';
+import '../../features/auth/presentation/providers/password_recovery_provider.dart';
 import '../../features/clients/presentation/pages/client_form_page.dart';
 import '../../features/clients/presentation/pages/clients_list_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
@@ -23,6 +26,7 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(sessionProvider);
+  final passwordRecovery = ref.watch(passwordRecoveryActiveProvider);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -37,11 +41,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return location == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
+      final recovering = passwordRecovery.valueOrNull ?? false;
+
       if (!isLoggedIn) {
-        return location == AppRoutes.login ? null : AppRoutes.login;
+        const authPaths = {
+          AppRoutes.login,
+          AppRoutes.forgotPassword,
+          AppRoutes.resetPassword,
+        };
+        return authPaths.contains(location) ? null : AppRoutes.login;
       }
 
-      if (location == AppRoutes.splash || location == AppRoutes.login) {
+      if (recovering && location != AppRoutes.resetPassword) {
+        return AppRoutes.resetPassword;
+      }
+
+      if (!recovering && location == AppRoutes.resetPassword) {
+        return AppRoutes.dashboard;
+      }
+
+      if (location == AppRoutes.splash ||
+          location == AppRoutes.login ||
+          location == AppRoutes.forgotPassword) {
         return AppRoutes.dashboard;
       }
 
@@ -59,6 +80,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginPage(),
+        routes: [
+          GoRoute(
+            path: 'forgot-password',
+            builder: (context, state) => const ForgotPasswordPage(),
+          ),
+          GoRoute(
+            path: 'reset-password',
+            builder: (context, state) => const ResetPasswordPage(),
+          ),
+        ],
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,

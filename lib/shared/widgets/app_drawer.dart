@@ -9,6 +9,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../features/auth/presentation/providers/auth_controller.dart';
 import '../../services/sync/sync_providers.dart';
 import 'brand_logo.dart';
+import 'sync_feedback.dart';
 
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
@@ -16,7 +17,7 @@ class AppDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.path;
-    final pendingSync = ref.watch(pendingSyncCountProvider);
+    final syncSummary = ref.watch(syncQueueSummaryProvider);
 
     return Drawer(
       child: SafeArea(
@@ -62,32 +63,43 @@ class AppDrawer extends ConsumerWidget {
             ),
             const Spacer(),
             const Divider(height: 1),
-            pendingSync.when(
-              data: (n) => n > 0
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg,
-                        vertical: AppSpacing.sm,
+            syncSummary.when(
+              data: (summary) {
+                if (summary.total <= 0) return const SizedBox.shrink();
+                final color =
+                    summary.hasFailures ? AppColors.error : AppColors.accent;
+                final icon = summary.hasFailures
+                    ? Icons.cloud_off_outlined
+                    : Icons.cloud_upload_outlined;
+                final label = summary.hasFailures
+                    ? summary.hasPending
+                        ? '${summary.pending} pendente(s), ${summary.failed} com erro'
+                        : '${summary.failed} alteração(ões) com erro de sync'
+                    : '${summary.pending} aguardando envio';
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 18, color: color),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: color),
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.cloud_upload_outlined,
-                            size: 18,
-                            color: AppColors.accent,
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Text(
-                            '$n item(ns) na fila de sync',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.accent),
-                          ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+                    ],
+                  ),
+                );
+              },
               loading: () => const SizedBox.shrink(),
-              error: (e, _) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
             ListTile(
               leading: const Icon(Icons.sync_rounded),
@@ -95,12 +107,12 @@ class AppDrawer extends ConsumerWidget {
               onTap: () async {
                 Navigator.pop(context);
                 final sync = ref.read(syncServiceProvider);
-                await sync.processQueue();
+                final result = await sync.processQueue();
                 await sync.pullRemoteChanges();
+                ref.invalidate(syncQueueSummaryProvider);
+                ref.invalidate(pendingSyncCountProvider);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Sincronização concluída')),
-                  );
+                  showSyncSnackBar(context, result);
                 }
               },
             ),
