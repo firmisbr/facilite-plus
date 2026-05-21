@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
@@ -120,6 +121,52 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
     return t.isEmpty ? null : t;
   }
 
+  Future<void> _confirmDelete() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir cliente?'),
+        content: const Text(
+          'O cliente e todos os empréstimos e pagamentos vinculados '
+          'serão removidos. Esta ação não pode ser desfeita.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    setState(() => _loading = true);
+    try {
+      await ref.read(clientsRepositoryProvider).delete(widget.clientId!);
+      await ref.read(syncServiceProvider).processQueue();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cliente excluído')),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao excluir: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_initialLoad) {
@@ -131,8 +178,20 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Editar cliente' : 'Novo cliente'),
-        actions: const [
-          AppBarActions(showSync: false, showLogout: false),
+        actions: [
+          if (widget.isEditing)
+            IconButton(
+              tooltip: 'Excluir cliente',
+              icon: _loading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete_outline),
+              onPressed: _loading ? null : _confirmDelete,
+            ),
+          const AppBarActions(showSync: false, showLogout: false),
         ],
       ),
       body: SingleChildScrollView(

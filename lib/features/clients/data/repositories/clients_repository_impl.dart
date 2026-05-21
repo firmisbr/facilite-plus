@@ -149,6 +149,19 @@ class ClientsRepositoryImpl extends SyncableRepository
     final existing = await getById(id);
     if (existing == null) return;
 
+    final loanRows = await (_db.select(_db.loansTable)
+          ..where((l) => l.clientId.equals(id)))
+        .get();
+    final loanIds = loanRows.map((l) => l.id).toList();
+
+    if (loanIds.isNotEmpty) {
+      await (_db.delete(_db.paymentsTable)
+            ..where((p) => p.loanId.isIn(loanIds)))
+          .go();
+      await (_db.delete(_db.loansTable)..where((l) => l.clientId.equals(id)))
+          .go();
+    }
+
     await (_db.delete(_db.clientsTable)..where((c) => c.id.equals(id))).go();
 
     await enqueueSync(

@@ -10,14 +10,29 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/app_page_scaffold.dart';
-import '../providers/clients_providers.dart';
+import '../../domain/client_list_entry.dart';
+import '../providers/clients_list_providers.dart';
 
-class ClientsListPage extends ConsumerWidget {
+class ClientsListPage extends ConsumerStatefulWidget {
   const ClientsListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final clientsAsync = ref.watch(clientsStreamProvider);
+  ConsumerState<ClientsListPage> createState() => _ClientsListPageState();
+}
+
+class _ClientsListPageState extends ConsumerState<ClientsListPage> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entriesAsync = ref.watch(clientListEntriesProvider);
 
     return AppPageScaffold(
       title: 'Clientes',
@@ -29,9 +44,11 @@ class ClientsListPage extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Novo cliente'),
       ),
-      body: clientsAsync.when(
-        data: (clients) {
-          if (clients.isEmpty) {
+      body: entriesAsync.when(
+        data: (entries) {
+          final filtered = filterClientEntries(entries, _query);
+
+          if (entries.isEmpty) {
             return const AppEmptyState(
               icon: Icons.people_outline,
               title: 'Nenhum cliente ainda',
@@ -39,6 +56,7 @@ class ClientsListPage extends ConsumerWidget {
                   'Toque no botão abaixo para cadastrar seu primeiro cliente.',
             );
           }
+
           return CustomScrollView(
             slivers: [
               const SliverToBoxAdapter(
@@ -47,73 +65,59 @@ class ClientsListPage extends ConsumerWidget {
                   subtitle: 'Dados salvos localmente e sincronizados na nuvem.',
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  0,
-                  AppSpacing.lg,
-                  AppSpacing.xxl + 72,
-                ),
-                sliver: SliverList.separated(
-                  itemCount: clients.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: AppSpacing.md),
-                  itemBuilder: (context, index) {
-                    final client = clients[index];
-                    final subtitle = [
-                      if (client.phone != null) client.phone,
-                      if (client.document != null) client.document,
-                    ].whereType<String>().join(' · ');
-
-                    return AppCard(
-                      onTap: () =>
-                          context.push(AppRoutes.clientEdit(client.id)),
-                      child: Row(
-                        children: [
-                          _ClientAvatar(name: client.name),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  client.name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium,
-                                ),
-                                if (subtitle.isNotEmpty) ...[
-                                  const SizedBox(height: AppSpacing.xs),
-                                  Text(
-                                    subtitle,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium,
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: 'Empréstimos',
-                            onPressed: () => context.push(
-                              AppRoutes.clientLoans(client.id),
-                            ),
-                            icon: const Icon(Icons.payments_outlined),
-                            color: AppColors.accent,
-                          ),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por nome, WhatsApp ou CPF…',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _query.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _query = '');
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (v) => setState(() => _query = v),
+                  ),
                 ),
               ),
+              if (filtered.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: AppEmptyState(
+                    icon: Icons.search_off_rounded,
+                    title: 'Nenhum resultado',
+                    subtitle: 'Tente outro nome, telefone ou CPF.',
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.xxl + 72,
+                  ),
+                  sliver: SliverList.separated(
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.md),
+                    itemBuilder: (context, index) {
+                      return _ClientListTile(entry: filtered[index]);
+                    },
+                  ),
+                ),
             ],
           );
         },
@@ -123,6 +127,96 @@ class ClientsListPage extends ConsumerWidget {
           title: 'Erro ao carregar',
           subtitle: e.toString(),
         ),
+      ),
+    );
+  }
+}
+
+class _ClientListTile extends StatelessWidget {
+  const _ClientListTile({required this.entry});
+
+  final ClientListEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final client = entry.client;
+    final subtitle = [
+      if (client.phone != null) client.phone,
+      if (client.document != null) client.document,
+    ].whereType<String>().join(' · ');
+
+    return AppCard(
+      onTap: () => context.push(AppRoutes.clientEdit(client.id)),
+      child: Row(
+        children: [
+          _ClientAvatar(name: client.name),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  client.name,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+                if (entry.hasDelinquency) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _DelinquencyBadge(count: entry.overdueInstallments),
+                ] else if (entry.activeLoansCount > 0) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    '${entry.activeLoansCount} empréstimo(s) ativo(s)',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Empréstimos',
+            onPressed: () => context.push(AppRoutes.clientLoans(client.id)),
+            icon: const Icon(Icons.payments_outlined),
+            color: AppColors.accent,
+          ),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DelinquencyBadge extends StatelessWidget {
+  const _DelinquencyBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      ),
+      child: Text(
+        '$count parcela(s) em atraso',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.error,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }

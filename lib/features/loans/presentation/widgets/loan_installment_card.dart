@@ -8,7 +8,10 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../domain/loan_installment_status.dart';
 import '../../domain/loan_schedule_builder.dart';
+import '../../domain/loan_status_sync.dart';
 import '../../domain/loan_simulator.dart';
+import '../providers/loans_providers.dart';
+import 'pay_installment_dialog.dart';
 
 class LoanInstallmentCard extends ConsumerStatefulWidget {
   const LoanInstallmentCard({
@@ -28,16 +31,33 @@ class LoanInstallmentCard extends ConsumerStatefulWidget {
 class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
   bool _busy = false;
 
+  static String _formatIsoDate(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
   Future<void> _pay() async {
+    final paidOn = await PayInstallmentDialog.show(context, widget.item);
+    if (paidOn == null || !mounted) return;
+
     setState(() => _busy = true);
     try {
-      await ref
-          .read(paymentsRepositoryProvider)
-          .payInstallment(
-            loanId: widget.loanId,
-            installmentNumber: widget.item.number,
-            amount: LoanScheduleBuilder.amountToStorage(widget.item.amount),
-          );
+      final paymentsRepo = ref.read(paymentsRepositoryProvider);
+      final loansRepo = ref.read(loansRepositoryProvider);
+
+      await paymentsRepo.payInstallment(
+        loanId: widget.loanId,
+        installmentNumber: widget.item.number,
+        amount: LoanScheduleBuilder.amountToStorage(widget.item.amount),
+        paymentDate: _formatIsoDate(paidOn),
+      );
+      await LoanStatusSync.refresh(
+        loansRepo: loansRepo,
+        paymentsRepo: paymentsRepo,
+        loanId: widget.loanId,
+      );
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -82,9 +102,15 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
 
     setState(() => _busy = true);
     try {
-      await ref
-          .read(paymentsRepositoryProvider)
-          .undoInstallment(widget.loanId, widget.item.number);
+      final paymentsRepo = ref.read(paymentsRepositoryProvider);
+      final loansRepo = ref.read(loansRepositoryProvider);
+
+      await paymentsRepo.undoInstallment(widget.loanId, widget.item.number);
+      await LoanStatusSync.refresh(
+        loansRepo: loansRepo,
+        paymentsRepo: paymentsRepo,
+        loanId: widget.loanId,
+      );
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) {
         ScaffoldMessenger.of(
