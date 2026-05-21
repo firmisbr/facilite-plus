@@ -5,14 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../clients/domain/entities/client.dart';
-import '../../../clients/presentation/providers/clients_providers.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/app_page_scaffold.dart';
 import '../../domain/entities/loan_with_client.dart';
+import '../../domain/loan_periodicity.dart';
 import '../providers/loans_providers.dart';
 
 enum _LoanFilter { ativos, todos, quitados, atrasados }
@@ -55,61 +54,6 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
     };
   }
 
-  Future<void> _pickClientAndCreateLoan() async {
-    final clients = ref.read(clientsStreamProvider).valueOrNull;
-    if (clients == null || clients.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cadastre um cliente antes de criar um empréstimo.'),
-        ),
-      );
-      return;
-    }
-
-    final client = await showModalBottomSheet<Client>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.md,
-              ),
-              child: Text(
-                'Empréstimo para qual cliente?',
-                style: Theme.of(ctx).textTheme.titleMedium,
-              ),
-            ),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: clients.length,
-                itemBuilder: (context, index) {
-                  final c = clients[index];
-                  return ListTile(
-                    title: Text(c.name),
-                    onTap: () => Navigator.pop(ctx, c),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (client != null && mounted) {
-      context.push(AppRoutes.loanNew(client.id));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final loansAsync = ref.watch(allLoansProvider);
@@ -120,7 +64,7 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
         AppBarActions(showSync: false, showLogout: false),
       ],
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _pickClientAndCreateLoan,
+        onPressed: () => context.push(AppRoutes.loanCreate),
         icon: const Icon(Icons.add),
         label: const Text('Novo empréstimo'),
       ),
@@ -212,6 +156,9 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
                       final details = [
                         if (loan.installments != null)
                           '${loan.installments}x',
+                        if (loan.periodicity != null)
+                          LoanPeriodicity.fromValue(loan.periodicity).label
+                              .toLowerCase(),
                         if (loan.interest != null) 'juros ${loan.interest}%',
                       ].join(' · ');
 

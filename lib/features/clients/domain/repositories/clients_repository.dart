@@ -5,10 +5,17 @@ abstract class ClientsRepository {
 
   Future<Client?> getById(String id);
 
+  Future<Client?> findByDocumentOrPhone({
+    required String userId,
+    String? document,
+    String? phone,
+  });
+
   Future<Client> create({
     required String userId,
     required String name,
     String? phone,
+    String? email,
     String? document,
     String? address,
     String? notes,

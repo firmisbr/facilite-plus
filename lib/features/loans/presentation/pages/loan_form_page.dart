@@ -8,19 +8,16 @@ import '../../../../services/sync/sync_providers.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../domain/loan_periodicity.dart';
 import '../providers/loans_providers.dart';
 
 class LoanFormPage extends ConsumerStatefulWidget {
   const LoanFormPage({
     super.key,
-    this.clientId,
     this.loanId,
   });
 
-  final String? clientId;
   final String? loanId;
-
-  bool get isEditing => loanId != null;
 
   @override
   ConsumerState<LoanFormPage> createState() => _LoanFormPageState();
@@ -31,8 +28,9 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
   final _amountController = TextEditingController();
   final _interestController = TextEditingController();
   final _installmentsController = TextEditingController();
+  final _dueDateController = TextEditingController();
+  LoanPeriodicity _periodicity = LoanPeriodicity.mensal;
   String _status = 'ativo';
-  String? _resolvedClientId;
   bool _loading = false;
   bool _initialLoad = true;
 
@@ -41,12 +39,14 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.isEditing) {
-      _loadLoan();
-    } else {
-      _resolvedClientId = widget.clientId;
-      _initialLoad = false;
-    }
+    _loadLoan();
+  }
+
+  static String _formatIsoDate(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
   }
 
   Future<void> _loadLoan() async {
@@ -57,9 +57,24 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
     _interestController.text = loan.interest ?? '';
     _installmentsController.text =
         loan.installments?.toString() ?? '';
+    _dueDateController.text = loan.firstDueDate ?? '';
+    _periodicity = LoanPeriodicity.fromValue(loan.periodicity);
     _status = loan.status ?? 'ativo';
-    _resolvedClientId = loan.clientId;
     setState(() => _initialLoad = false);
+  }
+
+  Future<void> _pickDueDate() async {
+    final initial =
+        DateTime.tryParse(_dueDateController.text) ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+    );
+    if (picked != null) {
+      _dueDateController.text = _formatIsoDate(picked);
+    }
   }
 
   @override
@@ -67,6 +82,7 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
     _amountController.dispose();
     _interestController.dispose();
     _installmentsController.dispose();
+    _dueDateController.dispose();
     super.dispose();
   }
 
@@ -80,29 +96,21 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
       final installments = int.tryParse(_installmentsController.text.trim());
       final interest = _interestController.text.trim();
       final interestVal = interest.isEmpty ? null : interest;
+      final due = _dueDateController.text.trim();
+      final dueVal = due.isEmpty ? null : due;
 
-      if (widget.isEditing) {
-        final existing = await repo.getById(widget.loanId!);
-        if (existing == null) throw StateError('Empréstimo não encontrado');
-        await repo.update(
-          existing.copyWith(
-            amount: _amountController.text.trim(),
-            interest: interestVal,
-            installments: installments,
-            status: _status,
-          ),
-        );
-      } else {
-        final clientId = _resolvedClientId ?? widget.clientId;
-        if (clientId == null) throw StateError('Cliente não informado');
-        await repo.create(
-          clientId: clientId,
+      final existing = await repo.getById(widget.loanId!);
+      if (existing == null) throw StateError('Empréstimo não encontrado');
+      await repo.update(
+        existing.copyWith(
           amount: _amountController.text.trim(),
           interest: interestVal,
           installments: installments,
+          periodicity: _periodicity.value,
+          firstDueDate: dueVal,
           status: _status,
-        );
-      }
+        ),
+      );
 
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) context.pop();
@@ -127,7 +135,7 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEditing ? 'Editar empréstimo' : 'Novo empréstimo'),
+        title: const Text('Editar empréstimo'),
         actions: const [
           AppBarActions(showSync: false, showLogout: false),
         ],
@@ -153,17 +161,43 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
+                    controller: _installmentsController,
+                    label: 'Parcelas',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  DropdownButtonFormField<LoanPeriodicity>(
+                    initialValue: _periodicity,
+                    decoration: const InputDecoration(
+                      labelText: 'Periodicidade',
+                    ),
+                    items: LoanPeriodicity.values
+                        .map(
+                          (p) => DropdownMenuItem(
+                            value: p,
+                            child: Text(p.label),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _periodicity = v);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
                     controller: _interestController,
-                    label: 'Juros (%)',
+                    label: 'Juros (% ao mês)',
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
-                    controller: _installmentsController,
-                    label: 'Parcelas',
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    controller: _dueDateController,
+                    label: 'Data do 1º vencimento',
+                    readOnly: true,
+                    onTap: _pickDueDate,
+                    suffixIcon: const Icon(Icons.calendar_today_outlined),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<String>(

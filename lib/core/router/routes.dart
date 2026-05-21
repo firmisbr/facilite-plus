@@ -14,6 +14,7 @@ abstract final class AppRoutes {
   static const clientNew = '/clients/new';
   static String clientEdit(String id) => '/clients/$id';
   static String clientLoans(String clientId) => '/clients/$clientId/loans';
+  static const loanCreate = '/loans/new';
   static String loanNew(String clientId) => '/clients/$clientId/loans/new';
   static String loanEdit(String id) => '/loans/$id';
   static String loanPayments(String loanId) => '/loans/$loanId/payments';

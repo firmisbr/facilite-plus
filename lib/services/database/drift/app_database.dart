@@ -14,7 +14,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -24,6 +24,11 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.createTable(syncQueueTable);
+          }
+          if (from < 3) {
+            await m.addColumn(clientsTable, clientsTable.email);
+            await m.addColumn(loansTable, loansTable.periodicity);
+            await m.addColumn(loansTable, loansTable.firstDueDate);
           }
         },
       );

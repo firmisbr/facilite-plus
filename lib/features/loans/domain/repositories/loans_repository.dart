@@ -13,6 +13,8 @@ abstract class LoansRepository {
     required String amount,
     String? interest,
     int? installments,
+    String? periodicity,
+    String? firstDueDate,
     String? status,
   });
 

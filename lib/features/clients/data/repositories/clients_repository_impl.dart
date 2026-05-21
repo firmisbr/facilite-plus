@@ -38,10 +38,46 @@ class ClientsRepositoryImpl extends SyncableRepository
   }
 
   @override
+  Future<Client?> findByDocumentOrPhone({
+    required String userId,
+    String? document,
+    String? phone,
+  }) async {
+    final docDigits = _digitsOnly(document);
+    final phoneDigits = _digitsOnly(phone);
+    if (docDigits == null && phoneDigits == null) return null;
+
+    final rows = await (_db.select(_db.clientsTable)
+          ..where((c) => c.userId.equals(userId)))
+        .get();
+
+    for (final row in rows) {
+      if (docDigits != null &&
+          row.document != null &&
+          _digitsOnly(row.document) == docDigits) {
+        return _mapRow(row);
+      }
+      if (phoneDigits != null &&
+          row.phone != null &&
+          _digitsOnly(row.phone) == phoneDigits) {
+        return _mapRow(row);
+      }
+    }
+    return null;
+  }
+
+  String? _digitsOnly(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    return digits.isEmpty ? null : digits;
+  }
+
+  @override
   Future<Client> create({
     required String userId,
     required String name,
     String? phone,
+    String? email,
     String? document,
     String? address,
     String? notes,
@@ -53,6 +89,7 @@ class ClientsRepositoryImpl extends SyncableRepository
       userId: userId,
       name: name,
       phone: phone,
+      email: email,
       document: document,
       address: address,
       notes: notes,
@@ -65,6 +102,7 @@ class ClientsRepositoryImpl extends SyncableRepository
             userId: userId,
             name: name,
             phone: Value(phone),
+            email: Value(email),
             document: Value(document),
             address: Value(address),
             notes: Value(notes),
@@ -89,6 +127,7 @@ class ClientsRepositoryImpl extends SyncableRepository
       ClientsTableCompanion(
         name: Value(client.name),
         phone: Value(client.phone),
+        email: Value(client.email),
         document: Value(client.document),
         address: Value(client.address),
         notes: Value(client.notes),
@@ -126,6 +165,7 @@ class ClientsRepositoryImpl extends SyncableRepository
       userId: row.userId,
       name: row.name,
       phone: row.phone,
+      email: row.email,
       document: row.document,
       address: row.address,
       notes: row.notes,

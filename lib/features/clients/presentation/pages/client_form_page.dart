@@ -25,6 +25,7 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _documentController = TextEditingController();
   final _addressController = TextEditingController();
   final _notesController = TextEditingController();
@@ -47,6 +48,7 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
     if (client == null || !mounted) return;
     _nameController.text = client.name;
     _phoneController.text = client.phone ?? '';
+    _emailController.text = client.email ?? '';
     _documentController.text = client.document ?? '';
     _addressController.text = client.address ?? '';
     _notesController.text = client.notes ?? '';
@@ -57,6 +59,7 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _emailController.dispose();
     _documentController.dispose();
     _addressController.dispose();
     _notesController.dispose();
@@ -79,6 +82,7 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
           existing.copyWith(
             name: _nameController.text.trim(),
             phone: _emptyToNull(_phoneController.text),
+            email: _emptyToNull(_emailController.text),
             document: _emptyToNull(_documentController.text),
             address: _emptyToNull(_addressController.text),
             notes: _emptyToNull(_notesController.text),
@@ -89,6 +93,7 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
           userId: userId,
           name: _nameController.text.trim(),
           phone: _emptyToNull(_phoneController.text),
+          email: _emptyToNull(_emailController.text),
           document: _emptyToNull(_documentController.text),
           address: _emptyToNull(_addressController.text),
           notes: _emptyToNull(_notesController.text),
@@ -160,13 +165,19 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
                     controller: _phoneController,
-                    label: 'Telefone',
+                    label: 'WhatsApp / telefone',
                     keyboardType: TextInputType.phone,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
+                    controller: _emailController,
+                    label: 'E-mail (opcional)',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
                     controller: _documentController,
-                    label: 'Documento',
+                    label: 'CPF (opcional)',
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(

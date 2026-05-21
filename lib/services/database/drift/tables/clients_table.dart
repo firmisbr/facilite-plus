@@ -8,6 +8,7 @@ class ClientsTable extends Table {
   TextColumn get userId => text().named('user_id')();
   TextColumn get name => text()();
   TextColumn get phone => text().nullable()();
+  TextColumn get email => text().nullable()();
   TextColumn get document => text().nullable()();
   TextColumn get address => text().nullable()();
   TextColumn get notes => text().nullable()();

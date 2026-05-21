@@ -45,6 +45,15 @@ class $ClientsTableTable extends ClientsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _documentMeta = const VerificationMeta(
     'document',
   );
@@ -93,6 +102,7 @@ class $ClientsTableTable extends ClientsTable
     userId,
     name,
     phone,
+    email,
     document,
     address,
     notes,
@@ -135,6 +145,12 @@ class $ClientsTableTable extends ClientsTable
       context.handle(
         _phoneMeta,
         phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
       );
     }
     if (data.containsKey('document')) {
@@ -186,6 +202,10 @@ class $ClientsTableTable extends ClientsTable
         DriftSqlType.string,
         data['${effectivePrefix}phone'],
       ),
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
       document: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}document'],
@@ -217,6 +237,7 @@ class ClientsTableData extends DataClass
   final String userId;
   final String name;
   final String? phone;
+  final String? email;
   final String? document;
   final String? address;
   final String? notes;
@@ -226,6 +247,7 @@ class ClientsTableData extends DataClass
     required this.userId,
     required this.name,
     this.phone,
+    this.email,
     this.document,
     this.address,
     this.notes,
@@ -239,6 +261,9 @@ class ClientsTableData extends DataClass
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || phone != null) {
       map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
     }
     if (!nullToAbsent || document != null) {
       map['document'] = Variable<String>(document);
@@ -263,6 +288,9 @@ class ClientsTableData extends DataClass
       phone: phone == null && nullToAbsent
           ? const Value.absent()
           : Value(phone),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
       document: document == null && nullToAbsent
           ? const Value.absent()
           : Value(document),
@@ -288,6 +316,7 @@ class ClientsTableData extends DataClass
       userId: serializer.fromJson<String>(json['userId']),
       name: serializer.fromJson<String>(json['name']),
       phone: serializer.fromJson<String?>(json['phone']),
+      email: serializer.fromJson<String?>(json['email']),
       document: serializer.fromJson<String?>(json['document']),
       address: serializer.fromJson<String?>(json['address']),
       notes: serializer.fromJson<String?>(json['notes']),
@@ -302,6 +331,7 @@ class ClientsTableData extends DataClass
       'userId': serializer.toJson<String>(userId),
       'name': serializer.toJson<String>(name),
       'phone': serializer.toJson<String?>(phone),
+      'email': serializer.toJson<String?>(email),
       'document': serializer.toJson<String?>(document),
       'address': serializer.toJson<String?>(address),
       'notes': serializer.toJson<String?>(notes),
@@ -314,6 +344,7 @@ class ClientsTableData extends DataClass
     String? userId,
     String? name,
     Value<String?> phone = const Value.absent(),
+    Value<String?> email = const Value.absent(),
     Value<String?> document = const Value.absent(),
     Value<String?> address = const Value.absent(),
     Value<String?> notes = const Value.absent(),
@@ -323,6 +354,7 @@ class ClientsTableData extends DataClass
     userId: userId ?? this.userId,
     name: name ?? this.name,
     phone: phone.present ? phone.value : this.phone,
+    email: email.present ? email.value : this.email,
     document: document.present ? document.value : this.document,
     address: address.present ? address.value : this.address,
     notes: notes.present ? notes.value : this.notes,
@@ -334,6 +366,7 @@ class ClientsTableData extends DataClass
       userId: data.userId.present ? data.userId.value : this.userId,
       name: data.name.present ? data.name.value : this.name,
       phone: data.phone.present ? data.phone.value : this.phone,
+      email: data.email.present ? data.email.value : this.email,
       document: data.document.present ? data.document.value : this.document,
       address: data.address.present ? data.address.value : this.address,
       notes: data.notes.present ? data.notes.value : this.notes,
@@ -348,6 +381,7 @@ class ClientsTableData extends DataClass
           ..write('userId: $userId, ')
           ..write('name: $name, ')
           ..write('phone: $phone, ')
+          ..write('email: $email, ')
           ..write('document: $document, ')
           ..write('address: $address, ')
           ..write('notes: $notes, ')
@@ -357,8 +391,17 @@ class ClientsTableData extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, userId, name, phone, document, address, notes, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    userId,
+    name,
+    phone,
+    email,
+    document,
+    address,
+    notes,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -367,6 +410,7 @@ class ClientsTableData extends DataClass
           other.userId == this.userId &&
           other.name == this.name &&
           other.phone == this.phone &&
+          other.email == this.email &&
           other.document == this.document &&
           other.address == this.address &&
           other.notes == this.notes &&
@@ -378,6 +422,7 @@ class ClientsTableCompanion extends UpdateCompanion<ClientsTableData> {
   final Value<String> userId;
   final Value<String> name;
   final Value<String?> phone;
+  final Value<String?> email;
   final Value<String?> document;
   final Value<String?> address;
   final Value<String?> notes;
@@ -388,6 +433,7 @@ class ClientsTableCompanion extends UpdateCompanion<ClientsTableData> {
     this.userId = const Value.absent(),
     this.name = const Value.absent(),
     this.phone = const Value.absent(),
+    this.email = const Value.absent(),
     this.document = const Value.absent(),
     this.address = const Value.absent(),
     this.notes = const Value.absent(),
@@ -399,6 +445,7 @@ class ClientsTableCompanion extends UpdateCompanion<ClientsTableData> {
     required String userId,
     required String name,
     this.phone = const Value.absent(),
+    this.email = const Value.absent(),
     this.document = const Value.absent(),
     this.address = const Value.absent(),
     this.notes = const Value.absent(),
@@ -412,6 +459,7 @@ class ClientsTableCompanion extends UpdateCompanion<ClientsTableData> {
     Expression<String>? userId,
     Expression<String>? name,
     Expression<String>? phone,
+    Expression<String>? email,
     Expression<String>? document,
     Expression<String>? address,
     Expression<String>? notes,
@@ -423,6 +471,7 @@ class ClientsTableCompanion extends UpdateCompanion<ClientsTableData> {
       if (userId != null) 'user_id': userId,
       if (name != null) 'name': name,
       if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
       if (document != null) 'document': document,
       if (address != null) 'address': address,
       if (notes != null) 'notes': notes,
@@ -436,6 +485,7 @@ class ClientsTableCompanion extends UpdateCompanion<ClientsTableData> {
     Value<String>? userId,
     Value<String>? name,
     Value<String?>? phone,
+    Value<String?>? email,
     Value<String?>? document,
     Value<String?>? address,
     Value<String?>? notes,
@@ -447,6 +497,7 @@ class ClientsTableCompanion extends UpdateCompanion<ClientsTableData> {
       userId: userId ?? this.userId,
       name: name ?? this.name,
       phone: phone ?? this.phone,
+      email: email ?? this.email,
       document: document ?? this.document,
       address: address ?? this.address,
       notes: notes ?? this.notes,
@@ -469,6 +520,9 @@ class ClientsTableCompanion extends UpdateCompanion<ClientsTableData> {
     }
     if (phone.present) {
       map['phone'] = Variable<String>(phone.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
     }
     if (document.present) {
       map['document'] = Variable<String>(document.value);
@@ -495,6 +549,7 @@ class ClientsTableCompanion extends UpdateCompanion<ClientsTableData> {
           ..write('userId: $userId, ')
           ..write('name: $name, ')
           ..write('phone: $phone, ')
+          ..write('email: $email, ')
           ..write('document: $document, ')
           ..write('address: $address, ')
           ..write('notes: $notes, ')
@@ -565,6 +620,28 @@ class $LoansTableTable extends LoansTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _periodicityMeta = const VerificationMeta(
+    'periodicity',
+  );
+  @override
+  late final GeneratedColumn<String> periodicity = GeneratedColumn<String>(
+    'periodicity',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _firstDueDateMeta = const VerificationMeta(
+    'firstDueDate',
+  );
+  @override
+  late final GeneratedColumn<String> firstDueDate = GeneratedColumn<String>(
+    'first_due_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -592,6 +669,8 @@ class $LoansTableTable extends LoansTable
     amount,
     interest,
     installments,
+    periodicity,
+    firstDueDate,
     status,
     createdAt,
   ];
@@ -643,6 +722,24 @@ class $LoansTableTable extends LoansTable
         ),
       );
     }
+    if (data.containsKey('periodicity')) {
+      context.handle(
+        _periodicityMeta,
+        periodicity.isAcceptableOrUnknown(
+          data['periodicity']!,
+          _periodicityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('first_due_date')) {
+      context.handle(
+        _firstDueDateMeta,
+        firstDueDate.isAcceptableOrUnknown(
+          data['first_due_date']!,
+          _firstDueDateMeta,
+        ),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -684,6 +781,14 @@ class $LoansTableTable extends LoansTable
         DriftSqlType.int,
         data['${effectivePrefix}installments'],
       ),
+      periodicity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}periodicity'],
+      ),
+      firstDueDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}first_due_date'],
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -707,6 +812,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
   final String amount;
   final String? interest;
   final int? installments;
+  final String? periodicity;
+  final String? firstDueDate;
   final String? status;
   final String? createdAt;
   const LoansTableData({
@@ -715,6 +822,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     required this.amount,
     this.interest,
     this.installments,
+    this.periodicity,
+    this.firstDueDate,
     this.status,
     this.createdAt,
   });
@@ -729,6 +838,12 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     }
     if (!nullToAbsent || installments != null) {
       map['installments'] = Variable<int>(installments);
+    }
+    if (!nullToAbsent || periodicity != null) {
+      map['periodicity'] = Variable<String>(periodicity);
+    }
+    if (!nullToAbsent || firstDueDate != null) {
+      map['first_due_date'] = Variable<String>(firstDueDate);
     }
     if (!nullToAbsent || status != null) {
       map['status'] = Variable<String>(status);
@@ -750,6 +865,12 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
       installments: installments == null && nullToAbsent
           ? const Value.absent()
           : Value(installments),
+      periodicity: periodicity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(periodicity),
+      firstDueDate: firstDueDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(firstDueDate),
       status: status == null && nullToAbsent
           ? const Value.absent()
           : Value(status),
@@ -770,6 +891,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
       amount: serializer.fromJson<String>(json['amount']),
       interest: serializer.fromJson<String?>(json['interest']),
       installments: serializer.fromJson<int?>(json['installments']),
+      periodicity: serializer.fromJson<String?>(json['periodicity']),
+      firstDueDate: serializer.fromJson<String?>(json['firstDueDate']),
       status: serializer.fromJson<String?>(json['status']),
       createdAt: serializer.fromJson<String?>(json['createdAt']),
     );
@@ -783,6 +906,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
       'amount': serializer.toJson<String>(amount),
       'interest': serializer.toJson<String?>(interest),
       'installments': serializer.toJson<int?>(installments),
+      'periodicity': serializer.toJson<String?>(periodicity),
+      'firstDueDate': serializer.toJson<String?>(firstDueDate),
       'status': serializer.toJson<String?>(status),
       'createdAt': serializer.toJson<String?>(createdAt),
     };
@@ -794,6 +919,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     String? amount,
     Value<String?> interest = const Value.absent(),
     Value<int?> installments = const Value.absent(),
+    Value<String?> periodicity = const Value.absent(),
+    Value<String?> firstDueDate = const Value.absent(),
     Value<String?> status = const Value.absent(),
     Value<String?> createdAt = const Value.absent(),
   }) => LoansTableData(
@@ -802,6 +929,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     amount: amount ?? this.amount,
     interest: interest.present ? interest.value : this.interest,
     installments: installments.present ? installments.value : this.installments,
+    periodicity: periodicity.present ? periodicity.value : this.periodicity,
+    firstDueDate: firstDueDate.present ? firstDueDate.value : this.firstDueDate,
     status: status.present ? status.value : this.status,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
   );
@@ -814,6 +943,12 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
       installments: data.installments.present
           ? data.installments.value
           : this.installments,
+      periodicity: data.periodicity.present
+          ? data.periodicity.value
+          : this.periodicity,
+      firstDueDate: data.firstDueDate.present
+          ? data.firstDueDate.value
+          : this.firstDueDate,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -827,6 +962,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
           ..write('amount: $amount, ')
           ..write('interest: $interest, ')
           ..write('installments: $installments, ')
+          ..write('periodicity: $periodicity, ')
+          ..write('firstDueDate: $firstDueDate, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -840,6 +977,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     amount,
     interest,
     installments,
+    periodicity,
+    firstDueDate,
     status,
     createdAt,
   );
@@ -852,6 +991,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
           other.amount == this.amount &&
           other.interest == this.interest &&
           other.installments == this.installments &&
+          other.periodicity == this.periodicity &&
+          other.firstDueDate == this.firstDueDate &&
           other.status == this.status &&
           other.createdAt == this.createdAt);
 }
@@ -862,6 +1003,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
   final Value<String> amount;
   final Value<String?> interest;
   final Value<int?> installments;
+  final Value<String?> periodicity;
+  final Value<String?> firstDueDate;
   final Value<String?> status;
   final Value<String?> createdAt;
   final Value<int> rowid;
@@ -871,6 +1014,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     this.amount = const Value.absent(),
     this.interest = const Value.absent(),
     this.installments = const Value.absent(),
+    this.periodicity = const Value.absent(),
+    this.firstDueDate = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -881,6 +1026,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     required String amount,
     this.interest = const Value.absent(),
     this.installments = const Value.absent(),
+    this.periodicity = const Value.absent(),
+    this.firstDueDate = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -893,6 +1040,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     Expression<String>? amount,
     Expression<String>? interest,
     Expression<int>? installments,
+    Expression<String>? periodicity,
+    Expression<String>? firstDueDate,
     Expression<String>? status,
     Expression<String>? createdAt,
     Expression<int>? rowid,
@@ -903,6 +1052,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
       if (amount != null) 'amount': amount,
       if (interest != null) 'interest': interest,
       if (installments != null) 'installments': installments,
+      if (periodicity != null) 'periodicity': periodicity,
+      if (firstDueDate != null) 'first_due_date': firstDueDate,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
@@ -915,6 +1066,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     Value<String>? amount,
     Value<String?>? interest,
     Value<int?>? installments,
+    Value<String?>? periodicity,
+    Value<String?>? firstDueDate,
     Value<String?>? status,
     Value<String?>? createdAt,
     Value<int>? rowid,
@@ -925,6 +1078,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
       amount: amount ?? this.amount,
       interest: interest ?? this.interest,
       installments: installments ?? this.installments,
+      periodicity: periodicity ?? this.periodicity,
+      firstDueDate: firstDueDate ?? this.firstDueDate,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
@@ -949,6 +1104,12 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     if (installments.present) {
       map['installments'] = Variable<int>(installments.value);
     }
+    if (periodicity.present) {
+      map['periodicity'] = Variable<String>(periodicity.value);
+    }
+    if (firstDueDate.present) {
+      map['first_due_date'] = Variable<String>(firstDueDate.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -969,6 +1130,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
           ..write('amount: $amount, ')
           ..write('interest: $interest, ')
           ..write('installments: $installments, ')
+          ..write('periodicity: $periodicity, ')
+          ..write('firstDueDate: $firstDueDate, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
@@ -2023,6 +2186,7 @@ typedef $$ClientsTableTableCreateCompanionBuilder =
       required String userId,
       required String name,
       Value<String?> phone,
+      Value<String?> email,
       Value<String?> document,
       Value<String?> address,
       Value<String?> notes,
@@ -2035,6 +2199,7 @@ typedef $$ClientsTableTableUpdateCompanionBuilder =
       Value<String> userId,
       Value<String> name,
       Value<String?> phone,
+      Value<String?> email,
       Value<String?> document,
       Value<String?> address,
       Value<String?> notes,
@@ -2092,6 +2257,11 @@ class $$ClientsTableTableFilterComposer
 
   ColumnFilters<String> get phone => $composableBuilder(
     column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2170,6 +2340,11 @@ class $$ClientsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get document => $composableBuilder(
     column: $table.document,
     builder: (column) => ColumnOrderings(column),
@@ -2211,6 +2386,9 @@ class $$ClientsTableTableAnnotationComposer
 
   GeneratedColumn<String> get phone =>
       $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
 
   GeneratedColumn<String> get document =>
       $composableBuilder(column: $table.document, builder: (column) => column);
@@ -2282,6 +2460,7 @@ class $$ClientsTableTableTableManager
                 Value<String> userId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
                 Value<String?> document = const Value.absent(),
                 Value<String?> address = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
@@ -2292,6 +2471,7 @@ class $$ClientsTableTableTableManager
                 userId: userId,
                 name: name,
                 phone: phone,
+                email: email,
                 document: document,
                 address: address,
                 notes: notes,
@@ -2304,6 +2484,7 @@ class $$ClientsTableTableTableManager
                 required String userId,
                 required String name,
                 Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
                 Value<String?> document = const Value.absent(),
                 Value<String?> address = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
@@ -2314,6 +2495,7 @@ class $$ClientsTableTableTableManager
                 userId: userId,
                 name: name,
                 phone: phone,
+                email: email,
                 document: document,
                 address: address,
                 notes: notes,
@@ -2383,6 +2565,8 @@ typedef $$LoansTableTableCreateCompanionBuilder =
       required String amount,
       Value<String?> interest,
       Value<int?> installments,
+      Value<String?> periodicity,
+      Value<String?> firstDueDate,
       Value<String?> status,
       Value<String?> createdAt,
       Value<int> rowid,
@@ -2394,6 +2578,8 @@ typedef $$LoansTableTableUpdateCompanionBuilder =
       Value<String> amount,
       Value<String?> interest,
       Value<int?> installments,
+      Value<String?> periodicity,
+      Value<String?> firstDueDate,
       Value<String?> status,
       Value<String?> createdAt,
       Value<int> rowid,
@@ -2467,6 +2653,16 @@ class $$LoansTableTableFilterComposer
 
   ColumnFilters<int> get installments => $composableBuilder(
     column: $table.installments,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get periodicity => $composableBuilder(
+    column: $table.periodicity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get firstDueDate => $composableBuilder(
+    column: $table.firstDueDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2558,6 +2754,16 @@ class $$LoansTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get periodicity => $composableBuilder(
+    column: $table.periodicity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get firstDueDate => $composableBuilder(
+    column: $table.firstDueDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -2612,6 +2818,16 @@ class $$LoansTableTableAnnotationComposer
 
   GeneratedColumn<int> get installments => $composableBuilder(
     column: $table.installments,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get periodicity => $composableBuilder(
+    column: $table.periodicity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get firstDueDate => $composableBuilder(
+    column: $table.firstDueDate,
     builder: (column) => column,
   );
 
@@ -2703,6 +2919,8 @@ class $$LoansTableTableTableManager
                 Value<String> amount = const Value.absent(),
                 Value<String?> interest = const Value.absent(),
                 Value<int?> installments = const Value.absent(),
+                Value<String?> periodicity = const Value.absent(),
+                Value<String?> firstDueDate = const Value.absent(),
                 Value<String?> status = const Value.absent(),
                 Value<String?> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2712,6 +2930,8 @@ class $$LoansTableTableTableManager
                 amount: amount,
                 interest: interest,
                 installments: installments,
+                periodicity: periodicity,
+                firstDueDate: firstDueDate,
                 status: status,
                 createdAt: createdAt,
                 rowid: rowid,
@@ -2723,6 +2943,8 @@ class $$LoansTableTableTableManager
                 required String amount,
                 Value<String?> interest = const Value.absent(),
                 Value<int?> installments = const Value.absent(),
+                Value<String?> periodicity = const Value.absent(),
+                Value<String?> firstDueDate = const Value.absent(),
                 Value<String?> status = const Value.absent(),
                 Value<String?> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2732,6 +2954,8 @@ class $$LoansTableTableTableManager
                 amount: amount,
                 interest: interest,
                 installments: installments,
+                periodicity: periodicity,
+                firstDueDate: firstDueDate,
                 status: status,
                 createdAt: createdAt,
                 rowid: rowid,

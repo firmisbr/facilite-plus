@@ -66,6 +66,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
     required String amount,
     String? interest,
     int? installments,
+    String? periodicity,
+    String? firstDueDate,
     String? status,
   }) async {
     final id = _uuid.v4();
@@ -76,6 +78,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
       amount: amount,
       interest: interest,
       installments: installments,
+      periodicity: periodicity,
+      firstDueDate: firstDueDate,
       status: status ?? 'ativo',
       createdAt: createdAt,
     );
@@ -87,6 +91,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
             amount: amount,
             interest: Value(interest),
             installments: Value(installments),
+            periodicity: Value(periodicity),
+            firstDueDate: Value(firstDueDate),
             status: Value(loan.status),
             createdAt: Value(createdAt),
           ),
@@ -110,6 +116,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
         amount: Value(loan.amount),
         interest: Value(loan.interest),
         installments: Value(loan.installments),
+        periodicity: Value(loan.periodicity),
+        firstDueDate: Value(loan.firstDueDate),
         status: Value(loan.status),
       ),
     );
@@ -146,6 +154,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
       amount: row.amount,
       interest: row.interest,
       installments: row.installments,
+      periodicity: row.periodicity,
+      firstDueDate: row.firstDueDate,
       status: row.status,
       createdAt: row.createdAt,
     );
