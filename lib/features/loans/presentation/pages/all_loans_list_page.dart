@@ -43,9 +43,7 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
 
     return AppPageScaffold(
       title: 'Empréstimos',
-      actions: const [
-        AppBarActions(showSync: false, showLogout: false),
-      ],
+      actions: const [AppBarActions(showSync: false, showLogout: false)],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.loanCreate),
         icon: const Icon(Icons.add),

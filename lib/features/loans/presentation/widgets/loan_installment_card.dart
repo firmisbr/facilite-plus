@@ -31,7 +31,9 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
   Future<void> _pay() async {
     setState(() => _busy = true);
     try {
-      await ref.read(paymentsRepositoryProvider).payInstallment(
+      await ref
+          .read(paymentsRepositoryProvider)
+          .payInstallment(
             loanId: widget.loanId,
             installmentNumber: widget.item.number,
             amount: LoanScheduleBuilder.amountToStorage(widget.item.amount),
@@ -46,9 +48,9 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -80,21 +82,20 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
 
     setState(() => _busy = true);
     try {
-      await ref.read(paymentsRepositoryProvider).undoInstallment(
-            widget.loanId,
-            widget.item.number,
-          );
+      await ref
+          .read(paymentsRepositoryProvider)
+          .undoInstallment(widget.loanId, widget.item.number);
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pagamento desfeito')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Pagamento desfeito')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -134,16 +135,16 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
                   Text(
                     'Pago em: ${LoanSimulator.formatDate(item.paidDate!)}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   if (item.paymentTimingLabel != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       item.paymentTimingLabel!,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: _timingColor(item),
-                          ),
+                            color: _timingColor(context, item),
+                      ),
                     ),
                   ],
                 ],
@@ -179,21 +180,19 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
   }
 }
 
-Color _timingColor(LoanInstallmentItem item) {
-  if (item.paidDate == null) return AppColors.lightTextSecondary;
-  final due = DateTime(
-    item.dueDate.year,
-    item.dueDate.month,
-    item.dueDate.day,
-  );
+Color _timingColor(BuildContext context, LoanInstallmentItem item) {
+  if (item.paidDate == null) {
+    return Theme.of(context).colorScheme.onSurfaceVariant;
+  }
+  final due = DateTime(item.dueDate.year, item.dueDate.month, item.dueDate.day);
   final paid = DateTime(
     item.paidDate!.year,
     item.paidDate!.month,
     item.paidDate!.day,
   );
   if (paid.isAfter(due)) return AppColors.error;
-  if (paid.isBefore(due)) return AppColors.accent;
-  return AppColors.lightTextSecondary;
+  if (paid.isBefore(due)) return AppColors.info;
+  return AppColors.success;
 }
 
 class _InstallmentBadge extends StatelessWidget {
@@ -225,7 +224,7 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (status) {
-      LoanInstallmentStatus.paid => AppColors.lightTextSecondary,
+      LoanInstallmentStatus.paid => AppColors.success,
       LoanInstallmentStatus.overdue => AppColors.error,
       LoanInstallmentStatus.pending => AppColors.accent,
     };
@@ -242,9 +241,9 @@ class _StatusChip extends StatelessWidget {
       child: Text(
         status.label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

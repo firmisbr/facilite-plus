@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 
-/// Marca minimalista — círculo terracotta + nome.
+/// Marca minimalista — ícone em verde premium + nome.
 class BrandLogo extends StatelessWidget {
   const BrandLogo({
     super.key,

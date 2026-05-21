@@ -28,16 +28,13 @@ class LoanInstallmentProgress extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              text,
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
+            Text(text, style: Theme.of(context).textTheme.labelMedium),
             Text(
               '${(progress * 100).round()}%',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.accent,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: AppColors.accent,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

@@ -13,21 +13,26 @@ abstract final class AppTheme {
     final isLight = brightness == Brightness.light;
     final extras = isLight ? AppThemeExtension.light : AppThemeExtension.dark;
 
-    final background =
-        isLight ? AppColors.lightBackground : AppColors.darkBackground;
+    final background = isLight
+        ? AppColors.lightBackground
+        : AppColors.darkBackground;
     final surface = isLight ? AppColors.lightSurface : AppColors.darkSurface;
-    final onSurface =
-        isLight ? AppColors.lightTextPrimary : AppColors.darkTextPrimary;
-    final onSurfaceVariant =
-        isLight ? AppColors.lightTextSecondary : AppColors.darkTextSecondary;
+    final onSurface = isLight
+        ? AppColors.lightTextPrimary
+        : AppColors.darkTextPrimary;
+    final onSurfaceVariant = isLight
+        ? AppColors.lightTextSecondary
+        : AppColors.darkTextSecondary;
     final outline = extras.border;
 
     final colorScheme = ColorScheme(
       brightness: brightness,
       primary: AppColors.accent,
-      onPrimary: Colors.white,
+      onPrimary: const Color(0xFFF4F1EA),
       secondary: extras.accentSecondary,
-      onSecondary: onSurface,
+      onSecondary: AppColors.accent,
+      tertiary: extras.premium,
+      onTertiary: AppColors.lightTextPrimary,
       surface: surface,
       onSurface: onSurface,
       onSurfaceVariant: onSurfaceVariant,
@@ -43,10 +48,7 @@ abstract final class AppTheme {
 
     final baseText = GoogleFonts.interTextTheme(
       ThemeData(brightness: brightness).textTheme,
-    ).apply(
-      bodyColor: onSurface,
-      displayColor: onSurface,
-    );
+    ).apply(bodyColor: onSurface, displayColor: onSurface);
 
     final inputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
@@ -73,10 +75,7 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w500,
           color: onSurface,
         ),
-        bodyLarge: baseText.bodyLarge?.copyWith(
-          height: 1.5,
-          color: onSurface,
-        ),
+        bodyLarge: baseText.bodyLarge?.copyWith(height: 1.5, color: onSurface),
         bodyMedium: baseText.bodyMedium?.copyWith(
           height: 1.45,
           color: onSurfaceVariant,

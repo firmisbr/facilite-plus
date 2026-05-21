@@ -80,9 +80,7 @@ class AppDrawer extends ConsumerWidget {
                           const SizedBox(width: AppSpacing.sm),
                           Text(
                             '$n item(ns) na fila de sync',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: AppColors.accent),
                           ),
                         ],
@@ -102,17 +100,14 @@ class AppDrawer extends ConsumerWidget {
                 await sync.pullRemoteChanges();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Sincronização concluída'),
-                    ),
+                    const SnackBar(content: Text('Sincronização concluída')),
                   );
                 }
               },
             ),
             Consumer(
               builder: (context, ref, _) {
-                final isDark =
-                    ref.watch(themeModeProvider) == ThemeMode.dark;
+                final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
                 return ListTile(
                   leading: Icon(
                     isDark

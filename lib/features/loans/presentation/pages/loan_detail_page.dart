@@ -39,9 +39,7 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
             child: const Text('Cancelar'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Excluir'),
           ),
@@ -56,16 +54,16 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
       await ref.read(loansRepositoryProvider).delete(widget.loanId);
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Empréstimo excluído')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Empréstimo excluído')));
         context.go(AppRoutes.loans);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao excluir: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erro ao excluir: $e')));
       }
     } finally {
       if (mounted) setState(() => _deleting = false);
@@ -78,9 +76,7 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
     final isLoading = ref.watch(loanDetailLoadingProvider(widget.loanId));
 
     if (isLoading && bundle == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (bundle == null) {
@@ -121,8 +117,9 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Center(
           child: ConstrainedBox(
-            constraints:
-                const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+            constraints: const BoxConstraints(
+              maxWidth: AppSpacing.maxContentWidth,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -306,10 +303,7 @@ class _InfoRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           Expanded(
             child: Text(value, style: Theme.of(context).textTheme.bodyLarge),
@@ -348,18 +342,16 @@ class _MetricGrid extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.label,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(item.label, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(height: 2),
                 Text(
                   item.value,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: item.highlight ? AppColors.accent : null,
-                        fontWeight:
-                            item.highlight ? FontWeight.w700 : FontWeight.w600,
-                      ),
+                    color: item.highlight ? AppColors.accent : null,
+                    fontWeight: item.highlight
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -412,9 +404,9 @@ class _OverviewRow extends StatelessWidget {
           Text(
             value,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: alert ? AppColors.error : null,
-                ),
+              fontWeight: FontWeight.w600,
+              color: alert ? AppColors.error : null,
+            ),
           ),
         ],
       ),

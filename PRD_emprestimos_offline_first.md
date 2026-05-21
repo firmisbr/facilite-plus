@@ -4,93 +4,146 @@
 
 Aplicativo de gestão de empréstimos pessoais com funcionamento offline-first, sincronização automática em nuvem, backup automático, controle financeiro avançado e suporte multiplataforma.
 
-O aplicativo deve seguir fielmente a identidade visual do Claude (Anthropic), com uma estética moderna, sofisticada, minimalista e premium.
+O aplicativo segue a identidade visual **Facilite Plus**: estética moderna, sofisticada, minimalista e premium, com referências a Stripe, Linear, Notion e Ramp.
 
-Quero suporte completo a:
+Suporte completo a:
 
 * tema claro (light mode)
 * tema escuro (dark mode)
 
-As cores devem ser fortemente inspiradas no Claude, mantendo a mesma sensação visual:
+**Diferencial da paleta:** verde premium (`#4C6B5A`) como cor principal — transmite segurança financeira, estabilidade e crescimento, sem o visual agressivo de fintechs genéricas ou verde neon.
 
-* tons quentes
-* neutros elegantes
-* aparência clean
-* visual confortável e refinado
-* foco em legibilidade e espaçamento
+Implementação no app: `lib/core/theme/app_colors.dart` e `lib/core/theme/app_theme.dart`.
 
 ━━━━━━━━━━━━━━━━━━
-🎨 TEMA ESCURO
+🌑 TEMA ESCURO
 ━━━━━━━━━━━━━━━━━━
 
-Objetivo:
-Criar uma interface elegante e aconchegante, com aparência premium e moderna.
+**Objetivo**
 
-Paleta:
+Criar uma interface sofisticada, moderna e acolhedora, transmitindo confiança, organização e estabilidade financeira.
 
-* Fundo principal: #232320
-* Superfícies/cards: #2B2B27
-* Accent principal: #D97757
-* Accent secundário: #F2CC8F
-* Texto principal: #F4F1EA
-* Texto secundário: #B7B2A8
-* Bordas sutis: #3A3A35
+**Paleta atualizada**
+
+| Token | Cor |
+|-------|-----|
+| Fundo principal | `#141513` |
+| Superfícies / cards | `#1F1F1D` |
+| Accent principal (verde premium) | `#4C6B5A` |
+| Accent secundário (verde suave) | `#A7C3A1` |
+| Destaque / detalhes premium | `#E3C88D` |
+| Texto principal | `#F4F1EA` |
+| Texto secundário | `#A7A398` |
+| Bordas sutis | `#2E2E2B` |
+
+**Sensação visual:** elegante, premium, confiável, moderna, humana, minimalista.
+
+Referências: Notion, Linear, Ramp.
+
+| Elemento | Cor |
+|----------|-----|
+| Botões principais | `#4C6B5A` |
+| Fundo / scaffold | `#141513` |
+| Cards | `#1F1F1D` |
+| Badges e destaques premium | `#E3C88D` |
+| Texto secundário / ícones | `#A7A398` |
 
 ━━━━━━━━━━━━━━━━━━
 ☀️ TEMA CLARO
 ━━━━━━━━━━━━━━━━━━
 
-Objetivo:
-Manter a mesma identidade do tema escuro, porém com aparência leve, limpa e sofisticada.
+**Objetivo**
 
-Paleta:
+Manter a identidade premium do dark mode com aparência leve, limpa e sofisticada.
 
-* Fundo principal: #F7F3ED
-* Superfícies/cards: #FFFFFF
-* Accent principal: #D97757
-* Accent secundário: #E9C46A
-* Texto principal: #2B2B27
-* Texto secundário: #6B665E
-* Bordas sutis: #E6DED3
+**Paleta atualizada**
+
+| Token | Cor |
+|-------|-----|
+| Fundo principal | `#F7F5F1` |
+| Superfícies / cards | `#FFFFFF` |
+| Accent principal (verde premium) | `#4C6B5A` |
+| Accent secundário (verde suave) | `#A7C3A1` |
+| Destaque / detalhes premium | `#E3C88D` |
+| Texto principal | `#232320` |
+| Texto secundário | `#6F6A62` |
+| Bordas sutis | `#E7E0D6` |
+
+**Sensação visual:** clean, sofisticado, moderno, leve, profissional, acolhedor.
+
+| Elemento | Cor |
+|----------|-----|
+| Botões principais | `#4C6B5A` |
+| Fundo geral | `#F7F5F1` |
+| Cards | `#FFFFFF` |
+| Divisores e bordas | `#E7E0D6` |
+| Destaques financeiros | `#E3C88D` |
 
 ━━━━━━━━━━━━━━━━━━
 ✍️ TIPOGRAFIA
 ━━━━━━━━━━━━━━━━━━
 
-Fonte principal:
+**Fonte principal:** Inter
 
-* Inter
-
-Estilo desejado:
+**Estilo desejado**
 
 * moderno
 * minimalista
 * alta legibilidade
 * aparência profissional
-* interface semelhante ao Claude, Linear e Stripe
+* elegante sem parecer “banco antigo”
+* interface semelhante a Stripe, Linear, Notion
+
+| Uso | Peso |
+|-----|------|
+| Títulos | 700 |
+| Subtítulos | 600 |
+| Texto padrão | 400 |
+| Labels/UI | 500 |
 
 ━━━━━━━━━━━━━━━━━━
-⚡ DIREÇÃO VISUAL
+🎨 CORES AUXILIARES (UI)
 ━━━━━━━━━━━━━━━━━━
 
-Priorizar:
+| Semântica | Cor | Uso típico |
+|-----------|-----|------------|
+| Sucesso | `#5FA36A` | Parcela paga, confirmações |
+| Atenção | `#D6A85F` | Alertas, vencimentos próximos |
+| Erro | `#C46A6A` | Atraso, falhas, exclusão |
+| Informação | `#6B8FA3` | Dicas, pagamento antecipado |
+
+━━━━━━━━━━━━━━━━━━
+🧠 IDENTIDADE TRANSMITIDA
+━━━━━━━━━━━━━━━━━━
+
+A paleta comunica:
+
+* segurança financeira
+* clareza
+* estabilidade
+* crescimento
+* facilidade
+* organização
+* sofisticação moderna
+
+**Evitar** o visual:
+
+* agressivo de fintech genérica
+* azul corporativo padrão
+* laranja “varejo”
+* verde neon de banco digital
+* gradientes exagerados
+* glassmorphism excessivo
+* preto puro (`#000000`)
+
+**Priorizar**
 
 * muito espaçamento
 * hierarquia visual limpa
 * poucos elementos na tela
 * sombras suaves
 * animações discretas
-* aparência premium
 * UI elegante e responsiva
-
-Evitar:
-
-* gradientes exagerados
-* glassmorphism excessivo
-* cores neon
-* azul corporativo padrão
-* excesso de informações visuais
-* preto puro (#000000)
 
 
 Objetivo principal:
@@ -115,7 +168,8 @@ Permitir que gerentes realizem controle completo de clientes, empréstimos, cobr
 - Supabase PostgreSQL
 
 ### Sincronização
-- PowerSync
+- Fila local (`sync_queue`) + envio manual/automático ao Supabase (implementado)
+- PowerSync (legado no schema remoto; não usado no app atual)
 
 ---
 
@@ -220,9 +274,9 @@ created_at
 
 1. Usuário cria alteração localmente
 2. Drift salva no SQLite
-3. PowerSync detecta mudança
-4. Sync envia ao Supabase
-5. Supabase replica para outros dispositivos
+3. Item entra na fila `sync_queue`
+4. `SyncService` envia ao Supabase quando há sessão e rede
+5. `pullRemoteChanges` baixa dados do Supabase para o dispositivo
 
 ---
 
