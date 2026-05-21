@@ -23,6 +23,10 @@ class FloatingLabelInputCard extends StatelessWidget {
     this.hintText,
     this.fieldStyle,
     this.required = false,
+    this.obscureText = false,
+    this.suffixIcon,
+    this.readOnly = false,
+    this.onTap,
   });
 
   final IconData icon;
@@ -40,6 +44,10 @@ class FloatingLabelInputCard extends StatelessWidget {
   final String? hintText;
   final TextStyle? fieldStyle;
   final bool required;
+  final bool obscureText;
+  final Widget? suffixIcon;
+  final bool readOnly;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -104,8 +112,12 @@ class FloatingLabelInputCard extends StatelessWidget {
             textCapitalization: textCapitalization,
             autocorrect: autocorrect,
             textAlign: textAlign,
+            obscureText: obscureText,
+            readOnly: readOnly,
+            onTap: onTap,
             style: resolvedStyle,
             decoration: InputDecoration(
+              suffixIcon: suffixIcon,
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,

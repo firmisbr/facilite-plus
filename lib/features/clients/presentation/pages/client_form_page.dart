@@ -6,6 +6,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
+import '../../../../shared/utils/br_cpf_input_formatter.dart';
+import '../../../../shared/utils/br_phone_input_formatter.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -48,9 +50,9 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
         await ref.read(clientsRepositoryProvider).getById(widget.clientId!);
     if (client == null || !mounted) return;
     _nameController.text = client.name;
-    _phoneController.text = client.phone ?? '';
+    _phoneController.text = BrPhoneInputFormatter.formatDisplay(client.phone);
     _emailController.text = client.email ?? '';
-    _documentController.text = client.document ?? '';
+    _documentController.text = BrCpfInputFormatter.formatDisplay(client.document);
     _addressController.text = client.address ?? '';
     _notesController.text = client.notes ?? '';
     setState(() => _initialLoad = false);
@@ -218,32 +220,41 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
                   AppTextField(
                     controller: _nameController,
                     label: 'Nome *',
+                    hint: 'fi de Deus',
                     validator: (v) =>
                         v == null || v.trim().isEmpty ? 'Obrigatório' : null,
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  AppTextField(
-                    controller: _phoneController,
-                    label: 'WhatsApp / telefone',
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  AppTextField(
-                    controller: _emailController,
-                    label: 'E-mail (opcional)',
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.lg),
                   AppTextField(
                     controller: _documentController,
                     label: 'CPF (opcional)',
+                    hint: '000.000.000-00',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: const [BrCpfInputFormatter()],
                   ),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppTextField(
+                    controller: _phoneController,
+                    label: 'WhatsApp / telefone',
+                    hint: '(00) 0 0000-0000',
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: const [BrPhoneInputFormatter()],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppTextField(
+                    controller: _emailController,
+                    label: 'E-mail (opcional)',
+                    hint: 'fidedeus@gmail.com',
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
                   AppTextField(
                     controller: _addressController,
                     label: 'Endereço',
+                    hint: 'baixa da égua',
                   ),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.lg),
                   AppTextField(
                     controller: _notesController,
                     label: 'Observações',

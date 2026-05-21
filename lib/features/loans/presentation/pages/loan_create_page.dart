@@ -726,6 +726,7 @@ class _ClientStepPage extends StatelessWidget {
               label: 'E-mail',
               controller: emailController,
               keyboardType: TextInputType.emailAddress,
+              hintText: 'fidedeus@gmail.com',
               autocorrect: false,
             ),
             const SizedBox(height: AppSpacing.lg),
