@@ -5,13 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
 import '../../../clients/presentation/providers/clients_providers.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
+import '../../../../shared/widgets/app_date_picker.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/app_wheel_picker_dialog.dart';
 import '../../domain/loan_periodicity.dart';
 import '../../domain/loan_simulator.dart';
 import '../providers/loans_providers.dart';
@@ -98,8 +99,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   DateTime? _parseDueDate() {
     final raw = _dueDateController.text.trim();
     if (raw.isEmpty) return null;
-    return DateTime.tryParse(raw) ??
-        DateTime.tryParse('${raw}T12:00:00');
+    return DateTime.tryParse(raw) ?? DateTime.tryParse('${raw}T12:00:00');
   }
 
   static String _formatIsoDate(DateTime date) {
@@ -109,16 +109,36 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
     return '$y-$m-$d';
   }
 
-  Future<void> _pickDueDate() async {
+  String get _dueDateDisplayLabel {
+    final parsed = _parseDueDate();
+    if (parsed == null) return 'Escolher data';
+    return AppDatePicker.formatLong(parsed);
+  }
+
+  Future<void> _openDueDatePicker() async {
     final initial = _parseDueDate() ?? DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await AppDatePicker.open(
+      context,
       initialDate: initial,
       firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      helpText: '1º vencimento',
     );
     if (picked != null) {
-      _dueDateController.text = _formatIsoDate(picked);
+      setState(() => _dueDateController.text = _formatIsoDate(picked));
+    }
+  }
+
+  Future<void> _openPeriodicityPicker() async {
+    final picked = await AppWheelPickerDialog.show<LoanPeriodicity>(
+      context: context,
+      title: 'Periodicidade',
+      items: LoanPeriodicity.values,
+      itemLabel: (p) => p.label,
+      initialValue: _periodicity,
+    );
+    if (picked != null) {
+      setState(() => _periodicity = picked);
     }
   }
 
@@ -289,484 +309,72 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   Widget build(BuildContext context) {
     final simulation = _simulation;
     final installments = int.tryParse(_installmentsController.text.trim());
-    final brightness = Theme.of(context).brightness;
-    final isDark = brightness == Brightness.dark;
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Novo empréstimo'),
+        title: const Text('Novo Empréstimo'),
         actions: const [
           AppBarActions(showSync: false, showLogout: false),
         ],
       ),
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: AppDecorations.screenBackground(brightness),
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Expanded(
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: _CreateHeroHeader(
-                        hasClient: _lockPersonalFields,
-                        clientName: _matchedClientName,
-                        hasSimulation: simulation != null,
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.md,
-                        AppSpacing.lg,
-                        AppSpacing.sm,
-                      ),
-                      sliver: SliverToBoxAdapter(
-                        child: _SectionCard(
-                          step: 1,
-                          icon: LucideIcons.user_round,
-                          title: 'Quem vai receber?',
-                          subtitle: _lockPersonalFields
-                              ? 'Cliente já vinculado'
-                              : 'Vincule por CPF/WhatsApp ou cadastre novo',
-                          expanded: _clientSectionExpanded,
-                          onToggle: _lockPersonalFields
-                              ? null
-                              : () => setState(
-                                    () => _clientSectionExpanded =
-                                        !_clientSectionExpanded,
-                                  ),
-                          child: Column(
-                            children: [
-                              if (_lockPersonalFields &&
-                                  _matchedClientName != null)
-                                _LinkedClientChip(name: _matchedClientName!),
-                              AppTextField(
-                                controller: _nameController,
-                                label: 'Nome *',
-                                readOnly: _lockPersonalFields,
-                                validator: (v) =>
-                                    v == null || v.trim().isEmpty
-                                        ? 'Obrigatório'
-                                        : null,
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: AppTextField(
-                                      controller: _cpfController,
-                                      label: 'CPF',
-                                      keyboardType: TextInputType.number,
-                                      readOnly: _lockPersonalFields,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.md),
-                                  Expanded(
-                                    flex: 2,
-                                    child: AppTextField(
-                                      controller: _whatsappController,
-                                      label: 'WhatsApp *',
-                                      keyboardType: TextInputType.phone,
-                                      readOnly: _lockPersonalFields,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (_clientSectionExpanded) ...[
-                                const SizedBox(height: AppSpacing.md),
-                                AppTextField(
-                                  controller: _emailController,
-                                  label: 'E-mail',
-                                  keyboardType: TextInputType.emailAddress,
-                                  readOnly: _lockPersonalFields,
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                AppTextField(
-                                  controller: _addressController,
-                                  label: 'Endereço',
-                                  maxLines: 2,
-                                  readOnly: _lockPersonalFields,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg,
-                      ),
-                      sliver: SliverToBoxAdapter(
-                        child: _SectionCard(
-                          step: 2,
-                          icon: LucideIcons.percent,
-                          title: 'Condições do empréstimo',
-                          subtitle: 'Valor, parcelas e vencimento',
-                          expanded: true,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _AmountHighlightField(
-                                controller: _amountController,
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: AppTextField(
-                                      controller: _installmentsController,
-                                      label: 'Parcelas *',
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                      validator: (v) {
-                                        final n = int.tryParse(v?.trim() ?? '');
-                                        if (n == null || n < 1) {
-                                          return 'Mín. 1';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.md),
-                                  Expanded(
-                                    child: AppTextField(
-                                      controller: _interestController,
-                                      label: 'Juros %/mês *',
-                                      keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                      validator: (v) => v == null ||
-                                              v.trim().isEmpty
-                                          ? 'Obrigatório'
-                                          : null,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              Text(
-                                'Periodicidade',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelLarge
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              _PeriodicitySelector(
-                                value: _periodicity,
-                                onChanged: (v) =>
-                                    setState(() => _periodicity = v),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              _DueDateTile(
-                                label: _dueDateController.text,
-                                onTap: _pickDueDate,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.md,
-                        AppSpacing.lg,
-                        AppSpacing.xxl,
-                      ),
-                      sliver: SliverToBoxAdapter(
-                        child: simulation != null
-                            ? _SimulationShowcase(
-                                result: simulation,
-                                totalInstallments: installments ?? 0,
-                                showFullSchedule: _showFullSchedule,
-                                isDark: isDark,
-                                onToggleSchedule: () => setState(
-                                  () => _showFullSchedule = !_showFullSchedule,
-                                ),
-                              )
-                            : _SimulationPlaceholder(isDark: isDark),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _CreateActionDock(
-                loading: _loading,
-                onCancel: () => context.pop(),
-                onCreateLoan: () => _save(createNewClient: false),
-                onCreateWithClient: () => _save(createNewClient: true),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CreateHeroHeader extends StatelessWidget {
-  const _CreateHeroHeader({
-    required this.hasClient,
-    required this.clientName,
-    required this.hasSimulation,
-  });
-
-  final bool hasClient;
-  final String? clientName;
-  final bool hasSimulation;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        MediaQuery.paddingOf(context).top + kToolbarHeight + AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.sm,
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.accent.withValues(alpha: 0.22),
-              AppColors.accentSecondary.withValues(alpha: 0.35),
-            ],
-          ),
-          border: Border.all(
-            color: AppColors.accent.withValues(alpha: 0.25),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: AppDecorations.iconBadge(color: AppColors.accent),
-                  child: const Icon(
-                    LucideIcons.sparkles,
-                    color: AppColors.accent,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text(
-                    'Monte seu empréstimo',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              hasClient && clientName != null
-                  ? 'Contrato para $clientName — ajuste valores e veja a simulação ao vivo.'
-                  : 'Preencha cliente e condições. A simulação aparece em tempo real.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                _HeroPill(
-                  icon: LucideIcons.user_round,
-                  label: 'Cliente',
-                  active: hasClient,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                _HeroPill(
-                  icon: LucideIcons.calculator,
-                  label: 'Condições',
-                  active: true,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                _HeroPill(
-                  icon: LucideIcons.chart_line,
-                  label: 'Preview',
-                  active: hasSimulation,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroPill extends StatelessWidget {
-  const _HeroPill({
-    required this.icon,
-    required this.label,
-    required this.active,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.sm,
-          horizontal: AppSpacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: active
-              ? AppColors.accent.withValues(alpha: 0.18)
-              : Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-          border: Border.all(
-            color: active
-                ? AppColors.accent.withValues(alpha: 0.4)
-                : Colors.transparent,
-          ),
-        ),
+      body: Form(
+        key: _formKey,
         child: Column(
           children: [
-            Icon(
-              icon,
-              size: 18,
-              color: active
-                  ? AppColors.accent
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                    color: active
-                        ? AppColors.accent
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.step,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.child,
-    required this.expanded,
-    this.onToggle,
-  });
-
-  final int step;
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget child;
-  final bool expanded;
-  final VoidCallback? onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
-      elevation: 0,
-      shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            InkWell(
-              onTap: onToggle,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppSpacing.radiusLg),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _StepBadge(number: step),
-                    const SizedBox(width: AppSpacing.md),
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      decoration: AppDecorations.iconBadge(
-                        color: AppColors.accent,
+                    if (_lockPersonalFields && _matchedClientName != null)
+                      _LinkedClientBanner(name: _matchedClientName!)
+                    else
+                      _ClientSection(
+                        nameController: _nameController,
+                        cpfController: _cpfController,
+                        whatsappController: _whatsappController,
+                        emailController: _emailController,
+                        addressController: _addressController,
+                        expanded: _clientSectionExpanded,
+                        onToggle: () => setState(
+                          () => _clientSectionExpanded = !_clientSectionExpanded,
+                        ),
                       ),
-                      child: Icon(icon, size: 20, color: AppColors.accent),
+                    const SizedBox(height: AppSpacing.lg),
+                    _AmountSection(controller: _amountController),
+                    const SizedBox(height: AppSpacing.lg),
+                    _LoanConditions(
+                      installmentsController: _installmentsController,
+                      interestController: _interestController,
+                      periodicity: _periodicity,
+                      dueDateLabel: _dueDateDisplayLabel,
+                      onPeriodicityTap: _openPeriodicityPicker,
+                      onDueDateTap: _openDueDatePicker,
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            subtitle,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (onToggle != null)
-                      Icon(
-                        expanded
-                            ? Icons.expand_less_rounded
-                            : Icons.expand_more_rounded,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    const SizedBox(height: AppSpacing.xl),
+                    if (simulation != null)
+                      _SimulationPreview(
+                        result: simulation,
+                        totalInstallments: installments ?? 0,
+                        showFullSchedule: _showFullSchedule,
+                        onToggleSchedule: () => setState(
+                          () => _showFullSchedule = !_showFullSchedule,
+                        ),
+                      )
+                    else
+                      _EmptySimulation(),
                   ],
                 ),
               ),
             ),
-            if (expanded)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  0,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                ),
-                child: child,
-              ),
+            _ActionButtons(
+              loading: _loading,
+              onCancel: () => context.pop(),
+              onSave: () => _save(createNewClient: false),
+              onSaveWithClient: () => _save(createNewClient: true),
+            ),
           ],
         ),
       ),
@@ -774,172 +382,352 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-class _StepBadge extends StatelessWidget {
-  const _StepBadge({required this.number});
-
-  final int number;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 28,
-      height: 28,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.accent,
-      ),
-      child: Text(
-        '$number',
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: const Color(0xFF1A221C),
-              fontWeight: FontWeight.w800,
-            ),
-      ),
-    );
-  }
-}
-
-class _LinkedClientChip extends StatelessWidget {
-  const _LinkedClientChip({required this.name});
+class _LinkedClientBanner extends StatelessWidget {
+  const _LinkedClientBanner({required this.name});
 
   final String name;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.accent.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        ),
-        child: Row(
-          children: [
-            const Icon(LucideIcons.badge_check, color: AppColors.accent, size: 20),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                name,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppColors.accent,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ),
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.accent.withValues(alpha: 0.12),
+            AppColors.accent.withValues(alpha: 0.06),
           ],
         ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              LucideIcons.user_check,
+              color: AppColors.accent,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cliente vinculado',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: AppColors.accent,
+                      ),
+                ),
+                Text(
+                  name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _AmountHighlightField extends StatelessWidget {
-  const _AmountHighlightField({required this.controller});
+class _ClientSection extends StatelessWidget {
+  const _ClientSection({
+    required this.nameController,
+    required this.cpfController,
+    required this.whatsappController,
+    required this.emailController,
+    required this.addressController,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  final TextEditingController nameController;
+  final TextEditingController cpfController;
+  final TextEditingController whatsappController;
+  final TextEditingController emailController;
+  final TextEditingController addressController;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.user_round,
+                    color: AppColors.accent,
+                    size: 22,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      'Dados do cliente',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  Icon(
+                    expanded ? LucideIcons.chevron_up : LucideIcons.chevron_down,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
+              child: Column(
+                children: [
+                  AppTextField(
+                    controller: nameController,
+                    label: 'Nome *',
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Obrigatório' : null,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppTextField(
+                          controller: cpfController,
+                          label: 'CPF',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        flex: 2,
+                        child: AppTextField(
+                          controller: whatsappController,
+                          label: 'WhatsApp *',
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
+                    controller: emailController,
+                    label: 'E-mail',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
+                    controller: addressController,
+                    label: 'Endereço',
+                    maxLines: 2,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AmountSection extends StatelessWidget {
+  const _AmountSection({required this.controller});
 
   final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.md,
-        AppSpacing.xs,
-      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            AppColors.accent.withValues(alpha: 0.08),
-            AppColors.accentSecondary.withValues(alpha: 0.12),
+            AppColors.accent.withValues(alpha: 0.15),
+            AppColors.accentSecondary.withValues(alpha: 0.2),
           ],
         ),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.accent,
-            ),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 4, right: 8),
-            child: Text(
-              'R\$',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.accent,
-                  ),
-            ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accent.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          hintText: '0,00',
-          hintStyle: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.accent.withValues(alpha: 0.35),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.xs),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: const Icon(
+                  LucideIcons.coins,
+                  color: AppColors.accent,
+                  size: 18,
+                ),
               ),
-          labelText: 'Valor emprestado *',
-          floatingLabelStyle: Theme.of(context).textTheme.labelMedium,
-        ),
-        validator: (v) =>
-            v == null || v.trim().isEmpty ? 'Informe o valor' : null,
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'Valor do empréstimo',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accent,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextFormField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.accent,
+                  height: 1,
+                ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              prefixText: 'R\$ ',
+              prefixStyle: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.accent,
+                    height: 1,
+                  ),
+              hintText: '0,00',
+              hintStyle: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.accent.withValues(alpha: 0.25),
+                    height: 1,
+                  ),
+              contentPadding: EdgeInsets.zero,
+            ),
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? 'Informe o valor' : null,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _PeriodicitySelector extends StatelessWidget {
-  const _PeriodicitySelector({
-    required this.value,
-    required this.onChanged,
+class _LoanConditions extends StatelessWidget {
+  const _LoanConditions({
+    required this.installmentsController,
+    required this.interestController,
+    required this.periodicity,
+    required this.dueDateLabel,
+    required this.onPeriodicityTap,
+    required this.onDueDateTap,
   });
 
-  final LoanPeriodicity value;
-  final ValueChanged<LoanPeriodicity> onChanged;
+  final TextEditingController installmentsController;
+  final TextEditingController interestController;
+  final LoanPeriodicity periodicity;
+  final String dueDateLabel;
+  final VoidCallback onPeriodicityTap;
+  final VoidCallback onDueDateTap;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: LoanPeriodicity.values.map((p) {
-        final selected = p == value;
-        return FilterChip(
-          label: Text(p.label),
-          selected: selected,
-          onSelected: (_) => onChanged(p),
-          showCheckmark: false,
-          selectedColor: AppColors.accent.withValues(alpha: 0.22),
-          labelStyle: TextStyle(
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected
-                ? AppColors.accent
-                : Theme.of(context).colorScheme.onSurface,
-          ),
-          side: BorderSide(
-            color: selected
-                ? AppColors.accent
-                : Theme.of(context).dividerColor,
-          ),
-        );
-      }).toList(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: AppTextField(
+                controller: installmentsController,
+                label: 'Parcelas *',
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                validator: (v) {
+                  final n = int.tryParse(v?.trim() ?? '');
+                  if (n == null || n < 1) return 'Mín. 1';
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: AppTextField(
+                controller: interestController,
+                label: 'Juros % mês *',
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Obrigatório' : null,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _PickerTile(
+          icon: LucideIcons.repeat,
+          label: 'Periodicidade',
+          value: periodicity.label,
+          onTap: onPeriodicityTap,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _PickerTile(
+          icon: LucideIcons.calendar_days,
+          label: '1º vencimento',
+          value: dueDateLabel,
+          onTap: onDueDateTap,
+        ),
+      ],
     );
   }
 }
 
-class _DueDateTile extends StatelessWidget {
-  const _DueDateTile({required this.label, required this.onTap});
+class _PickerTile extends StatelessWidget {
+  const _PickerTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
 
+  final IconData icon;
   final String label;
+  final String value;
   final VoidCallback onTap;
 
   @override
@@ -954,27 +742,18 @@ class _DueDateTile extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: AppDecorations.iconBadge(color: AppColors.info),
-                child: const Icon(
-                  LucideIcons.calendar_days,
-                  size: 20,
-                  color: AppColors.info,
-                ),
-              ),
+              Icon(icon, color: AppColors.accent, size: 20),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '1º vencimento *',
+                      label,
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
-                    const SizedBox(height: 2),
                     Text(
-                      label,
+                      value,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -983,7 +762,8 @@ class _DueDateTile extends StatelessWidget {
                 ),
               ),
               Icon(
-                Icons.chevron_right_rounded,
+                LucideIcons.chevron_right,
+                size: 18,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ],
@@ -994,78 +774,45 @@ class _DueDateTile extends StatelessWidget {
   }
 }
 
-class _SimulationPlaceholder extends StatelessWidget {
-  const _SimulationPlaceholder({required this.isDark});
-
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-          style: BorderStyle.solid,
-        ),
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            LucideIcons.chart_line,
-            size: 40,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Preview da simulação',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Informe valor, parcelas, juros e vencimento para ver parcela, total e cronograma.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SimulationShowcase extends StatelessWidget {
-  const _SimulationShowcase({
+class _SimulationPreview extends StatelessWidget {
+  const _SimulationPreview({
     required this.result,
     required this.totalInstallments,
     required this.showFullSchedule,
-    required this.isDark,
     required this.onToggleSchedule,
   });
 
   final LoanSimulationResult result;
   final int totalInstallments;
   final bool showFullSchedule;
-  final bool isDark;
   final VoidCallback onToggleSchedule;
 
   @override
   Widget build(BuildContext context) {
     final hidden = totalInstallments - result.schedule.length;
-    final surface = isDark ? const Color(0xFF1E2420) : const Color(0xFF2C2C2A);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        color: surface,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  const Color(0xFF1E2420),
+                  const Color(0xFF1A1F1C),
+                ]
+              : [
+                  const Color(0xFF2C2C2A),
+                  const Color(0xFF232321),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.3),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
@@ -1079,14 +826,21 @@ class _SimulationShowcase extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      LucideIcons.sparkles,
-                      color: AppColors.accent,
-                      size: 20,
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.xs),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                      ),
+                      child: const Icon(
+                        LucideIcons.sparkles,
+                        color: AppColors.accent,
+                        size: 16,
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
-                      'Sua simulação',
+                      'Simulação',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: const Color(0xFFF4F1EA),
                             fontWeight: FontWeight.w700,
@@ -1096,20 +850,21 @@ class _SimulationShowcase extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Text(
-                  'Parcela',
+                  'Parcela mensal',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: const Color(0xFF8E8E8A),
                       ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   LoanSimulator.formatMoney(result.installmentAmount),
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
                         color: AppColors.accent,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
                       ),
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: [
                     Expanded(
@@ -1125,13 +880,6 @@ class _SimulationShowcase extends StatelessWidget {
                         value: LoanSimulator.formatMoney(result.totalInterest),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: _DarkMetric(
-                        label: 'Emprestado',
-                        value: LoanSimulator.formatMoney(result.principal),
-                      ),
-                    ),
                   ],
                 ),
               ],
@@ -1139,12 +887,7 @@ class _SimulationShowcase extends StatelessWidget {
           ),
           const Divider(height: 1, color: Color(0xFF3D3D3A)),
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.md,
-              AppSpacing.lg,
-              AppSpacing.lg,
-            ),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1154,16 +897,16 @@ class _SimulationShowcase extends StatelessWidget {
                         color: const Color(0xFFF4F1EA),
                       ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
                 ...result.schedule.map(
                   (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: Row(
                       children: [
                         Container(
-                          width: 28,
+                          width: 32,
+                          height: 32,
                           alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(vertical: 2),
                           decoration: BoxDecoration(
                             color: AppColors.accent.withValues(alpha: 0.15),
                             borderRadius:
@@ -1173,7 +916,7 @@ class _SimulationShowcase extends StatelessWidget {
                             '${item.number}',
                             style: Theme.of(context)
                                 .textTheme
-                                .labelSmall
+                                .labelLarge
                                 ?.copyWith(
                                   color: AppColors.accent,
                                   fontWeight: FontWeight.w700,
@@ -1194,10 +937,10 @@ class _SimulationShowcase extends StatelessWidget {
                           LoanSimulator.formatMoney(item.amount),
                           style: Theme.of(context)
                               .textTheme
-                              .bodyMedium
+                              .bodyLarge
                               ?.copyWith(
                                 color: const Color(0xFFF4F1EA),
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                               ),
                         ),
                       ],
@@ -1205,27 +948,22 @@ class _SimulationShowcase extends StatelessWidget {
                   ),
                 ),
                 if (hidden > 0 && !showFullSchedule)
-                  Text(
-                    '… e mais $hidden parcela(s)',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF8E8E8A),
-                        ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: Text(
+                      '… e mais $hidden parcela(s)',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: const Color(0xFF8E8E8A),
+                          ),
+                    ),
                   ),
                 if (totalInstallments > 6)
                   TextButton(
                     onPressed: onToggleSchedule,
                     child: Text(
-                      showFullSchedule
-                          ? 'Mostrar menos'
-                          : 'Ver todas as parcelas',
+                      showFullSchedule ? 'Mostrar menos' : 'Ver todas',
                     ),
                   ),
-                Text(
-                  'Taxa mensal convertida conforme periodicidade (Price).',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF8E8E8A),
-                      ),
-                ),
               ],
             ),
           ),
@@ -1244,10 +982,10 @@ class _DarkMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1258,10 +996,10 @@ class _DarkMetric extends StatelessWidget {
                   color: const Color(0xFF8E8E8A),
                 ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: const Color(0xFFF4F1EA),
                   fontWeight: FontWeight.w700,
                 ),
@@ -1274,94 +1012,126 @@ class _DarkMetric extends StatelessWidget {
   }
 }
 
-class _CreateActionDock extends StatelessWidget {
-  const _CreateActionDock({
+class _EmptySimulation extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+          style: BorderStyle.solid,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              LucideIcons.calculator,
+              size: 32,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Aguardando dados',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Preencha valor, parcelas, juros e vencimento',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionButtons extends StatelessWidget {
+  const _ActionButtons({
     required this.loading,
     required this.onCancel,
-    required this.onCreateLoan,
-    required this.onCreateWithClient,
+    required this.onSave,
+    required this.onSaveWithClient,
   });
 
   final bool loading;
   final VoidCallback onCancel;
-  final VoidCallback onCreateLoan;
-  final VoidCallback onCreateWithClient;
+  final VoidCallback onSave;
+  final VoidCallback onSaveWithClient;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      elevation: 12,
-      shadowColor: Colors.black26,
-      color: Theme.of(context).colorScheme.surface,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.md,
-            AppSpacing.lg,
-            AppSpacing.lg,
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.lg + MediaQuery.paddingOf(context).bottom,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton.icon(
+            onPressed: loading ? null : onSave,
+            icon: loading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(LucideIcons.check),
+            label: const Text('Criar empréstimo'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
             children: [
-              FilledButton(
-                onPressed: loading ? null : onCreateLoan,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: loading ? null : onCancel,
+                  child: const Text('Cancelar'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                flex: 2,
+                child: FilledButton.tonal(
+                  onPressed: loading ? null : onSaveWithClient,
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(LucideIcons.user_plus, size: 18),
+                      SizedBox(width: 6),
+                      Text('+ cliente'),
+                    ],
                   ),
                 ),
-                child: loading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(LucideIcons.check, size: 20),
-                          SizedBox(width: AppSpacing.sm),
-                          Text('Criar empréstimo'),
-                        ],
-                      ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: loading ? null : onCancel,
-                      child: const Text('Cancelar'),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton.tonal(
-                      onPressed: loading ? null : onCreateWithClient,
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(LucideIcons.user_plus, size: 18),
-                          SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              '+ cliente',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

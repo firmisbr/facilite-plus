@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:logging/logging.dart';
 
 import 'services/supabase/supabase_service.dart';
@@ -7,6 +8,7 @@ import 'services/supabase/supabase_service.dart';
 Future<void> bootstrap() async {
   _configureLogging();
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('pt_BR');
   await initializeSupabase();
 }
 
