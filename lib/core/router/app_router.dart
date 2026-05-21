@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/navigation/app_shell.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/clients/presentation/pages/client_form_page.dart';
 import '../../features/clients/presentation/pages/clients_list_page.dart';
+import '../../features/dashboard/presentation/pages/dashboard_placeholder_page.dart';
 import '../../features/loans/presentation/pages/loan_form_page.dart';
 import '../../features/loans/presentation/pages/loans_list_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
@@ -12,6 +14,7 @@ import '../../services/supabase/supabase_providers.dart';
 import 'routes.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(sessionProvider);
@@ -34,7 +37,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (location == AppRoutes.splash || location == AppRoutes.login) {
-        return AppRoutes.home;
+        return AppRoutes.clients;
+      }
+
+      if (location == AppRoutes.home) {
+        return AppRoutes.clients;
       }
 
       return null;
@@ -48,16 +55,32 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.login,
         builder: (context, state) => const LoginPage(),
       ),
+      ShellRoute(
+        navigatorKey: _shellNavigatorKey,
+        builder: (context, state, child) => AppShell(child: child),
+        routes: [
+          GoRoute(
+            path: AppRoutes.clients,
+            builder: (context, state) => const ClientsListPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.dashboard,
+            builder: (context, state) => const DashboardPlaceholderPage(),
+          ),
+        ],
+      ),
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) => const ClientsListPage(),
+        redirect: (context, state) => AppRoutes.clients,
       ),
       GoRoute(
         path: AppRoutes.clientNew,
+        parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ClientFormPage(),
       ),
       GoRoute(
         path: '/clients/:id',
+        parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return ClientFormPage(clientId: id);
@@ -65,6 +88,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'loans',
+            parentNavigatorKey: _rootNavigatorKey,
             builder: (context, state) {
               final clientId = state.pathParameters['id']!;
               return LoansListPage(clientId: clientId);
@@ -72,6 +96,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'new',
+                parentNavigatorKey: _rootNavigatorKey,
                 builder: (context, state) {
                   final clientId = state.pathParameters['id']!;
                   return LoanFormPage(clientId: clientId);
@@ -83,6 +108,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/loans/:id',
+        parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return LoanFormPage(loanId: id);

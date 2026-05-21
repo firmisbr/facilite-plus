@@ -26,7 +26,7 @@ class LoansListPage extends ConsumerWidget {
       appBar: AppBar(
         title: Text('Empréstimos — $clientName'),
         actions: const [
-          AppBarActions(showSync: true, showLogout: false),
+          AppBarActions(showSync: false, showLogout: false),
         ],
       ),
       body: loansAsync.when(

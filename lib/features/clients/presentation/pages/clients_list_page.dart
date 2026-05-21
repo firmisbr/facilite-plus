@@ -9,6 +9,7 @@ import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
+import '../../../../shared/widgets/app_page_scaffold.dart';
 import '../providers/clients_providers.dart';
 
 class ClientsListPage extends ConsumerWidget {
@@ -17,10 +18,16 @@ class ClientsListPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final clientsAsync = ref.watch(clientsStreamProvider);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Clientes'),
-        actions: const [AppBarActions()],
+
+    return AppPageScaffold(
+      title: 'Clientes',
+      actions: const [
+        AppBarActions(showSync: false, showLogout: false),
+      ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push(AppRoutes.clientNew),
+        icon: const Icon(Icons.add),
+        label: const Text('Novo cliente'),
       ),
       body: clientsAsync.when(
         data: (clients) {
@@ -117,14 +124,8 @@ class ClientsListPage extends ConsumerWidget {
           subtitle: e.toString(),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.clientNew),
-        icon: const Icon(Icons.add),
-        label: const Text('Novo cliente'),
-      ),
     );
   }
-
 }
 
 class _ClientAvatar extends StatelessWidget {
