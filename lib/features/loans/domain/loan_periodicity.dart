@@ -9,7 +9,7 @@ enum LoanPeriodicity {
   final String value;
   final String label;
 
-  /// Parcelas por mês (para converter taxa mensal % em taxa por período).
+  /// Parcelas por mês (referência; vencimentos usam a periodicidade).
   final int periodsPerMonth;
 
   static LoanPeriodicity fromValue(String? value) {

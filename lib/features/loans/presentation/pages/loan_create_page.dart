@@ -159,7 +159,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
     return LoanSimulator.simulate(
       principal: principal,
       installments: installments,
-      monthlyInterestPercent: interest,
+      interestPercent: interest,
       periodicity: _periodicity,
       firstDueDate: due,
       maxScheduleRows: _showFullSchedule ? installments : 6,
@@ -689,7 +689,7 @@ class _LoanConditions extends StatelessWidget {
             Expanded(
               child: AppTextField(
                 controller: interestController,
-                label: 'Juros % mês *',
+                label: 'Juros (% do valor) *',
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 validator: (v) =>
@@ -850,7 +850,7 @@ class _SimulationPreview extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Text(
-                  'Parcela mensal',
+                  'Valor da parcela',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: const Color(0xFF8E8E8A),
                       ),

@@ -171,9 +171,9 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
                               ),
                             ),
                             _MetricItem(
-                              label: 'Taxa de juros',
+                              label: 'Juros sobre o valor',
                               value:
-                                  '${detail.manager.monthlyInterestPercent.toStringAsFixed(2)}% a.m.',
+                                  '${detail.manager.interestPercent.toStringAsFixed(2)}%',
                             ),
                             _MetricItem(
                               label: 'Periodicidade',

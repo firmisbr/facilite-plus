@@ -196,7 +196,7 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
                     controller: _interestController,
-                    label: 'Juros (% ao mês)',
+                    label: 'Juros (% do valor emprestado)',
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                   ),

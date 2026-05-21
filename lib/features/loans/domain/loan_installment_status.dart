@@ -70,7 +70,7 @@ class LoanManagerStats {
     required this.totalWithInterest,
     required this.installmentCount,
     required this.installmentAmount,
-    required this.monthlyInterestPercent,
+    required this.interestPercent,
     required this.periodicityLabel,
     required this.totalProfit,
     required this.profitPerInstallment,
@@ -80,7 +80,7 @@ class LoanManagerStats {
   final double totalWithInterest;
   final int installmentCount;
   final double installmentAmount;
-  final double monthlyInterestPercent;
+  final double interestPercent;
   final String periodicityLabel;
   final double totalProfit;
   final double profitPerInstallment;

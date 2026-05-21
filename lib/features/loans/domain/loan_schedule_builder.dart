@@ -32,7 +32,7 @@ abstract final class LoanScheduleBuilder {
     final schedule = LoanSimulator.buildFullSchedule(
       principal: principal,
       installments: installments,
-      monthlyInterestPercent: interest,
+      interestPercent: interest,
       periodicity: periodicity,
       firstDueDate: due,
     );
@@ -148,7 +148,7 @@ abstract final class LoanScheduleBuilder {
         totalWithInterest: totalWithInterest,
         installmentCount: installments,
         installmentAmount: installmentAmount,
-        monthlyInterestPercent: interest,
+        interestPercent: interest,
         periodicityLabel: periodicity.label,
         totalProfit: totalProfit,
         profitPerInstallment:

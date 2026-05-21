@@ -28,8 +28,8 @@ class LoanSimulationResult {
   final List<LoanInstallmentPreview> schedule;
 }
 
-/// Simula empréstimo com parcelas fixas (sistema Price).
-/// A taxa informada é **mensal** (%), convertida por periodicidade.
+/// Simula empréstimo com parcelas iguais.
+/// A taxa informada é **% sobre o valor emprestado** (juros totais no contrato).
 abstract final class LoanSimulator {
   static double? parseAmount(String raw) {
     final cleaned = raw.trim().replaceAll(RegExp(r'[^\d,.-]'), '');
@@ -40,7 +40,6 @@ abstract final class LoanSimulator {
 
     String normalized;
     if (hasComma && hasDot) {
-      // 1.500,50 → remove milhar, vírgula vira decimal
       normalized = cleaned.replaceAll('.', '').replaceAll(',', '.');
     } else if (hasComma) {
       normalized = cleaned.replaceAll(',', '.');
@@ -54,29 +53,22 @@ abstract final class LoanSimulator {
   static LoanSimulationResult? simulate({
     required double principal,
     required int installments,
-    required double monthlyInterestPercent,
+    required double interestPercent,
     required LoanPeriodicity periodicity,
     required DateTime firstDueDate,
     int maxScheduleRows = 6,
   }) {
-    if (principal <= 0 || installments < 1 || monthlyInterestPercent < 0) {
+    if (principal <= 0 || installments < 1 || interestPercent < 0) {
       return null;
     }
 
-    final monthlyRate = monthlyInterestPercent / 100;
-    final periodRate = monthlyRate / periodicity.periodsPerMonth;
+    final totalInterest = principal * (interestPercent / 100);
+    final totalAmount = principal + totalInterest;
+    final installment = totalAmount / installments;
 
-    double installment;
-    if (periodRate == 0) {
-      installment = principal / installments;
-    } else {
-      final factor = _pow(1 + periodRate, installments);
-      installment = principal * (periodRate * factor) / (factor - 1);
-    }
-
-    final totalAmount = installment * installments;
     final schedule = <LoanInstallmentPreview>[];
-    final showCount = installments < maxScheduleRows ? installments : maxScheduleRows;
+    final showCount =
+        installments < maxScheduleRows ? installments : maxScheduleRows;
 
     for (var i = 0; i < showCount; i++) {
       schedule.add(
@@ -92,7 +84,7 @@ abstract final class LoanSimulator {
       principal: principal,
       installmentAmount: installment,
       totalAmount: totalAmount,
-      totalInterest: totalAmount - principal,
+      totalInterest: totalInterest,
       schedule: schedule,
     );
   }
@@ -101,14 +93,14 @@ abstract final class LoanSimulator {
   static List<LoanInstallmentPreview>? buildFullSchedule({
     required double principal,
     required int installments,
-    required double monthlyInterestPercent,
+    required double interestPercent,
     required LoanPeriodicity periodicity,
     required DateTime firstDueDate,
   }) {
     final sim = simulate(
       principal: principal,
       installments: installments,
-      monthlyInterestPercent: monthlyInterestPercent,
+      interestPercent: interestPercent,
       periodicity: periodicity,
       firstDueDate: firstDueDate,
       maxScheduleRows: installments,
@@ -140,14 +132,6 @@ abstract final class LoanSimulator {
           first.day,
         ),
     };
-  }
-
-  static double _pow(double base, int exp) {
-    var result = 1.0;
-    for (var i = 0; i < exp; i++) {
-      result *= base;
-    }
-    return result;
   }
 
   static String formatMoney(double value) {
