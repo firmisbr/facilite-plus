@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/clients/presentation/pages/client_form_page.dart';
 import '../../features/clients/presentation/pages/clients_list_page.dart';
+import '../../features/loans/presentation/pages/loan_form_page.dart';
+import '../../features/loans/presentation/pages/loans_list_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../services/supabase/supabase_providers.dart';
 import 'routes.dart';
@@ -59,6 +61,31 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return ClientFormPage(clientId: id);
+        },
+        routes: [
+          GoRoute(
+            path: 'loans',
+            builder: (context, state) {
+              final clientId = state.pathParameters['id']!;
+              return LoansListPage(clientId: clientId);
+            },
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (context, state) {
+                  final clientId = state.pathParameters['id']!;
+                  return LoanFormPage(clientId: clientId);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/loans/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return LoanFormPage(loanId: id);
         },
       ),
     ],

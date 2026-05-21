@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/brand_logo.dart';
@@ -47,6 +48,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final surface = Theme.of(context).colorScheme.surface;
 
     return Scaffold(
+      appBar: AppBar(
+        actions: const [
+          AppBarActions(showSync: false, showLogout: false),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

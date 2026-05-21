@@ -5,12 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../features/auth/presentation/providers/auth_controller.dart';
-import '../../../../services/sync/sync_providers.dart';
+import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
-import '../../../../shared/widgets/sync_status_chip.dart';
 import '../providers/clients_providers.dart';
 
 class ClientsListPage extends ConsumerWidget {
@@ -19,29 +17,10 @@ class ClientsListPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final clientsAsync = ref.watch(clientsStreamProvider);
-    final pendingSync = ref.watch(pendingSyncCountProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Clientes'),
-        actions: [
-          pendingSync.when(
-            data: (n) => SyncStatusChip(pendingCount: n),
-            loading: () => const SizedBox.shrink(),
-            error: (e, _) => const SizedBox.shrink(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.sync_rounded),
-            tooltip: 'Sincronizar',
-            onPressed: () => _syncNow(context, ref),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Sair',
-            onPressed: () =>
-                ref.read(authControllerProvider.notifier).signOut(),
-          ),
-        ],
+        actions: const [AppBarActions()],
       ),
       body: clientsAsync.when(
         data: (clients) {
@@ -108,6 +87,14 @@ class ClientsListPage extends ConsumerWidget {
                               ],
                             ),
                           ),
+                          IconButton(
+                            tooltip: 'Empréstimos',
+                            onPressed: () => context.push(
+                              AppRoutes.clientLoans(client.id),
+                            ),
+                            icon: const Icon(Icons.payments_outlined),
+                            color: AppColors.accent,
+                          ),
                           Icon(
                             Icons.chevron_right_rounded,
                             color: Theme.of(context)
@@ -138,16 +125,6 @@ class ClientsListPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _syncNow(BuildContext context, WidgetRef ref) async {
-    final sync = ref.read(syncServiceProvider);
-    await sync.processQueue();
-    await sync.pullRemoteChanges();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sincronização concluída')),
-      );
-    }
-  }
 }
 
 class _ClientAvatar extends StatelessWidget {

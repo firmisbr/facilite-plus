@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AppTextField extends StatelessWidget {
   const AppTextField({
@@ -12,6 +13,7 @@ class AppTextField extends StatelessWidget {
     this.validator,
     this.suffixIcon,
     this.autocorrect = true,
+    this.inputFormatters,
   });
 
   final TextEditingController? controller;
@@ -23,6 +25,7 @@ class AppTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final Widget? suffixIcon;
   final bool autocorrect;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +36,7 @@ class AppTextField extends StatelessWidget {
       maxLines: maxLines,
       validator: validator,
       autocorrect: autocorrect,
+      inputFormatters: inputFormatters,
       style: Theme.of(context).textTheme.bodyLarge,
       decoration: InputDecoration(
         labelText: label,

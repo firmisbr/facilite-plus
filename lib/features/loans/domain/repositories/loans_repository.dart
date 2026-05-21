@@ -1,0 +1,19 @@
+import '../entities/loan.dart';
+
+abstract class LoansRepository {
+  Stream<List<Loan>> watchByClient(String clientId);
+
+  Future<Loan?> getById(String id);
+
+  Future<Loan> create({
+    required String clientId,
+    required String amount,
+    String? interest,
+    int? installments,
+    String? status,
+  });
+
+  Future<Loan> update(Loan loan);
+
+  Future<void> delete(String id);
+}

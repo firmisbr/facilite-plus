@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
+import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../providers/clients_providers.dart';
@@ -125,6 +126,9 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Editar cliente' : 'Novo cliente'),
+        actions: const [
+          AppBarActions(showSync: false, showLogout: false),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.lg),

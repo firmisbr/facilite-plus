@@ -80,6 +80,53 @@ class SyncService {
     if (userId == null) return;
 
     await _pullClients(userId);
+    await _pullLoans(userId);
+  }
+
+  Future<void> _pullLoans(String userId) async {
+    final clientRows = await (_db.select(_db.clientsTable)
+          ..where((c) => c.userId.equals(userId)))
+        .get();
+    if (clientRows.isEmpty) return;
+
+    final clientIds = clientRows.map((c) => c.id).toList();
+    final rows = await _supabase
+        .from('loans')
+        .select()
+        .inFilter('client_id', clientIds);
+
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return;
+
+    await _db.batch((batch) {
+      for (final raw in list) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final id = row['id'] as String;
+        batch.insert(
+          _db.loansTable,
+          LoansTableCompanion.insert(
+            id: id,
+            clientId: row['client_id'] as String,
+            amount: row['amount'] as String,
+            interest: Value(row['interest'] as String?),
+            installments: Value(row['installments'] as int?),
+            status: Value(row['status'] as String?),
+            createdAt: Value(_formatRemoteDate(row['created_at'])),
+          ),
+          onConflict: DoUpdate(
+            (old) => LoansTableCompanion(
+              amount: Value(row['amount'] as String),
+              interest: Value(row['interest'] as String?),
+              installments: Value(row['installments'] as int?),
+              status: Value(row['status'] as String?),
+              createdAt: Value(_formatRemoteDate(row['created_at'])),
+            ),
+          ),
+        );
+      }
+    });
+
+    _log.info('Pull loans: ${list.length} registro(s)');
   }
 
   Future<void> _pullClients(String userId) async {
