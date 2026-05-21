@@ -7,6 +7,7 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/clients/presentation/pages/client_form_page.dart';
 import '../../features/clients/presentation/pages/clients_list_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_placeholder_page.dart';
+import '../../features/loans/presentation/pages/all_loans_list_page.dart';
 import '../../features/loans/presentation/pages/loan_form_page.dart';
 import '../../features/loans/presentation/pages/loans_list_page.dart';
 import '../../features/payments/presentation/pages/payment_form_page.dart';
@@ -64,6 +65,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.clients,
             builder: (context, state) => const ClientsListPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.loans,
+            builder: (context, state) => const AllLoansListPage(),
           ),
           GoRoute(
             path: AppRoutes.dashboard,

@@ -4,6 +4,7 @@ abstract final class AppRoutes {
 
   /// Shell — menu lateral
   static const clients = '/clients';
+  static const loans = '/loans';
   static const dashboard = '/dashboard';
 
   /// Legado: redireciona para [clients]

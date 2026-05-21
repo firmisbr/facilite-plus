@@ -5,6 +5,7 @@ import 'package:facilite_plus/core/repositories/syncable_repository.dart';
 import 'package:facilite_plus/core/sync/sync_entity_type.dart';
 import 'package:facilite_plus/core/sync/sync_operation_type.dart';
 import 'package:facilite_plus/features/loans/domain/entities/loan.dart';
+import 'package:facilite_plus/features/loans/domain/entities/loan_with_client.dart';
 import 'package:facilite_plus/features/loans/domain/repositories/loans_repository.dart';
 import 'package:facilite_plus/services/database/drift/app_database.dart';
 import 'package:facilite_plus/services/sync/sync_queue_repository.dart';
@@ -18,6 +19,29 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
 
   final AppDatabase _db;
   final _uuid = const Uuid();
+
+  @override
+  Stream<List<LoanWithClient>> watchAllForUser(String userId) {
+    final loans = _db.loansTable;
+    final clients = _db.clientsTable;
+
+    final query = _db.select(loans).join([
+      innerJoin(clients, clients.id.equalsExp(loans.clientId)),
+    ])
+      ..where(clients.userId.equals(userId))
+      ..orderBy([OrderingTerm.desc(loans.createdAt)]);
+
+    return query.watch().map(
+          (rows) => rows
+              .map(
+                (row) => LoanWithClient(
+                  loan: _mapRow(row.readTable(loans)),
+                  clientName: row.readTable(clients).name,
+                ),
+              )
+              .toList(),
+        );
+  }
 
   @override
   Stream<List<Loan>> watchByClient(String clientId) {

@@ -43,6 +43,15 @@ class AppDrawer extends ConsumerWidget {
               },
             ),
             _DrawerTile(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'Empréstimos',
+              selected: location == AppRoutes.loans,
+              onTap: () {
+                Navigator.pop(context);
+                context.go(AppRoutes.loans);
+              },
+            ),
+            _DrawerTile(
               icon: Icons.dashboard_outlined,
               label: 'Dashboard',
               selected: location == AppRoutes.dashboard,

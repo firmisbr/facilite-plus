@@ -1,6 +1,9 @@
 import '../entities/loan.dart';
+import '../entities/loan_with_client.dart';
 
 abstract class LoansRepository {
+  Stream<List<LoanWithClient>> watchAllForUser(String userId);
+
   Stream<List<Loan>> watchByClient(String clientId);
 
   Future<Loan?> getById(String id);
