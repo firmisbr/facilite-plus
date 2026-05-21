@@ -4,9 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/presentation/providers/auth_controller.dart';
 import '../../services/sync/sync_providers.dart';
 import 'sync_status_chip.dart';
-import 'theme_toggle_button.dart';
 
-/// Ações padrão da AppBar: tema, sync pendente, sincronizar, sair.
+/// Ações padrão da AppBar: sync pendente, sincronizar, sair.
 class AppBarActions extends ConsumerWidget {
   const AppBarActions({
     super.key,
@@ -24,7 +23,6 @@ class AppBarActions extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const ThemeToggleButton(),
         if (showSync) ...[
           pendingSync.when(
             data: (n) => SyncStatusChip(pendingCount: n),

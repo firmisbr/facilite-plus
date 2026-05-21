@@ -137,6 +137,7 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
     final existing = await getById(id);
     if (existing == null) return;
 
+    await (_db.delete(_db.paymentsTable)..where((p) => p.loanId.equals(id))).go();
     await (_db.delete(_db.loansTable)..where((l) => l.id.equals(id))).go();
 
     await enqueueSync(

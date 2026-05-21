@@ -7,19 +7,75 @@ import '../widgets/loan_installment_card.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/loan_simulator.dart';
-import '../../../../shared/widgets/app_bar_actions.dart';
+import '../../../../services/sync/sync_providers.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../providers/loan_detail_providers.dart';
+import '../providers/loans_providers.dart';
 
-class LoanDetailPage extends ConsumerWidget {
+class LoanDetailPage extends ConsumerStatefulWidget {
   const LoanDetailPage({super.key, required this.loanId});
 
   final String loanId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final bundle = ref.watch(loanDetailProvider(loanId));
-    final isLoading = ref.watch(loanDetailLoadingProvider(loanId));
+  ConsumerState<LoanDetailPage> createState() => _LoanDetailPageState();
+}
+
+class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
+  bool _deleting = false;
+
+  Future<void> _confirmDelete() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir empréstimo?'),
+        content: const Text(
+          'O empréstimo e todos os pagamentos registrados serão '
+          'removidos. Esta ação não pode ser desfeita.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      await ref.read(loansRepositoryProvider).delete(widget.loanId);
+      await ref.read(syncServiceProvider).processQueue();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Empréstimo excluído')),
+        );
+        context.go(AppRoutes.loans);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao excluir: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bundle = ref.watch(loanDetailProvider(widget.loanId));
+    final isLoading = ref.watch(loanDetailLoadingProvider(widget.loanId));
 
     if (isLoading && bundle == null) {
       return const Scaffold(
@@ -44,9 +100,21 @@ class LoanDetailPage extends ConsumerWidget {
           IconButton(
             tooltip: 'Editar empréstimo',
             icon: const Icon(Icons.edit_outlined),
-            onPressed: () => context.push(AppRoutes.loanEdit(loanId)),
+            onPressed: _deleting
+                ? null
+                : () => context.push(AppRoutes.loanEdit(widget.loanId)),
           ),
-          const AppBarActions(showSync: false, showLogout: false),
+          IconButton(
+            tooltip: 'Excluir empréstimo',
+            icon: _deleting
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_outline),
+            onPressed: _deleting ? null : _confirmDelete,
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -144,7 +212,7 @@ class LoanDetailPage extends ConsumerWidget {
                     (item) => Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                       child: LoanInstallmentCard(
-                        loanId: loanId,
+                        loanId: widget.loanId,
                         item: item,
                       ),
                     ),
