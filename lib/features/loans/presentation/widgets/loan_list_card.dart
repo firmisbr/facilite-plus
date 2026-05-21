@@ -72,10 +72,8 @@ class LoanListCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              IconButton(
-                tooltip: 'Pagamentos',
-                onPressed: () => context.push(AppRoutes.loanPayments(loan.id)),
-                icon: const Icon(Icons.receipt_long_outlined),
+              const Icon(
+                Icons.chevron_right_rounded,
                 color: AppColors.accent,
               ),
             ],

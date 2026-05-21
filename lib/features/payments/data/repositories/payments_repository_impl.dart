@@ -38,9 +38,25 @@ class PaymentsRepositoryImpl extends SyncableRepository
   }
 
   @override
+  Future<Payment?> getByLoanAndInstallment(
+    String loanId,
+    int installmentNumber,
+  ) async {
+    final row = await (_db.select(_db.paymentsTable)
+          ..where(
+            (p) =>
+                p.loanId.equals(loanId) &
+                p.installmentNumber.equals(installmentNumber),
+          ))
+        .getSingleOrNull();
+    return row == null ? null : _mapRow(row);
+  }
+
+  @override
   Future<Payment> create({
     required String loanId,
     required String amount,
+    int? installmentNumber,
     String? paymentDate,
     String? method,
   }) async {
@@ -50,6 +66,7 @@ class PaymentsRepositoryImpl extends SyncableRepository
       id: id,
       loanId: loanId,
       amount: amount,
+      installmentNumber: installmentNumber,
       paymentDate: paymentDate,
       method: method,
       createdAt: createdAt,
@@ -60,6 +77,7 @@ class PaymentsRepositoryImpl extends SyncableRepository
             id: id,
             loanId: loanId,
             amount: amount,
+            installmentNumber: Value(installmentNumber),
             paymentDate: Value(paymentDate),
             method: Value(method),
             createdAt: Value(createdAt),
@@ -77,11 +95,44 @@ class PaymentsRepositoryImpl extends SyncableRepository
   }
 
   @override
+  Future<Payment> payInstallment({
+    required String loanId,
+    required int installmentNumber,
+    required String amount,
+    String? paymentDate,
+  }) async {
+    final existing =
+        await getByLoanAndInstallment(loanId, installmentNumber);
+    if (existing != null) {
+      throw StateError('Parcela $installmentNumber já está paga');
+    }
+
+    return create(
+      loanId: loanId,
+      amount: amount,
+      installmentNumber: installmentNumber,
+      paymentDate: paymentDate ?? _todayIso(),
+      method: 'parcela',
+    );
+  }
+
+  @override
+  Future<void> undoInstallment(String loanId, int installmentNumber) async {
+    final existing =
+        await getByLoanAndInstallment(loanId, installmentNumber);
+    if (existing == null) {
+      throw StateError('Parcela $installmentNumber não possui pagamento');
+    }
+    await delete(existing.id);
+  }
+
+  @override
   Future<Payment> update(Payment payment) async {
     await (_db.update(_db.paymentsTable)..where((p) => p.id.equals(payment.id)))
         .write(
       PaymentsTableCompanion(
         amount: Value(payment.amount),
+        installmentNumber: Value(payment.installmentNumber),
         paymentDate: Value(payment.paymentDate),
         method: Value(payment.method),
       ),
@@ -112,11 +163,20 @@ class PaymentsRepositoryImpl extends SyncableRepository
     );
   }
 
+  String _todayIso() {
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
   Payment _mapRow(PaymentsTableData row) {
     return Payment(
       id: row.id,
       loanId: row.loanId,
       amount: row.amount,
+      installmentNumber: row.installmentNumber,
       paymentDate: row.paymentDate,
       method: row.method,
       createdAt: row.createdAt,

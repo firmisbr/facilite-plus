@@ -5,7 +5,7 @@ import 'package:facilite_plus/features/loans/domain/loan_schedule_builder.dart';
 import 'package:facilite_plus/features/payments/domain/entities/payment.dart';
 
 void main() {
-  test('marca parcelas pagas conforme pagamentos', () {
+  test('parcela vinculada por installment_number', () {
     const loan = Loan(
       id: 'l1',
       clientId: 'c1',
@@ -21,14 +21,9 @@ void main() {
       const Payment(
         id: 'p1',
         loanId: 'l1',
-        amount: '500',
+        amount: '500.00',
+        installmentNumber: 1,
         paymentDate: '2026-01-05',
-      ),
-      const Payment(
-        id: 'p2',
-        loanId: 'l1',
-        amount: '500',
-        paymentDate: '2026-02-05',
       ),
     ];
 
@@ -39,10 +34,9 @@ void main() {
     );
 
     expect(detail, isNotNull);
-    expect(detail!.overview.paidInstallments, 2);
-    expect(
-      detail.installments.every((i) => i.status == LoanInstallmentStatus.paid),
-      isTrue,
-    );
+    expect(detail!.installments[0].status, LoanInstallmentStatus.paid);
+    expect(detail.installments[0].paymentId, 'p1');
+    expect(detail.installments[1].status, LoanInstallmentStatus.overdue);
+    expect(detail.overview.paidInstallments, 1);
   });
 }

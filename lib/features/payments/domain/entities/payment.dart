@@ -3,6 +3,7 @@ class Payment {
     required this.id,
     required this.loanId,
     required this.amount,
+    this.installmentNumber,
     this.paymentDate,
     this.method,
     this.createdAt,
@@ -11,6 +12,7 @@ class Payment {
   final String id;
   final String loanId;
   final String amount;
+  final int? installmentNumber;
   final String? paymentDate;
   final String? method;
   final String? createdAt;
@@ -34,6 +36,7 @@ class Payment {
     return {
       'loan_id': loanId,
       'amount': amount,
+      if (installmentNumber != null) 'installment_number': installmentNumber,
       if (paymentDate != null) 'payment_date': paymentDate,
       if (method != null) 'method': method,
       if (createdAt != null) 'created_at': createdAt,

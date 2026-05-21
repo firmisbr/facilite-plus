@@ -16,6 +16,7 @@ class LoanInstallmentItem {
     required this.amount,
     required this.status,
     this.paidAmount = 0,
+    this.paymentId,
   });
 
   final int number;
@@ -23,8 +24,11 @@ class LoanInstallmentItem {
   final double amount;
   final LoanInstallmentStatus status;
   final double paidAmount;
+  final String? paymentId;
 
   bool get isPaid => status == LoanInstallmentStatus.paid;
+  bool get canPay => !isPaid;
+  bool get canUndo => isPaid && paymentId != null;
 }
 
 class LoanOverviewStats {

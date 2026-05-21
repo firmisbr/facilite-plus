@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/routes.dart';
+import '../widgets/loan_installment_card.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../domain/loan_installment_status.dart';
 import '../../domain/loan_simulator.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -42,14 +42,9 @@ class LoanDetailPage extends ConsumerWidget {
         title: Text(client.name),
         actions: [
           IconButton(
-            tooltip: 'Editar',
+            tooltip: 'Editar empréstimo',
             icon: const Icon(Icons.edit_outlined),
             onPressed: () => context.push(AppRoutes.loanEdit(loanId)),
-          ),
-          IconButton(
-            tooltip: 'Pagamentos',
-            icon: const Icon(Icons.receipt_long_outlined),
-            onPressed: () => context.push(AppRoutes.loanPayments(loanId)),
           ),
           const AppBarActions(showSync: false, showLogout: false),
         ],
@@ -139,42 +134,18 @@ class LoanDetailPage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  _SectionHeader(title: 'Parcelas'),
+                  const _SectionHeader(title: 'Parcelas'),
+                  Text(
+                    'Toque em pagar na parcela ou desfaça se registrou por engano.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   ...detail.installments.map(
                     (item) => Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: AppCard(
-                        child: Row(
-                          children: [
-                            _InstallmentBadge(number: item.number),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      _StatusChip(status: item.status),
-                                      const Spacer(),
-                                      Text(
-                                        LoanSimulator.formatMoney(item.amount),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleSmall,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: AppSpacing.xs),
-                                  Text(
-                                    'Vencimento: ${LoanSimulator.formatDate(item.dueDate)}',
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: LoanInstallmentCard(
+                        loanId: loanId,
+                        item: item,
                       ),
                     ),
                   ),
@@ -378,60 +349,6 @@ class _OverviewRow extends StatelessWidget {
                 ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _InstallmentBadge extends StatelessWidget {
-  const _InstallmentBadge({required this.number});
-
-  final int number;
-
-  @override
-  Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 18,
-      backgroundColor: AppColors.accent.withValues(alpha: 0.15),
-      child: Text(
-        '$number',
-        style: const TextStyle(
-          color: AppColors.accent,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final LoanInstallmentStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (status) {
-      LoanInstallmentStatus.paid => AppColors.lightTextSecondary,
-      LoanInstallmentStatus.overdue => AppColors.error,
-      LoanInstallmentStatus.pending => AppColors.accent,
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-      ),
-      child: Text(
-        status.label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
       ),
     );
   }

@@ -1176,6 +1176,17 @@ class $PaymentsTableTable extends PaymentsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _installmentNumberMeta = const VerificationMeta(
+    'installmentNumber',
+  );
+  @override
+  late final GeneratedColumn<int> installmentNumber = GeneratedColumn<int>(
+    'installment_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _paymentDateMeta = const VerificationMeta(
     'paymentDate',
   );
@@ -1212,6 +1223,7 @@ class $PaymentsTableTable extends PaymentsTable
     id,
     loanId,
     amount,
+    installmentNumber,
     paymentDate,
     method,
     createdAt,
@@ -1248,6 +1260,15 @@ class $PaymentsTableTable extends PaymentsTable
       );
     } else if (isInserting) {
       context.missing(_amountMeta);
+    }
+    if (data.containsKey('installment_number')) {
+      context.handle(
+        _installmentNumberMeta,
+        installmentNumber.isAcceptableOrUnknown(
+          data['installment_number']!,
+          _installmentNumberMeta,
+        ),
+      );
     }
     if (data.containsKey('payment_date')) {
       context.handle(
@@ -1291,6 +1312,10 @@ class $PaymentsTableTable extends PaymentsTable
         DriftSqlType.string,
         data['${effectivePrefix}amount'],
       )!,
+      installmentNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}installment_number'],
+      ),
       paymentDate: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payment_date'],
@@ -1317,6 +1342,7 @@ class PaymentsTableData extends DataClass
   final String id;
   final String loanId;
   final String amount;
+  final int? installmentNumber;
   final String? paymentDate;
   final String? method;
   final String? createdAt;
@@ -1324,6 +1350,7 @@ class PaymentsTableData extends DataClass
     required this.id,
     required this.loanId,
     required this.amount,
+    this.installmentNumber,
     this.paymentDate,
     this.method,
     this.createdAt,
@@ -1334,6 +1361,9 @@ class PaymentsTableData extends DataClass
     map['id'] = Variable<String>(id);
     map['loan_id'] = Variable<String>(loanId);
     map['amount'] = Variable<String>(amount);
+    if (!nullToAbsent || installmentNumber != null) {
+      map['installment_number'] = Variable<int>(installmentNumber);
+    }
     if (!nullToAbsent || paymentDate != null) {
       map['payment_date'] = Variable<String>(paymentDate);
     }
@@ -1351,6 +1381,9 @@ class PaymentsTableData extends DataClass
       id: Value(id),
       loanId: Value(loanId),
       amount: Value(amount),
+      installmentNumber: installmentNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(installmentNumber),
       paymentDate: paymentDate == null && nullToAbsent
           ? const Value.absent()
           : Value(paymentDate),
@@ -1372,6 +1405,7 @@ class PaymentsTableData extends DataClass
       id: serializer.fromJson<String>(json['id']),
       loanId: serializer.fromJson<String>(json['loanId']),
       amount: serializer.fromJson<String>(json['amount']),
+      installmentNumber: serializer.fromJson<int?>(json['installmentNumber']),
       paymentDate: serializer.fromJson<String?>(json['paymentDate']),
       method: serializer.fromJson<String?>(json['method']),
       createdAt: serializer.fromJson<String?>(json['createdAt']),
@@ -1384,6 +1418,7 @@ class PaymentsTableData extends DataClass
       'id': serializer.toJson<String>(id),
       'loanId': serializer.toJson<String>(loanId),
       'amount': serializer.toJson<String>(amount),
+      'installmentNumber': serializer.toJson<int?>(installmentNumber),
       'paymentDate': serializer.toJson<String?>(paymentDate),
       'method': serializer.toJson<String?>(method),
       'createdAt': serializer.toJson<String?>(createdAt),
@@ -1394,6 +1429,7 @@ class PaymentsTableData extends DataClass
     String? id,
     String? loanId,
     String? amount,
+    Value<int?> installmentNumber = const Value.absent(),
     Value<String?> paymentDate = const Value.absent(),
     Value<String?> method = const Value.absent(),
     Value<String?> createdAt = const Value.absent(),
@@ -1401,6 +1437,9 @@ class PaymentsTableData extends DataClass
     id: id ?? this.id,
     loanId: loanId ?? this.loanId,
     amount: amount ?? this.amount,
+    installmentNumber: installmentNumber.present
+        ? installmentNumber.value
+        : this.installmentNumber,
     paymentDate: paymentDate.present ? paymentDate.value : this.paymentDate,
     method: method.present ? method.value : this.method,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
@@ -1410,6 +1449,9 @@ class PaymentsTableData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       loanId: data.loanId.present ? data.loanId.value : this.loanId,
       amount: data.amount.present ? data.amount.value : this.amount,
+      installmentNumber: data.installmentNumber.present
+          ? data.installmentNumber.value
+          : this.installmentNumber,
       paymentDate: data.paymentDate.present
           ? data.paymentDate.value
           : this.paymentDate,
@@ -1424,6 +1466,7 @@ class PaymentsTableData extends DataClass
           ..write('id: $id, ')
           ..write('loanId: $loanId, ')
           ..write('amount: $amount, ')
+          ..write('installmentNumber: $installmentNumber, ')
           ..write('paymentDate: $paymentDate, ')
           ..write('method: $method, ')
           ..write('createdAt: $createdAt')
@@ -1432,8 +1475,15 @@ class PaymentsTableData extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, loanId, amount, paymentDate, method, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    loanId,
+    amount,
+    installmentNumber,
+    paymentDate,
+    method,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1441,6 +1491,7 @@ class PaymentsTableData extends DataClass
           other.id == this.id &&
           other.loanId == this.loanId &&
           other.amount == this.amount &&
+          other.installmentNumber == this.installmentNumber &&
           other.paymentDate == this.paymentDate &&
           other.method == this.method &&
           other.createdAt == this.createdAt);
@@ -1450,6 +1501,7 @@ class PaymentsTableCompanion extends UpdateCompanion<PaymentsTableData> {
   final Value<String> id;
   final Value<String> loanId;
   final Value<String> amount;
+  final Value<int?> installmentNumber;
   final Value<String?> paymentDate;
   final Value<String?> method;
   final Value<String?> createdAt;
@@ -1458,6 +1510,7 @@ class PaymentsTableCompanion extends UpdateCompanion<PaymentsTableData> {
     this.id = const Value.absent(),
     this.loanId = const Value.absent(),
     this.amount = const Value.absent(),
+    this.installmentNumber = const Value.absent(),
     this.paymentDate = const Value.absent(),
     this.method = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1467,6 +1520,7 @@ class PaymentsTableCompanion extends UpdateCompanion<PaymentsTableData> {
     required String id,
     required String loanId,
     required String amount,
+    this.installmentNumber = const Value.absent(),
     this.paymentDate = const Value.absent(),
     this.method = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1478,6 +1532,7 @@ class PaymentsTableCompanion extends UpdateCompanion<PaymentsTableData> {
     Expression<String>? id,
     Expression<String>? loanId,
     Expression<String>? amount,
+    Expression<int>? installmentNumber,
     Expression<String>? paymentDate,
     Expression<String>? method,
     Expression<String>? createdAt,
@@ -1487,6 +1542,7 @@ class PaymentsTableCompanion extends UpdateCompanion<PaymentsTableData> {
       if (id != null) 'id': id,
       if (loanId != null) 'loan_id': loanId,
       if (amount != null) 'amount': amount,
+      if (installmentNumber != null) 'installment_number': installmentNumber,
       if (paymentDate != null) 'payment_date': paymentDate,
       if (method != null) 'method': method,
       if (createdAt != null) 'created_at': createdAt,
@@ -1498,6 +1554,7 @@ class PaymentsTableCompanion extends UpdateCompanion<PaymentsTableData> {
     Value<String>? id,
     Value<String>? loanId,
     Value<String>? amount,
+    Value<int?>? installmentNumber,
     Value<String?>? paymentDate,
     Value<String?>? method,
     Value<String?>? createdAt,
@@ -1507,6 +1564,7 @@ class PaymentsTableCompanion extends UpdateCompanion<PaymentsTableData> {
       id: id ?? this.id,
       loanId: loanId ?? this.loanId,
       amount: amount ?? this.amount,
+      installmentNumber: installmentNumber ?? this.installmentNumber,
       paymentDate: paymentDate ?? this.paymentDate,
       method: method ?? this.method,
       createdAt: createdAt ?? this.createdAt,
@@ -1525,6 +1583,9 @@ class PaymentsTableCompanion extends UpdateCompanion<PaymentsTableData> {
     }
     if (amount.present) {
       map['amount'] = Variable<String>(amount.value);
+    }
+    if (installmentNumber.present) {
+      map['installment_number'] = Variable<int>(installmentNumber.value);
     }
     if (paymentDate.present) {
       map['payment_date'] = Variable<String>(paymentDate.value);
@@ -1547,6 +1608,7 @@ class PaymentsTableCompanion extends UpdateCompanion<PaymentsTableData> {
           ..write('id: $id, ')
           ..write('loanId: $loanId, ')
           ..write('amount: $amount, ')
+          ..write('installmentNumber: $installmentNumber, ')
           ..write('paymentDate: $paymentDate, ')
           ..write('method: $method, ')
           ..write('createdAt: $createdAt, ')
@@ -3058,6 +3120,7 @@ typedef $$PaymentsTableTableCreateCompanionBuilder =
       required String id,
       required String loanId,
       required String amount,
+      Value<int?> installmentNumber,
       Value<String?> paymentDate,
       Value<String?> method,
       Value<String?> createdAt,
@@ -3068,6 +3131,7 @@ typedef $$PaymentsTableTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> loanId,
       Value<String> amount,
+      Value<int?> installmentNumber,
       Value<String?> paymentDate,
       Value<String?> method,
       Value<String?> createdAt,
@@ -3119,6 +3183,11 @@ class $$PaymentsTableTableFilterComposer
 
   ColumnFilters<String> get amount => $composableBuilder(
     column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get installmentNumber => $composableBuilder(
+    column: $table.installmentNumber,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3180,6 +3249,11 @@ class $$PaymentsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get installmentNumber => $composableBuilder(
+    column: $table.installmentNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get paymentDate => $composableBuilder(
     column: $table.paymentDate,
     builder: (column) => ColumnOrderings(column),
@@ -3233,6 +3307,11 @@ class $$PaymentsTableTableAnnotationComposer
 
   GeneratedColumn<String> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<int> get installmentNumber => $composableBuilder(
+    column: $table.installmentNumber,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get paymentDate => $composableBuilder(
     column: $table.paymentDate,
@@ -3300,6 +3379,7 @@ class $$PaymentsTableTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> loanId = const Value.absent(),
                 Value<String> amount = const Value.absent(),
+                Value<int?> installmentNumber = const Value.absent(),
                 Value<String?> paymentDate = const Value.absent(),
                 Value<String?> method = const Value.absent(),
                 Value<String?> createdAt = const Value.absent(),
@@ -3308,6 +3388,7 @@ class $$PaymentsTableTableTableManager
                 id: id,
                 loanId: loanId,
                 amount: amount,
+                installmentNumber: installmentNumber,
                 paymentDate: paymentDate,
                 method: method,
                 createdAt: createdAt,
@@ -3318,6 +3399,7 @@ class $$PaymentsTableTableTableManager
                 required String id,
                 required String loanId,
                 required String amount,
+                Value<int?> installmentNumber = const Value.absent(),
                 Value<String?> paymentDate = const Value.absent(),
                 Value<String?> method = const Value.absent(),
                 Value<String?> createdAt = const Value.absent(),
@@ -3326,6 +3408,7 @@ class $$PaymentsTableTableTableManager
                 id: id,
                 loanId: loanId,
                 amount: amount,
+                installmentNumber: installmentNumber,
                 paymentDate: paymentDate,
                 method: method,
                 createdAt: createdAt,

@@ -165,6 +165,7 @@ class SyncService {
             id: id,
             loanId: row['loan_id'] as String,
             amount: row['amount'] as String,
+            installmentNumber: Value(row['installment_number'] as int?),
             paymentDate: Value(row['payment_date'] as String?),
             method: Value(row['method'] as String?),
             createdAt: Value(_formatRemoteDate(row['created_at'])),
@@ -172,6 +173,7 @@ class SyncService {
           onConflict: DoUpdate(
             (old) => PaymentsTableCompanion(
               amount: Value(row['amount'] as String),
+              installmentNumber: Value(row['installment_number'] as int?),
               paymentDate: Value(row['payment_date'] as String?),
               method: Value(row['method'] as String?),
               createdAt: Value(_formatRemoteDate(row['created_at'])),

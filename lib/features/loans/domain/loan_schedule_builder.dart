@@ -44,15 +44,26 @@ abstract final class LoanScheduleBuilder {
     final now = asOf ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    final sortedPayments = [...payments]
-      ..sort((a, b) {
-        final da = _paymentDate(a) ?? DateTime(1970);
-        final db = _paymentDate(b) ?? DateTime(1970);
-        return da.compareTo(db);
-      });
+    final byInstallment = <int, Payment>{};
+    final legacyPool = <Payment>[];
 
-    var paymentIndex = 0;
-    var paymentPool = 0.0;
+    for (final payment in payments) {
+      final n = payment.installmentNumber;
+      if (n != null && n >= 1) {
+        byInstallment.putIfAbsent(n, () => payment);
+      } else {
+        legacyPool.add(payment);
+      }
+    }
+
+    legacyPool.sort((a, b) {
+      final da = _paymentDate(a) ?? DateTime(1970);
+      final db = _paymentDate(b) ?? DateTime(1970);
+      return da.compareTo(db);
+    });
+
+    var legacyIndex = 0;
+    var legacyPoolAmount = 0.0;
     final items = <LoanInstallmentItem>[];
     var paidCount = 0;
     var overdueCount = 0;
@@ -66,31 +77,38 @@ abstract final class LoanScheduleBuilder {
         preview.dueDate.day,
       );
 
-      while (paymentPool + 0.009 < preview.amount &&
-          paymentIndex < sortedPayments.length) {
-        paymentPool += LoanSimulator.parseAmount(
-              sortedPayments[paymentIndex].amount,
-            ) ??
-            0;
-        paymentIndex++;
-      }
-
+      final direct = byInstallment[preview.number];
       LoanInstallmentStatus status;
-      double installmentPaid = 0;
+      String? paymentId;
 
-      if (paymentPool + 0.009 >= preview.amount) {
+      if (direct != null) {
         status = LoanInstallmentStatus.paid;
-        installmentPaid = preview.amount;
-        paymentPool -= preview.amount;
+        paymentId = direct.id;
         paidCount++;
-        paidAmount += preview.amount;
-      } else if (dueDay.isBefore(today)) {
-        status = LoanInstallmentStatus.overdue;
-        overdueCount++;
-        nextDue ??= preview.dueDate;
+        paidAmount += LoanSimulator.parseAmount(direct.amount) ?? preview.amount;
       } else {
-        status = LoanInstallmentStatus.pending;
-        nextDue ??= preview.dueDate;
+        while (legacyPoolAmount + 0.009 < preview.amount &&
+            legacyIndex < legacyPool.length) {
+          legacyPoolAmount += LoanSimulator.parseAmount(
+                legacyPool[legacyIndex].amount,
+              ) ??
+              0;
+          legacyIndex++;
+        }
+
+        if (legacyPoolAmount + 0.009 >= preview.amount) {
+          status = LoanInstallmentStatus.paid;
+          legacyPoolAmount -= preview.amount;
+          paidCount++;
+          paidAmount += preview.amount;
+        } else if (dueDay.isBefore(today)) {
+          status = LoanInstallmentStatus.overdue;
+          overdueCount++;
+          nextDue ??= preview.dueDate;
+        } else {
+          status = LoanInstallmentStatus.pending;
+          nextDue ??= preview.dueDate;
+        }
       }
 
       items.add(
@@ -99,7 +117,8 @@ abstract final class LoanScheduleBuilder {
           dueDate: preview.dueDate,
           amount: preview.amount,
           status: status,
-          paidAmount: installmentPaid,
+          paidAmount: status == LoanInstallmentStatus.paid ? preview.amount : 0,
+          paymentId: paymentId,
         ),
       );
     }
@@ -167,6 +186,8 @@ abstract final class LoanScheduleBuilder {
       nextDueDate: detail.overview.nextDueDate,
     );
   }
+
+  static String amountToStorage(double value) => value.toStringAsFixed(2);
 
   static DateTime? _paymentDate(Payment payment) {
     if (payment.paymentDate != null) {
