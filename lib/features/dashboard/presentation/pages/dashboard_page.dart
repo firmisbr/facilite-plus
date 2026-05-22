@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/attention_lucide_icon.dart';
 import '../../../../shared/widgets/extended_brand_logo.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../loans/domain/loan_simulator.dart';
@@ -583,8 +584,8 @@ class _DashboardAlertCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: AppDecorations.iconBadge(color: AppColors.error),
-            child: const Icon(
-              LucideIcons.triangle_alert,
+            child: const AttentionLucideIcon(
+              icon: LucideIcons.triangle_alert,
               size: 22,
               color: AppColors.error,
             ),
@@ -718,11 +719,17 @@ class _UpcomingDueTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: AppDecorations.iconBadge(color: accent),
-            child: Icon(
-              isOverdue ? LucideIcons.triangle_alert : LucideIcons.calendar,
-              size: 20,
-              color: accent,
-            ),
+            child: isOverdue
+                ? const AttentionLucideIcon(
+                    icon: LucideIcons.triangle_alert,
+                    size: 20,
+                    color: AppColors.error,
+                  )
+                : Icon(
+                    LucideIcons.calendar,
+                    size: 20,
+                    color: accent,
+                  ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(

@@ -4,6 +4,64 @@ import 'loan_schedule_builder.dart';
 
 enum LoanListFilter { ativos, todos, quitados, atrasados }
 
+class LoanPortfolioCounts {
+  const LoanPortfolioCounts({
+    required this.total,
+    required this.ativos,
+    required this.atrasados,
+    required this.quitados,
+  });
+
+  final int total;
+  final int ativos;
+  final int atrasados;
+  final int quitados;
+
+  static LoanPortfolioCounts compute({
+    required List<LoanWithClient> items,
+    required List<Payment> payments,
+    DateTime? asOf,
+  }) {
+    var ativos = 0;
+    var atrasados = 0;
+    var quitados = 0;
+
+    for (final item in items) {
+      if (LoanListFilterHelper.matches(
+        item: item,
+        payments: payments,
+        filter: LoanListFilter.ativos,
+        asOf: asOf,
+      )) {
+        ativos++;
+      }
+      if (LoanListFilterHelper.matches(
+        item: item,
+        payments: payments,
+        filter: LoanListFilter.atrasados,
+        asOf: asOf,
+      )) {
+        atrasados++;
+      }
+      if (LoanListFilterHelper.matches(
+        item: item,
+        payments: payments,
+        filter: LoanListFilter.quitados,
+        asOf: asOf,
+      )) {
+        quitados++;
+      }
+    }
+
+    return LoanPortfolioCounts(
+      total: items.length,
+      ativos: ativos,
+      atrasados: atrasados,
+      quitados: quitados,
+    );
+  }
+}
+
 class LoanScheduleFlags {
   const LoanScheduleFlags({
     required this.isQuitado,
@@ -62,6 +120,29 @@ abstract final class LoanListFilterHelper {
       LoanListFilter.quitados => f.isQuitado,
       LoanListFilter.atrasados => f.hasOverdue && f.hasOpenInstallments,
     };
+  }
+
+  static List<LoanWithClient> search({
+    required List<LoanWithClient> items,
+    required String query,
+  }) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return items;
+
+    return items.where((item) {
+      final loan = item.loan;
+      final amount = loan.amount.replaceAll(RegExp(r'[^\d,.]'), '');
+      final haystack = [
+        item.clientName,
+        loan.amount,
+        amount,
+        loan.status ?? '',
+        if (loan.installments != null) '${loan.installments}',
+        loan.periodicity ?? '',
+      ].join(' ').toLowerCase();
+
+      return haystack.contains(q);
+    }).toList();
   }
 
   static List<LoanWithClient> apply({

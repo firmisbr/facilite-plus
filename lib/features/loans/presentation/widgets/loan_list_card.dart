@@ -47,19 +47,10 @@ class LoanListCard extends ConsumerWidget {
             ? AppColors.success
             : AppColors.accent;
 
-    final nextInstallment = summary?.nextInstallmentNumber;
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(
-          nextInstallment != null
-              ? AppRoutes.loanDetail(
-                  loan.id,
-                  highlightInstallment: nextInstallment,
-                )
-              : AppRoutes.loanDetail(loan.id),
-        ),
+        onTap: () => context.push(AppRoutes.loanDetail(loan.id)),
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         child: Ink(
           decoration: BoxDecoration(
