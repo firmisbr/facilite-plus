@@ -188,9 +188,10 @@ abstract final class LoanScheduleBuilder {
 
     LoanInstallmentItem? nextOpen;
     for (final installment in detail.installments) {
-      if (!installment.isPaid) {
+      if (installment.isPaid) continue;
+      if (nextOpen == null ||
+          installment.dueDate.isBefore(nextOpen.dueDate)) {
         nextOpen = installment;
-        break;
       }
     }
 
@@ -198,6 +199,7 @@ abstract final class LoanScheduleBuilder {
       paidInstallments: detail.overview.paidInstallments,
       totalInstallments: detail.overview.totalInstallments,
       nextDueDate: nextOpen?.dueDate ?? detail.overview.nextDueDate,
+      nextInstallmentNumber: nextOpen?.number,
       isNextDueOverdue:
           nextOpen?.status == LoanInstallmentStatus.overdue,
       overdueInstallments: detail.overview.overdueInstallments,

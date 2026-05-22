@@ -103,6 +103,7 @@ class LoanCardSummary {
     required this.paidInstallments,
     required this.totalInstallments,
     this.nextDueDate,
+    this.nextInstallmentNumber,
     this.isNextDueOverdue = false,
     this.overdueInstallments = 0,
   });
@@ -110,6 +111,7 @@ class LoanCardSummary {
   final int paidInstallments;
   final int totalInstallments;
   final DateTime? nextDueDate;
+  final int? nextInstallmentNumber;
   final bool isNextDueOverdue;
   final int overdueInstallments;
 
