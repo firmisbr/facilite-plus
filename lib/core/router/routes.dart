@@ -11,6 +11,7 @@ abstract final class AppRoutes {
   static const settings = '/settings';
 
   /// Clientes (dentro do shell — aba Configurações)
+  static const backup = '/settings/backup';
   static const clients = '/settings/clients';
   static const clientNew = '/settings/clients/new';
   static String clientEdit(String id) => '/settings/clients/$id';

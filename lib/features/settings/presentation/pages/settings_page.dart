@@ -176,17 +176,8 @@ class SettingsPage extends ConsumerWidget {
                             icon: LucideIcons.hard_drive,
                             title: 'Backup',
                             subtitle:
-                                'Em breve — cópia de segurança e restauração',
-                            iconColor: context.appTheme.textSecondary,
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Backup em desenvolvimento — próximo passo do app.',
-                                  ),
-                                ),
-                              );
-                            },
+                                'Salvar e restaurar clientes, empréstimos e pagamentos',
+                            onTap: () => context.push(AppRoutes.backup),
                           ),
                         ],
                       ),
@@ -334,8 +325,8 @@ class _SettingsCloudHintCard extends StatelessWidget {
           Expanded(
             child: Text(
               'Na mesma conta, com internet, seus dados aparecem em qualquer '
-              'celular após sincronizar. O backup (em breve) é uma cópia extra '
-              'de segurança.',
+              'celular após sincronizar. O backup é uma cópia extra de '
+              'segurança em arquivo.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: context.appTheme.textSecondary,
                     height: 1.45,
