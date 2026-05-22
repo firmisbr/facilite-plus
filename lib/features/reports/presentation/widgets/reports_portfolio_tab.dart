@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../loans/domain/loan_simulator.dart';
 import '../../domain/reports_portfolio_overview.dart';
+import 'reports_received_pending_chart.dart';
 import 'reports_shared_sections.dart';
 
 /// Aba Visão geral — métricas da carteira ativa (sem filtro de período).
@@ -42,6 +43,14 @@ class ReportsPortfolioTab extends StatelessWidget {
       children: [
         _PortfolioHeroCard(overview: overview),
         const SizedBox(height: AppSpacing.md),
+        ReportSection(
+          title: 'Recebido vs. Pendente',
+          icon: LucideIcons.chart_pie,
+          child: ReportsReceivedPendingChart(
+            received: overview.totalReceived,
+            pending: overview.totalRemaining,
+          ),
+        ),
         ReportSection(
           title: 'Indicadores',
           icon: LucideIcons.percent,
