@@ -13,6 +13,7 @@ import '../../../loans/domain/loan_simulator.dart';
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../domain/payment_list_filter.dart';
 import '../../domain/payments_overview.dart';
+import '../providers/payments_overview_filter_provider.dart';
 import '../providers/payments_overview_providers.dart';
 import '../providers/payments_providers.dart';
 import '../widgets/payment_list_card.dart';
@@ -33,9 +34,22 @@ class _PaymentsOverviewPageState extends ConsumerState<PaymentsOverviewPage> {
   final _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _consumePendingFilter());
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _consumePendingFilter() {
+    final pending = ref.read(paymentsOverviewFilterRequestProvider);
+    if (pending == null || !mounted) return;
+    setState(() => _filter = pending);
+    ref.read(paymentsOverviewFilterRequestProvider.notifier).state = null;
   }
 
   void _toggleFilter(PaymentListFilter filter) {
@@ -46,6 +60,14 @@ class _PaymentsOverviewPageState extends ConsumerState<PaymentsOverviewPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<PaymentListFilter?>(
+      paymentsOverviewFilterRequestProvider,
+      (previous, next) {
+        if (next == null) return;
+        _consumePendingFilter();
+      },
+    );
+
     final brightness = Theme.of(context).brightness;
 
     final body = DecoratedBox(

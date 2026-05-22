@@ -3,6 +3,9 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../payments/domain/payment_list_filter.dart';
+import '../../../payments/presentation/providers/payments_overview_filter_provider.dart';
+
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_decorations.dart';
@@ -17,10 +20,20 @@ import '../../../payments/presentation/providers/payments_providers.dart';
 import '../providers/dashboard_providers.dart';
 import '../../domain/dashboard_stats.dart';
 
+/// Índice da aba Cobranças no [StatefulNavigationShell].
+const _paymentsShellBranchIndex = 1;
+
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
   static const _logoHeight = 100.0;
+
+  static void _openOverdueCollections(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(paymentsOverviewFilterRequestProvider.notifier);
+    notifier.state = null;
+    notifier.state = PaymentListFilter.atrasados;
+    StatefulNavigationShell.of(context).goBranch(_paymentsShellBranchIndex);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -108,6 +121,10 @@ class DashboardPage extends ConsumerWidget {
                                       '${stats.overdueInstallments} parcela(s) em atraso',
                                   subtitle: LoanSimulator.formatMoney(
                                     stats.overdueAmount,
+                                  ),
+                                  onTap: () => _openOverdueCollections(
+                                    context,
+                                    ref,
                                   ),
                                 ),
                               ),
@@ -418,7 +435,8 @@ class _CashFlowRadarCard extends StatefulWidget {
 class _CashFlowRadarCardState extends State<_CashFlowRadarCard> {
   CashFlowGranularity _granularity = CashFlowGranularity.week;
 
-  static const _chartHeight = 112.0;
+  static const _chartHeight = 108.0;
+  static const _valueRowHeight = 36.0;
 
   @override
   Widget build(BuildContext context) {
@@ -431,14 +449,6 @@ class _CashFlowRadarCardState extends State<_CashFlowRadarCard> {
     final maxAmount = buckets
         .map((b) => b.amount)
         .fold<double>(0, (a, b) => a > b ? a : b);
-
-    final subtitle = switch (_granularity) {
-      CashFlowGranularity.day => 'Quanto pode entrar por dia (parcelas em aberto)',
-      CashFlowGranularity.week =>
-        'Quanto pode entrar por semana (parcelas em aberto)',
-      CashFlowGranularity.month =>
-        'Quanto pode entrar por mês (parcelas em aberto)',
-    };
 
     return _DashboardSurfaceCard(
       padding: const EdgeInsets.fromLTRB(
@@ -475,35 +485,42 @@ class _CashFlowRadarCardState extends State<_CashFlowRadarCard> {
           ),
           if (insight != null) ...[
             const SizedBox(height: AppSpacing.md),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Icon(
                   LucideIcons.sparkles,
                   size: 16,
                   color: AppColors.premium,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    insight,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          height: 1.45,
-                          color: context.appTheme.textSecondary,
-                        ),
-                  ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  insight,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        height: 1.45,
+                        color: context.appTheme.textSecondary,
+                      ),
                 ),
               ],
             ),
           ],
           const SizedBox(height: AppSpacing.md),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: context.appTheme.textSecondary,
-                ),
+          SizedBox(
+            height: _valueRowHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var i = 0; i < buckets.length; i++) ...[
+                  if (i > 0) const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: _CashFlowAmountLabel(bucket: buckets[i]),
+                  ),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.xs),
           SizedBox(
             height: _chartHeight,
             child: Row(
@@ -527,6 +544,40 @@ class _CashFlowRadarCardState extends State<_CashFlowRadarCard> {
   }
 }
 
+class _CashFlowAmountLabel extends StatelessWidget {
+  const _CashFlowAmountLabel({required this.bucket});
+
+  final CashFlowBucket bucket;
+
+  @override
+  Widget build(BuildContext context) {
+    if (bucket.amount <= 0) return const SizedBox.shrink();
+
+    final color = bucket.isOverdue
+        ? AppColors.error
+        : bucket.isCurrentPeriod
+            ? AppColors.accent
+            : AppColors.premium;
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          LoanSimulator.formatMoney(bucket.amount),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: color,
+                height: 1.1,
+              ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CashFlowColumn extends StatelessWidget {
   const _CashFlowColumn({
     required this.bucket,
@@ -544,74 +595,71 @@ class _CashFlowColumn extends StatelessWidget {
             ? AppColors.accent
             : AppColors.premium;
 
-    final barFlex = maxAmount <= 0
-        ? 1
-        : (bucket.amount / maxAmount * 100).round().clamp(4, 100);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = AppSpacing.sm;
+        final footerHeight = bucket.installmentCount > 0 ? 30.0 : 18.0;
+        final barMaxHeight =
+            (constraints.maxHeight - footerHeight - gap).clamp(4.0, 72.0);
+        final barHeight = maxAmount <= 0 || bucket.amount <= 0
+            ? 4.0
+            : (bucket.amount / maxAmount * barMaxHeight)
+                .clamp(4.0, barMaxHeight);
 
-    return Column(
-      children: [
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (bucket.amount > 0)
-                Text(
-                  LoanSimulator.formatMoney(bucket.amount),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Container(
+              width: 24,
+              height: barHeight,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    color.withValues(alpha: 0.35),
+                    color.withValues(alpha: 0.9),
+                  ],
                 ),
-              const SizedBox(height: 2),
-              Expanded(
-                flex: barFlex,
-                child: Center(
-                  child: Container(
-                    width: 24,
-                    decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(AppSpacing.radiusSm),
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          color.withValues(alpha: 0.35),
-                          color.withValues(alpha: 0.9),
-                        ],
-                      ),
-                    ),
+              ),
+            ),
+            const SizedBox(height: gap),
+            SizedBox(
+              height: footerHeight,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Text(
+                    bucket.label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: bucket.isCurrentPeriod
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          fontSize: 9,
+                          height: 1.15,
+                          color: bucket.isOverdue ? AppColors.error : null,
+                        ),
                   ),
-                ),
+                  if (bucket.installmentCount > 0)
+                    Text(
+                      '${bucket.installmentCount} parc.',
+                      maxLines: 1,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontSize: 8,
+                            height: 1.1,
+                            color: context.appTheme.textSecondary,
+                          ),
+                    ),
+                ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          bucket.label,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontWeight:
-                    bucket.isCurrentPeriod ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 10,
-                color: bucket.isOverdue ? AppColors.error : null,
-              ),
-        ),
-        if (bucket.installmentCount > 0)
-          Text(
-            '${bucket.installmentCount} parc.',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontSize: 9,
-                  color: context.appTheme.textSecondary,
-                ),
-          ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -620,14 +668,17 @@ class _DashboardAlertCard extends StatelessWidget {
   const _DashboardAlertCard({
     required this.title,
     required this.subtitle,
+    required this.onTap,
   });
 
   final String title;
   final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return _DashboardSurfaceCard(
+      onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: [
@@ -661,6 +712,11 @@ class _DashboardAlertCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          Icon(
+            LucideIcons.chevron_right,
+            size: 20,
+            color: context.appTheme.textSecondary,
           ),
         ],
       ),
