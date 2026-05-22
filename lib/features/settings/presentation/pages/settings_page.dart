@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../features/auth/presentation/providers/auth_controller.dart';
+import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
-import '../../../../shared/widgets/app_card.dart';
-import '../../../../shared/widgets/app_page_header.dart';
+import '../../../../services/sync/sync_queue_summary.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
-import '../../../../shared/widgets/app_page_scaffold.dart';
 import '../../../../shared/widgets/sync_feedback.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -20,100 +21,290 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncSummary = ref.watch(syncQueueSummaryProvider);
+    final session = ref.watch(sessionProvider).valueOrNull;
     final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final brightness = Theme.of(context).brightness;
 
-    return AppPageScaffold(
-      title: 'Configurações',
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: kBottomNavReservedHeight + AppSpacing.lg),
-        children: [
-          const AppPageHeader(
-            title: 'Ajustes do app',
-            subtitle: 'Sincronização, aparência e conta.',
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Column(
-              children: [
-                _SettingsTile(
-                  icon: Icons.people_outline,
-                  title: 'Clientes',
-                  subtitle: 'Lista, cadastro e edição',
-                  onTap: () => context.push(AppRoutes.clients),
+    return Scaffold(
+      extendBody: true,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: AppDecorations.screenBackground(brightness),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.md,
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                      ),
+                      child: _SettingsAccountCard(
+                        email: session?.user.email ?? 'Conta ativa',
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                syncSummary.when(
-                  data: (summary) {
-                    if (summary.total <= 0) return const SizedBox.shrink();
-                    final color =
-                        summary.hasFailures ? AppColors.error : AppColors.accent;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: AppCard(
-                        accent: summary.hasFailures
-                            ? AppCardAccent.error
-                            : AppCardAccent.primary,
-                        child: Row(
-                          children: [
-                            Icon(
-                              summary.hasFailures
-                                  ? Icons.cloud_off_outlined
-                                  : Icons.cloud_upload_outlined,
-                              color: color,
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                      ),
+                      child: const _SettingsSectionLabel(title: 'Nuvem'),
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      child: Column(
+                        children: [
+                          const _SettingsCloudHintCard(),
+                          const SizedBox(height: AppSpacing.sm),
+                          syncSummary.when(
+                            data: (summary) => _SyncStatusCard(
+                              summary: summary,
                             ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Text(
-                                summary.hasFailures
-                                    ? summary.hasPending
-                                        ? '${summary.pending} pendente(s), ${summary.failed} com erro'
-                                        : '${summary.failed} erro(s) na fila'
-                                    : '${summary.pending} alteração(ões) aguardando envio',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: color,
+                            loading: () => const _SettingsSurfaceCard(
+                              child: Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(AppSpacing.lg),
+                                  child: SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
                                     ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                            error: (_, _) => const SizedBox.shrink(),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _SettingsActionTile(
+                            icon: LucideIcons.refresh_cw,
+                            title: 'Sincronizar agora',
+                            subtitle:
+                                'Envia alterações locais e baixa dados da nuvem',
+                            onTap: () async {
+                              final container =
+                                  ProviderScope.containerOf(context);
+                              final messenger =
+                                  ScaffoldMessenger.of(context);
+                              final result = await runFullSync(container);
+                              ref.invalidate(syncQueueSummaryProvider);
+                              if (context.mounted) {
+                                showSyncSnackBarWithMessenger(
+                                  messenger,
+                                  result,
+                                );
+                              }
+                            },
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, _) => const SizedBox.shrink(),
+                    ),
+                  ),
                 ),
-                _SettingsTile(
-                  icon: Icons.sync_rounded,
-                  title: 'Sincronizar agora',
-                  subtitle: 'Envia alterações locais para a nuvem',
-                  onTap: () async {
-                    final container = ProviderScope.containerOf(context);
-                    final messenger = ScaffoldMessenger.of(context);
-                    final result = await runFullSync(container);
-                    ref.invalidate(syncQueueSummaryProvider);
-                    if (context.mounted) {
-                      showSyncSnackBarWithMessenger(messenger, result);
-                    }
-                  },
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                      ),
+                      child: const _SettingsSectionLabel(title: 'Dados'),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                _SettingsTile(
-                  icon: isDark
-                      ? Icons.light_mode_outlined
-                      : Icons.dark_mode_outlined,
-                  title: isDark ? 'Tema claro' : 'Tema escuro',
-                  subtitle: 'Alternar aparência do aplicativo',
-                  onTap: () =>
-                      ref.read(themeModeProvider.notifier).toggle(),
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      child: Column(
+                        children: [
+                          _SettingsActionTile(
+                            icon: LucideIcons.users,
+                            title: 'Clientes',
+                            subtitle: 'Cadastro, edição e histórico',
+                            onTap: () => context.push(AppRoutes.clients),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _SettingsActionTile(
+                            icon: LucideIcons.hard_drive,
+                            title: 'Backup',
+                            subtitle:
+                                'Em breve — cópia de segurança e restauração',
+                            iconColor: context.appTheme.textSecondary,
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Backup em desenvolvimento — próximo passo do app.',
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                _SettingsTile(
-                  icon: Icons.logout_rounded,
-                  title: 'Sair da conta',
-                  subtitle: 'Encerrar sessão neste dispositivo',
-                  iconColor: AppColors.error,
-                  onTap: () =>
-                      ref.read(authControllerProvider.notifier).signOut(),
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                      ),
+                      child: const _SettingsSectionLabel(title: 'Aparência'),
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      child: _SettingsActionTile(
+                        icon: isDark
+                            ? LucideIcons.sun
+                            : LucideIcons.moon,
+                        title: isDark ? 'Tema claro' : 'Tema escuro',
+                        subtitle: 'Alternar aparência do aplicativo',
+                        onTap: () =>
+                            ref.read(themeModeProvider.notifier).toggle(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        kBottomNavReservedHeight + AppSpacing.lg,
+                      ),
+                      child: _SettingsActionTile(
+                        icon: LucideIcons.log_out,
+                        title: 'Sair da conta',
+                        subtitle: 'Encerrar sessão neste dispositivo',
+                        iconColor: AppColors.error,
+                        titleColor: AppColors.error,
+                        onTap: () =>
+                            ref.read(authControllerProvider.notifier).signOut(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsAccountCard extends StatelessWidget {
+  const _SettingsAccountCard({required this.email});
+
+  final String email;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsSurfaceCard(
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: AppDecorations.iconBadge(color: AppColors.accent),
+            child: const Icon(
+              LucideIcons.user,
+              size: 22,
+              color: AppColors.accent,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Configurações',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  email,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: context.appTheme.textSecondary,
+                      ),
                 ),
               ],
             ),
@@ -124,13 +315,119 @@ class SettingsPage extends ConsumerWidget {
   }
 }
 
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
+class _SettingsCloudHintCard extends StatelessWidget {
+  const _SettingsCloudHintCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsSurfaceCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            LucideIcons.cloud,
+            size: 20,
+            color: AppColors.info,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Na mesma conta, com internet, seus dados aparecem em qualquer '
+              'celular após sincronizar. O backup (em breve) é uma cópia extra '
+              'de segurança.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: context.appTheme.textSecondary,
+                    height: 1.45,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SyncStatusCard extends StatelessWidget {
+  const _SyncStatusCard({required this.summary});
+
+  final SyncQueueSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    if (summary.total <= 0) {
+      return _SettingsSurfaceCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: AppDecorations.iconBadge(color: AppColors.success),
+              child: const Icon(
+                LucideIcons.cloud_check,
+                size: 20,
+                color: AppColors.success,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                'Tudo sincronizado com a nuvem',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.success,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final color = summary.hasFailures ? AppColors.error : AppColors.accent;
+    final icon = summary.hasFailures
+        ? LucideIcons.cloud_off
+        : LucideIcons.cloud_upload;
+    final message = summary.hasFailures
+        ? summary.hasPending
+            ? '${summary.pending} pendente(s), ${summary.failed} com erro'
+            : '${summary.failed} erro(s) na fila'
+        : '${summary.pending} alteração(ões) aguardando envio';
+
+    return _SettingsSurfaceCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: AppDecorations.iconBadge(color: color),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsActionTile extends StatelessWidget {
+  const _SettingsActionTile({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
     this.iconColor,
+    this.titleColor,
   });
 
   final IconData icon;
@@ -138,22 +435,21 @@ class _SettingsTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final Color? iconColor;
+  final Color? titleColor;
 
   @override
   Widget build(BuildContext context) {
     final accent = iconColor ?? AppColors.accent;
 
-    return AppCard(
+    return _SettingsSurfaceCard(
       onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            ),
-            child: Icon(icon, color: accent),
+            decoration: AppDecorations.iconBadge(color: accent),
+            child: Icon(icon, size: 20, color: accent),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -163,23 +459,144 @@ class _SettingsTile extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
+                        color: titleColor,
                       ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   subtitle,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: context.appTheme.textSecondary,
+                        height: 1.35,
+                      ),
                 ),
               ],
             ),
           ),
           Icon(
-            Icons.chevron_right_rounded,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            LucideIcons.chevron_right,
+            size: 20,
+            color: context.appTheme.textSecondary,
           ),
         ],
       ),
     );
   }
+}
+
+class _SettingsSurfaceCard extends StatelessWidget {
+  const _SettingsSurfaceCard({
+    required this.child,
+    this.onTap,
+    this.padding = const EdgeInsets.all(AppSpacing.lg),
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        border: Border.all(color: context.appTheme.border),
+        boxShadow: context.appTheme.cardShadow,
+      ),
+      child: child,
+    );
+
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        child: content,
+      ),
+    );
+  }
+}
+
+class _SettingsSectionLabel extends StatelessWidget {
+  const _SettingsSectionLabel({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final lineColor = context.appTheme.border;
+    final titleStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+        );
+
+    return Row(
+      children: [
+        Expanded(child: _DashedDividerLine(color: lineColor)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Text(title, style: titleStyle),
+        ),
+        Expanded(child: _DashedDividerLine(color: lineColor)),
+      ],
+    );
+  }
+}
+
+class _DashedDividerLine extends StatelessWidget {
+  const _DashedDividerLine({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          height: 20,
+          width: constraints.maxWidth,
+          child: Center(
+            child: CustomPaint(
+              size: Size(constraints.maxWidth, 1),
+              painter: _DashedLinePainter(color: color),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  _DashedLinePainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+
+    const dashWidth = 5.0;
+    const dashSpace = 4.0;
+    var x = 0.0;
+    final y = size.height / 2;
+
+    while (x < size.width) {
+      final end = (x + dashWidth).clamp(0.0, size.width);
+      canvas.drawLine(Offset(x, y), Offset(end, y), paint);
+      x += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
