@@ -176,7 +176,7 @@ class SettingsPage extends ConsumerWidget {
                             icon: LucideIcons.hard_drive,
                             title: 'Backup',
                             subtitle:
-                                'Salvar e restaurar clientes, empréstimos e pagamentos',
+                                'Exportar com PIN ou importar em outra conta',
                             onTap: () => context.push(AppRoutes.backup),
                           ),
                         ],

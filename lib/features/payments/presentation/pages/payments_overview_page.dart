@@ -7,6 +7,7 @@ import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/utils/whatsapp_utils.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/attention_lucide_icon.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../loans/domain/loan_simulator.dart';
@@ -89,6 +90,22 @@ class _PaymentsOverviewPageState extends ConsumerState<PaymentsOverviewPage> {
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
+                    if (widget.inShell)
+                      SliverToBoxAdapter(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: const AppPageHeader(
+                              title: 'Cobranças',
+                              subtitle:
+                                  'Parcelas em aberto e contatos por cliente.',
+                              centered: true,
+                            ),
+                          ),
+                        ),
+                      ),
                     SliverToBoxAdapter(
                       child: Center(
                         child: ConstrainedBox(
@@ -96,9 +113,9 @@ class _PaymentsOverviewPageState extends ConsumerState<PaymentsOverviewPage> {
                             maxWidth: AppSpacing.maxContentWidth,
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(
+                            padding: EdgeInsets.fromLTRB(
                               AppSpacing.lg,
-                              AppSpacing.md,
+                              widget.inShell ? 0 : AppSpacing.md,
                               AppSpacing.lg,
                               AppSpacing.sm,
                             ),

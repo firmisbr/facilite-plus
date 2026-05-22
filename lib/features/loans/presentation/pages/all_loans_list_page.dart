@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../domain/loan_list_filter.dart';
@@ -64,10 +65,25 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
                       constraints: const BoxConstraints(
                         maxWidth: AppSpacing.maxContentWidth,
                       ),
+                      child: const AppPageHeader(
+                        title: 'Empréstimos',
+                        subtitle:
+                            'Carteira completa: ativos, atrasados e quitados.',
+                        centered: true,
+                      ),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppSpacing.maxContentWidth,
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(
                           AppSpacing.lg,
-                          AppSpacing.md,
+                          0,
                           AppSpacing.lg,
                           AppSpacing.sm,
                         ),

@@ -13,7 +13,9 @@ import '../../../features/loans/domain/entities/loan.dart';
 import '../../../features/payments/domain/entities/payment.dart';
 import '../../../services/database/drift/app_database.dart';
 import '../../../services/sync/sync_queue_repository.dart';
+import 'backup_downloads_storage.dart';
 import '../domain/backup_snapshot.dart';
+import '../domain/backup_transfer_pin.dart';
 
 class BackupService {
   BackupService({
@@ -28,7 +30,15 @@ class BackupService {
   Future<BackupSnapshot> buildSnapshot({
     required String userId,
     String? userEmail,
+    String? transferPin,
   }) async {
+    String? pinSalt;
+    String? pinHash;
+    if (transferPin != null) {
+      final pinData = BackupTransferPin.createForExport(transferPin);
+      pinSalt = pinData.salt;
+      pinHash = pinData.hash;
+    }
     final clientRows = await (_db.select(_db.clientsTable)
           ..where((c) => c.userId.equals(userId)))
         .get();
@@ -53,6 +63,8 @@ class BackupService {
       exportedAt: DateTime.now().toUtc().toIso8601String(),
       userId: userId,
       userEmail: userEmail,
+      transferPinSalt: pinSalt,
+      transferPinHash: pinHash,
       clients: clientRows.map(_clientToMap).toList(),
       loans: loanRows.map(_loanToMap).toList(),
       payments: paymentRows.map(_paymentToMap).toList(),
@@ -62,20 +74,30 @@ class BackupService {
   Future<BackupExportFile> exportToFile({
     required String userId,
     String? userEmail,
+    required String transferPin,
   }) async {
-    final snapshot = await buildSnapshot(userId: userId, userEmail: userEmail);
+    final snapshot = await buildSnapshot(
+      userId: userId,
+      userEmail: userEmail,
+      transferPin: transferPin,
+    );
     final dir = await getTemporaryDirectory();
     final stamp = DateFormat('yyyy-MM-dd_HHmm').format(DateTime.now());
     final fileName = 'facilite-backup_$stamp.json';
     final filePath = p.join(dir.path, fileName);
-    final file = File(filePath);
-    await file.writeAsString(
+    final jsonBytes = utf8.encode(
       const JsonEncoder.withIndent('  ').convert(snapshot.toJson()),
+    );
+    await File(filePath).writeAsBytes(jsonBytes);
+    final downloadsPath = await BackupDownloadsStorage.saveJsonFile(
+      fileName: fileName,
+      bytes: jsonBytes,
     );
     return BackupExportFile(
       snapshot: snapshot,
       filePath: filePath,
       fileName: fileName,
+      downloadsPath: downloadsPath,
     );
   }
 
@@ -96,9 +118,18 @@ class BackupService {
   Future<BackupRestoreSummary> restoreSnapshot({
     required BackupSnapshot snapshot,
     required String currentUserId,
+    bool importToCurrentAccount = false,
+    String? transferPin,
     bool enqueueCloudSync = true,
   }) async {
-    snapshot.validateForRestore(currentUserId: currentUserId);
+    if (importToCurrentAccount) {
+      if (transferPin == null) {
+        throw BackupException('Informe o PIN do backup.');
+      }
+      snapshot.validateForCrossAccountImport(pin: transferPin);
+    } else {
+      snapshot.validateForSameAccountRestore(currentUserId: currentUserId);
+    }
 
     await _db.transaction(() async {
       await _clearUserData(currentUserId);
@@ -124,6 +155,8 @@ class BackupService {
       clients: snapshot.clients.length,
       loans: snapshot.loans.length,
       payments: snapshot.payments.length,
+      importedFromOtherAccount: importToCurrentAccount,
+      sourceUserEmail: importToCurrentAccount ? snapshot.userEmail : null,
     );
   }
 
