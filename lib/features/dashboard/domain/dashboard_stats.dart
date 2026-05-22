@@ -59,8 +59,6 @@ class DashboardStats {
 }
 
 abstract final class DashboardStatsBuilder {
-  static const _upcomingDays = 14;
-
   static DashboardStats build({
     required List<LoanWithClient> loans,
     required List<Payment> payments,
@@ -69,8 +67,6 @@ abstract final class DashboardStatsBuilder {
     if (loans.isEmpty) return DashboardStats.empty;
 
     final now = asOf ?? DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final horizon = today.add(const Duration(days: _upcomingDays));
 
     final paymentsByLoan = <String, List<Payment>>{};
     for (final payment in payments) {
@@ -111,6 +107,7 @@ abstract final class DashboardStatsBuilder {
       expectedProfit += detail.manager.totalProfit;
       overdueInstallments += detail.overview.overdueInstallments;
 
+      LoanInstallmentItem? nextOpen;
       for (final installment in detail.installments) {
         if (installment.status == LoanInstallmentStatus.overdue) {
           overdueAmount += installment.amount;
@@ -118,28 +115,23 @@ abstract final class DashboardStatsBuilder {
 
         if (installment.isPaid) continue;
 
-        final dueDay = DateTime(
-          installment.dueDate.year,
-          installment.dueDate.month,
-          installment.dueDate.day,
-        );
-
-        final isOverdue = installment.status == LoanInstallmentStatus.overdue;
-        final withinHorizon =
-            !dueDay.isAfter(horizon) || isOverdue;
-
-        if (withinHorizon) {
-          upcoming.add(
-            UpcomingDueItem(
-              loanId: item.loan.id,
-              clientName: item.clientName,
-              installmentNumber: installment.number,
-              dueDate: installment.dueDate,
-              amount: installment.amount,
-              isOverdue: isOverdue,
-            ),
-          );
+        if (nextOpen == null ||
+            installment.dueDate.isBefore(nextOpen.dueDate)) {
+          nextOpen = installment;
         }
+      }
+
+      if (nextOpen != null) {
+        upcoming.add(
+          UpcomingDueItem(
+            loanId: item.loan.id,
+            clientName: item.clientName,
+            installmentNumber: nextOpen.number,
+            dueDate: nextOpen.dueDate,
+            amount: nextOpen.amount,
+            isOverdue: nextOpen.status == LoanInstallmentStatus.overdue,
+          ),
+        );
       }
     }
 
@@ -157,7 +149,7 @@ abstract final class DashboardStatsBuilder {
       expectedProfit: expectedProfit,
       overdueInstallments: overdueInstallments,
       overdueAmount: overdueAmount,
-      upcomingDues: upcoming.take(12).toList(),
+      upcomingDues: upcoming,
     );
   }
 }

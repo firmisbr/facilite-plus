@@ -6,6 +6,7 @@ import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../providers/loans_providers.dart';
 import '../widgets/loan_list_card.dart';
 import '../../domain/entities/loan_with_client.dart';
@@ -39,7 +40,12 @@ class LoansListPage extends ConsumerWidget {
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              kBottomNavReservedHeight + AppSpacing.xxl + 48,
+            ),
             itemCount: loans.length,
             separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
             itemBuilder: (context, index) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,6 +10,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/app_page_scaffold.dart';
+import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../domain/client_list_entry.dart';
 import '../providers/clients_list_providers.dart';
 
@@ -35,11 +37,14 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
 
     return AppPageScaffold(
       title: 'Clientes',
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.clientNew),
-        icon: const Icon(Icons.add),
-        label: const Text('Novo cliente'),
-      ),
+      showBackButton: true,
+      actions: [
+        IconButton(
+          tooltip: 'Novo cliente',
+          icon: const Icon(LucideIcons.user_plus, size: 22),
+          onPressed: () => context.push(AppRoutes.clientNew),
+        ),
+      ],
       body: entriesAsync.when(
         data: (entries) {
           final filtered = filterClientEntries(entries, _query);
@@ -49,7 +54,7 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
               icon: Icons.people_outline,
               title: 'Nenhum cliente ainda',
               subtitle:
-                  'Toque no botão abaixo para cadastrar seu primeiro cliente.',
+                  'Use o botão no topo da tela para cadastrar seu primeiro cliente.',
             );
           }
 
@@ -103,7 +108,7 @@ class _ClientsListPageState extends ConsumerState<ClientsListPage> {
                     AppSpacing.lg,
                     0,
                     AppSpacing.lg,
-                    AppSpacing.xxl + 48,
+                    kBottomNavReservedHeight + AppSpacing.lg,
                   ),
                   sliver: SliverList.separated(
                     itemCount: filtered.length,

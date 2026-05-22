@@ -11,6 +11,7 @@ import '../../../../shared/utils/br_phone_input_formatter.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../providers/clients_providers.dart';
 
 class ClientFormPage extends ConsumerStatefulWidget {
@@ -197,7 +198,12 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          kBottomNavReservedHeight + AppSpacing.lg,
+        ),
         child: Center(
           child: ConstrainedBox(
             constraints:

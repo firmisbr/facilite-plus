@@ -134,6 +134,44 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 pageBuilder: (context, state) => const NoTransitionPage(
                   child: SettingsPage(),
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'clients',
+                    builder: (context, state) => const ClientsListPage(),
+                    routes: [
+                      GoRoute(
+                        path: 'new',
+                        builder: (context, state) => const ClientFormPage(),
+                      ),
+                      GoRoute(
+                        path: ':id',
+                        builder: (context, state) {
+                          final id = state.pathParameters['id']!;
+                          return ClientFormPage(clientId: id);
+                        },
+                        routes: [
+                          GoRoute(
+                            path: 'loans',
+                            builder: (context, state) {
+                              final clientId = state.pathParameters['id']!;
+                              return LoansListPage(clientId: clientId);
+                            },
+                            routes: [
+                              GoRoute(
+                                path: 'new',
+                                builder: (context, state) {
+                                  final clientId =
+                                      state.pathParameters['id']!;
+                                  return LoanCreatePage(clientId: clientId);
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
@@ -144,42 +182,27 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         redirect: (context, state) => AppRoutes.dashboard,
       ),
       GoRoute(
-        path: AppRoutes.clients,
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ClientsListPage(),
+        path: '/clients/new',
+        redirect: (context, state) => AppRoutes.clientNew,
       ),
       GoRoute(
-        path: AppRoutes.clientNew,
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ClientFormPage(),
+        path: '/clients/:id/loans/new',
+        redirect: (context, state) =>
+            AppRoutes.loanNew(state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/clients/:id/loans',
+        redirect: (context, state) =>
+            AppRoutes.clientLoans(state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/clients/:id',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return ClientFormPage(clientId: id);
-        },
-        routes: [
-          GoRoute(
-            path: 'loans',
-            parentNavigatorKey: _rootNavigatorKey,
-            builder: (context, state) {
-              final clientId = state.pathParameters['id']!;
-              return LoansListPage(clientId: clientId);
-            },
-            routes: [
-              GoRoute(
-                path: 'new',
-                parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) {
-                  final clientId = state.pathParameters['id']!;
-                  return LoanCreatePage(clientId: clientId);
-                },
-              ),
-            ],
-          ),
-        ],
+        redirect: (context, state) =>
+            AppRoutes.clientEdit(state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/clients',
+        redirect: (context, state) => AppRoutes.clients,
       ),
       GoRoute(
         path: AppRoutes.loanCreate,

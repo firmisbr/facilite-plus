@@ -10,18 +10,19 @@ abstract final class AppRoutes {
   static const loans = '/loans';
   static const settings = '/settings';
 
-  /// Stack (fora do shell)
-  static const clients = '/clients';
+  /// Clientes (dentro do shell — aba Configurações)
+  static const clients = '/settings/clients';
+  static const clientNew = '/settings/clients/new';
+  static String clientEdit(String id) => '/settings/clients/$id';
+  static String clientLoans(String clientId) => '/settings/clients/$clientId/loans';
+  static String loanNew(String clientId) =>
+      '/settings/clients/$clientId/loans/new';
 
   /// Legado: redireciona para [dashboard]
   static const home = '/home';
 
-  /// Telas em stack (sem drawer)
-  static const clientNew = '/clients/new';
-  static String clientEdit(String id) => '/clients/$id';
-  static String clientLoans(String clientId) => '/clients/$clientId/loans';
+  /// Telas em stack (fora do shell — sem barra inferior)
   static const loanCreate = '/loans/new';
-  static String loanNew(String clientId) => '/clients/$clientId/loans/new';
   static String loanDetail(String id) => '/loans/$id';
   static String loanEdit(String id) => '/loans/$id/edit';
   static String loanPayments(String loanId) => '/loans/$loanId/payments';

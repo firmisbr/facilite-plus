@@ -24,6 +24,54 @@ void main() {
     expect(stats.activeLoansCount, 1);
     expect(stats.totalLent, 1000);
     expect(stats.totalRemaining, 1000);
-    expect(stats.upcomingDues, isNotEmpty);
+    expect(stats.upcomingDues, hasLength(1));
+    expect(stats.upcomingDues.first.installmentNumber, 1);
+  });
+
+  test('lista proxima parcela de cada emprestimo ativo sem limite de dias', () {
+    const loanNear = Loan(
+      id: 'l1',
+      clientId: 'c1',
+      amount: '1000',
+      interest: '0',
+      installments: 2,
+      periodicity: 'mensal',
+      firstDueDate: '2026-06-01',
+      status: 'ativo',
+    );
+    const loanFar = Loan(
+      id: 'l2',
+      clientId: 'c2',
+      amount: '500',
+      interest: '0',
+      installments: 3,
+      periodicity: 'mensal',
+      firstDueDate: '2027-01-01',
+      status: 'ativo',
+    );
+    const loanDone = Loan(
+      id: 'l3',
+      clientId: 'c1',
+      amount: '200',
+      interest: '0',
+      installments: 1,
+      periodicity: 'mensal',
+      firstDueDate: '2025-01-01',
+      status: 'concluido',
+    );
+
+    final stats = DashboardStatsBuilder.build(
+      loans: [
+        LoanWithClient(loan: loanNear, clientName: 'Maria'),
+        LoanWithClient(loan: loanFar, clientName: 'João'),
+        LoanWithClient(loan: loanDone, clientName: 'Maria'),
+      ],
+      payments: const [],
+      asOf: DateTime(2026, 5, 25),
+    );
+
+    expect(stats.activeLoansCount, 2);
+    expect(stats.upcomingDues, hasLength(2));
+    expect(stats.upcomingDues.map((d) => d.loanId), containsAll(['l1', 'l2']));
   });
 }

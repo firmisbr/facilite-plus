@@ -1,295 +1,718 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../shared/widgets/floating_notched_nav_bar.dart';
-import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
-import '../../../../shared/widgets/app_metric_card.dart';
-import '../../../../shared/widgets/app_page_header.dart';
-import '../../../../shared/widgets/app_page_scaffold.dart';
-import '../../../../shared/widgets/app_section_title.dart';
+import '../../../../shared/widgets/extended_brand_logo.dart';
+import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../loans/domain/loan_simulator.dart';
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
 import '../providers/dashboard_providers.dart';
+import '../../domain/dashboard_stats.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
+  static const _logoHeight = 100.0;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(dashboardStatsProvider);
-
-    return AppPageScaffold(
-      title: 'Dashboard',
-      body: statsAsync.when(
-        data: (stats) {
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(allLoansProvider);
-              ref.invalidate(allPaymentsForUserProvider);
-              await Future<void>.delayed(const Duration(milliseconds: 400));
-            },
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                const SliverToBoxAdapter(
-                  child: AppPageHeader(
-                    title: 'Visão geral',
-                    subtitle:
-                        'Resumo dos empréstimos ativos e cobranças em aberto.',
-                  ),
-                ),
-                const SliverToBoxAdapter(child: _DashboardQuickActions()),
-                if (stats.activeLoansCount == 0)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: AppEmptyState(
-                      icon: Icons.dashboard_outlined,
-                      title: 'Comece por aqui',
-                      subtitle:
-                          'Use os atalhos acima para cadastrar cliente e empréstimo.',
-                    ),
-                  )
-                else ...[
-                if (stats.overdueInstallments > 0)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        0,
-                        AppSpacing.lg,
-                        AppSpacing.md,
-                      ),
-                      child: AppCard(
-                        accent: AppCardAccent.error,
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: _AlertBanner(
-                          icon: Icons.warning_amber_rounded,
-                          color: AppColors.error,
-                          title:
-                              '${stats.overdueInstallments} parcela(s) em atraso',
-                          subtitle:
-                              LoanSimulator.formatMoney(stats.overdueAmount),
+    final brightness = Theme.of(context).brightness;
+    return Scaffold(
+      extendBody: true,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: AppDecorations.screenBackground(brightness),
+        ),
+        child: SafeArea(
+          top: true,
+          bottom: false,
+          child: statsAsync.when(
+            data: (stats) {
+              return RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(allLoansProvider);
+                  ref.invalidate(allPaymentsForUserProvider);
+                  await Future<void>.delayed(
+                    const Duration(milliseconds: 400),
+                  );
+                },
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.xs,
+                          AppSpacing.lg,
+                          AppSpacing.sm,
+                        ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: const ExtendedBrandLogo(
+                              height: _logoHeight,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: AppSpacing.md,
-                      crossAxisSpacing: AppSpacing.md,
-                      childAspectRatio: 1.15,
-                    ),
-                    delegate: SliverChildListDelegate([
-                      AppMetricCard(
-                        icon: Icons.account_balance_wallet_outlined,
-                        label: 'Emprestado',
-                        value: LoanSimulator.formatMoney(stats.totalLent),
-                        subtitle: '${stats.activeLoansCount} ativo(s)',
-                      ),
-                      AppMetricCard(
-                        icon: Icons.payments_outlined,
-                        label: 'Recebido',
-                        value: LoanSimulator.formatMoney(stats.totalReceived),
-                        color: AppColors.success,
-                      ),
-                      AppMetricCard(
-                        icon: Icons.schedule_outlined,
-                        label: 'A receber',
-                        value: LoanSimulator.formatMoney(stats.totalRemaining),
-                      ),
-                      AppMetricCard(
-                        icon: Icons.trending_up_rounded,
-                        label: 'Lucro previsto',
-                        value: LoanSimulator.formatMoney(stats.expectedProfit),
-                        color: AppColors.premium,
-                        subtitle: 'Juros dos ativos',
-                      ),
-                    ]),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: AppSectionTitle(
-                    title: 'Próximos vencimentos',
-                    trailing: Text(
-                      '${stats.clientsCount} cliente(s)',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                ),
-                if (stats.upcomingDues.isEmpty)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                      child: AppCard(
-                        child: Text(
-                          'Nenhum vencimento nos próximos 14 dias.',
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      0,
-                      AppSpacing.lg,
-                    AppSpacing.xxl + kBottomNavReservedHeight,
-                  ),
-                    sliver: SliverList.separated(
-                      itemCount: stats.upcomingDues.length,
-                      separatorBuilder: (_, _) =>
-                          const SizedBox(height: AppSpacing.sm),
-                      itemBuilder: (context, index) {
-                        final due = stats.upcomingDues[index];
-                        return AppCard(
-                          onTap: () =>
-                              context.push(AppRoutes.loanDetail(due.loanId)),
-                          child: Row(
-                            children: [
-                              Icon(
-                                due.isOverdue
-                                    ? Icons.error_outline
-                                    : Icons.event_outlined,
-                                color: due.isOverdue
-                                    ? AppColors.error
-                                    : AppColors.accent,
+                    if (stats.activeLoansCount == 0)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.all(AppSpacing.lg),
+                              child: AppEmptyState(
+                                icon: LucideIcons.layout_dashboard,
+                                title: 'Comece por aqui',
+                                subtitle:
+                                    'Use o botão + na barra inferior para criar seu primeiro empréstimo.',
                               ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      due.clientName,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall,
-                                    ),
-                                    const SizedBox(height: AppSpacing.xs),
-                                    Text(
-                                      'Parcela ${due.installmentNumber} · '
-                                      '${LoanSimulator.formatDate(due.dueDate)}',
-                                      style:
-                                          Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                  ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else ...[
+                      if (stats.overdueInstallments > 0)
+                        SliverToBoxAdapter(
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: AppSpacing.maxContentWidth,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  AppSpacing.md,
+                                  AppSpacing.lg,
+                                  0,
+                                ),
+                                child: _DashboardAlertCard(
+                                  title:
+                                      '${stats.overdueInstallments} parcela(s) em atraso',
+                                  subtitle: LoanSimulator.formatMoney(
+                                    stats.overdueAmount,
+                                  ),
                                 ),
                               ),
-                              Text(
-                                LoanSimulator.formatMoney(due.amount),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                            ],
+                            ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ],
+                        ),
+                      SliverToBoxAdapter(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                AppSpacing.sm,
+                              ),
+                              child: _DashboardSummaryHero(stats: stats),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.md,
+                                AppSpacing.lg,
+                                AppSpacing.sm,
+                              ),
+                              child: const _DashboardSectionLabel(
+                                title: 'Indicadores',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.lg,
+                              ),
+                              child: GridView.count(
+                                crossAxisCount: 2,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                mainAxisSpacing: AppSpacing.md,
+                                crossAxisSpacing: AppSpacing.md,
+                                childAspectRatio: 1.08,
+                                children: [
+                                  _DashboardMetricTile(
+                                    icon: LucideIcons.banknote,
+                                    label: 'Emprestado',
+                                    value: LoanSimulator.formatMoney(
+                                      stats.totalLent,
+                                    ),
+                                    subtitle:
+                                        '${stats.activeLoansCount} ativo(s)',
+                                    color: AppColors.accent,
+                                  ),
+                                  _DashboardMetricTile(
+                                    icon: LucideIcons.circle_check,
+                                    label: 'Recebido',
+                                    value: LoanSimulator.formatMoney(
+                                      stats.totalReceived,
+                                    ),
+                                    color: AppColors.success,
+                                  ),
+                                  _DashboardMetricTile(
+                                    icon: LucideIcons.clock,
+                                    label: 'A receber',
+                                    value: LoanSimulator.formatMoney(
+                                      stats.totalRemaining,
+                                    ),
+                                  ),
+                                  _DashboardMetricTile(
+                                    icon: LucideIcons.trending_up,
+                                    label: 'Lucro previsto',
+                                    value: LoanSimulator.formatMoney(
+                                      stats.expectedProfit,
+                                    ),
+                                    color: AppColors.premium,
+                                    subtitle: 'Juros dos ativos',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                AppSpacing.sm,
+                              ),
+                              child: const _DashboardSectionLabel(
+                                title: 'Próximos vencimentos',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (stats.upcomingDues.isEmpty)
+                        SliverToBoxAdapter(
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: AppSpacing.maxContentWidth,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  0,
+                                  AppSpacing.lg,
+                                  kBottomNavReservedHeight + AppSpacing.lg,
+                                ),
+                                child: _DashboardSurfaceCard(
+                                  child: Text(
+                                    'Nenhum empréstimo ativo com parcela em aberto.',
+                                    style:
+                                        Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.lg,
+                            0,
+                            AppSpacing.lg,
+                            kBottomNavReservedHeight + AppSpacing.lg,
+                          ),
+                          sliver: SliverList.separated(
+                            itemCount: stats.upcomingDues.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: AppSpacing.sm),
+                            itemBuilder: (context, index) {
+                              return Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: AppSpacing.maxContentWidth,
+                                  ),
+                                  child: _UpcomingDueTile(
+                                    due: stats.upcomingDues[index],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: AppEmptyState(
+                  icon: LucideIcons.circle_alert,
+                  title: 'Erro ao carregar',
+                  subtitle: e.toString(),
+                ),
+              ),
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => AppEmptyState(
-          icon: Icons.error_outline,
-          title: 'Erro ao carregar',
-          subtitle: e.toString(),
+          ),
         ),
       ),
     );
   }
 }
 
-class _DashboardQuickActions extends StatelessWidget {
-  const _DashboardQuickActions();
+class _DashboardSurfaceCard extends StatelessWidget {
+  const _DashboardSurfaceCard({
+    required this.child,
+    this.onTap,
+    this.padding = const EdgeInsets.all(AppSpacing.lg),
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        border: Border.all(color: context.appTheme.border),
+        boxShadow: context.appTheme.cardShadow,
+      ),
+      child: child,
+    );
+
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        child: content,
+      ),
+    );
+  }
+}
+
+class _DashboardSummaryHero extends StatelessWidget {
+  const _DashboardSummaryHero({required this.stats});
+
+  final DashboardStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardSurfaceCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Carteira ativa',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: context.appTheme.textSecondary,
+                  letterSpacing: 0.3,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            LoanSimulator.formatMoney(stats.totalLent),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.accent,
+                  height: 1.05,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroStat(
+                  label: 'Recebido',
+                  value: LoanSimulator.formatMoney(stats.totalReceived),
+                  color: AppColors.success,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 40,
+                color: context.appTheme.border,
+              ),
+              Expanded(
+                child: _HeroStat(
+                  label: 'A receber',
+                  value: LoanSimulator.formatMoney(stats.totalRemaining),
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 40,
+                color: context.appTheme.border,
+              ),
+              Expanded(
+                child: _HeroStat(
+                  label: 'Lucro',
+                  value: LoanSimulator.formatMoney(stats.expectedProfit),
+                  color: AppColors.premium,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({
+    required this.label,
+    required this.value,
+    this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        0,
-        AppSpacing.lg,
-        AppSpacing.lg,
-      ),
-      child: AppCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          children: [
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: () => context.push(AppRoutes.loanCreate),
-                icon: const Icon(Icons.add, size: 20),
-                label: const Text('Novo empréstimo'),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => context.push(AppRoutes.clientNew),
-                icon: const Icon(Icons.person_add_outlined, size: 20),
-                label: const Text('Novo cliente'),
-              ),
-            ),
-          ],
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      child: Column(
+        children: [
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: context.appTheme.textSecondary,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                  height: 1.1,
+                ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _AlertBanner extends StatelessWidget {
-  const _AlertBanner({
+class _DashboardMetricTile extends StatelessWidget {
+  const _DashboardMetricTile({
     required this.icon,
-    required this.color,
+    required this.label,
+    required this.value,
+    this.subtitle,
+    this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? subtitle;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = color ?? AppColors.accent;
+
+    return _DashboardSurfaceCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm + 2),
+            decoration: AppDecorations.iconBadge(color: accent),
+            child: Icon(icon, size: 20, color: accent),
+          ),
+          const Spacer(),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: context.appTheme.textSecondary,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: accent,
+                  height: 1.1,
+                ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: context.appTheme.textSecondary,
+                  ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardAlertCard extends StatelessWidget {
+  const _DashboardAlertCard({
     required this.title,
     required this.subtitle,
   });
 
-  final IconData icon;
-  final Color color;
   final String title;
   final String subtitle;
 
   @override
   Widget build(BuildContext context) {
+    return _DashboardSurfaceCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: AppDecorations.iconBadge(color: AppColors.error),
+            child: const Icon(
+              LucideIcons.triangle_alert,
+              size: 22,
+              color: AppColors.error,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardSectionLabel extends StatelessWidget {
+  const _DashboardSectionLabel({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final lineColor = context.appTheme.border;
+    final titleStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+        );
+
     return Row(
       children: [
-        Icon(icon, color: color, size: 28),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Expanded(child: _DashedDividerLine(color: lineColor)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Text(title, style: titleStyle),
+        ),
+        Expanded(child: _DashedDividerLine(color: lineColor)),
+      ],
+    );
+  }
+}
+
+class _DashedDividerLine extends StatelessWidget {
+  const _DashedDividerLine({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          height: 20,
+          width: constraints.maxWidth,
+          child: Center(
+            child: CustomPaint(
+              size: Size(constraints.maxWidth, 1),
+              painter: _DashedLinePainter(color: color),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  _DashedLinePainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+
+    const dashWidth = 5.0;
+    const dashSpace = 4.0;
+    var x = 0.0;
+    final y = size.height / 2;
+
+    while (x < size.width) {
+      final end = (x + dashWidth).clamp(0.0, size.width);
+      canvas.drawLine(Offset(x, y), Offset(end, y), paint);
+      x += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+class _UpcomingDueTile extends StatelessWidget {
+  const _UpcomingDueTile({required this.due});
+
+  final UpcomingDueItem due;
+
+  @override
+  Widget build(BuildContext context) {
+    final isOverdue = due.isOverdue;
+    final accent = isOverdue ? AppColors.error : AppColors.accent;
+
+    return _DashboardSurfaceCard(
+      onTap: () => context.push(AppRoutes.loanDetail(due.loanId)),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: AppDecorations.iconBadge(color: accent),
+            child: Icon(
+              isOverdue ? LucideIcons.triangle_alert : LucideIcons.calendar,
+              size: 20,
+              color: accent,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  due.clientName,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Parcela ${due.installmentNumber} · '
+                  '${LoanSimulator.formatDate(due.dueDate)}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: context.appTheme.textSecondary,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                title,
+                LoanSimulator.formatMoney(due.amount),
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
+                      color: accent,
                     ),
               ),
               const SizedBox(height: AppSpacing.xs),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyMedium,
+              Icon(
+                LucideIcons.chevron_right,
+                size: 18,
+                color: context.appTheme.textSecondary,
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
