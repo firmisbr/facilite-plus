@@ -106,7 +106,7 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
         actions: [
           IconButton(
             tooltip: 'Editar empréstimo',
-            icon: const Icon(Icons.edit_outlined),
+            icon: const Icon(LucideIcons.pencil, size: 22),
             onPressed: _deleting
                 ? null
                 : () => context.push(AppRoutes.loanEdit(widget.loanId)),
@@ -119,7 +119,7 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.delete_outline),
+                : const Icon(LucideIcons.trash_2, size: 22),
             onPressed: _deleting ? null : _confirmDelete,
           ),
         ],
@@ -146,61 +146,36 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
                   children: [
                     if (detail != null) ...[
                       _LoanHeroCard(
-                        principal: LoanSimulator.formatMoney(
-                          detail.manager.principal,
-                        ),
-                        installmentAmount: LoanSimulator.formatMoney(
-                          detail.manager.installmentAmount,
-                        ),
+                        manager: detail.manager,
+                        paidInstallments: detail.overview.paidInstallments,
+                        totalInstallments: detail.overview.totalInstallments,
                       ),
-                      const SizedBox(height: AppSpacing.lg),
-                      _LoanContractCard(manager: detail.manager),
-                      const SizedBox(height: AppSpacing.lg),
-                      _SimulationSummaryCard(
-                        installmentAmount: detail.manager.installmentAmount,
-                        totalAmount: detail.manager.totalWithInterest,
-                        totalInterest:
-                            detail.manager.totalWithInterest -
-                            detail.manager.principal,
-                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      _LoanTermsCard(manager: detail.manager),
+                      const SizedBox(height: AppSpacing.md),
+                      _FinancialSummaryCard(manager: detail.manager),
                       const SizedBox(height: AppSpacing.lg),
                     ],
                     _ClientInfoSection(client: client),
                     if (detail != null) ...[
                       const SizedBox(height: AppSpacing.lg),
-                      Text(
-                        'Parcelas',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Toque em pagar na parcela ou desfaça se registrou por engano.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: context.appTheme.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      ...detail.installments.map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: AppSpacing.sm,
-                          ),
-                          child: LoanInstallmentCard(
-                            loanId: widget.loanId,
-                            item: item,
-                          ),
-                        ),
+                      _InstallmentsSection(
+                        loanId: widget.loanId,
+                        installments: detail.installments,
+                        overview: detail.overview,
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       _OverviewCard(overview: detail.overview),
                     ] else
-                      DetailValueCard(
-                        icon: LucideIcons.info,
-                        label: 'Cronograma',
-                        value:
-                            'Complete parcelas, juros e vencimento do empréstimo '
-                            'para ver o cronograma e resumos.',
+                      DetailInfoListCard(
+                        entries: [
+                          const DetailInfoEntry(
+                            icon: LucideIcons.info,
+                            label: 'Cronograma',
+                            value:
+                                'Complete parcelas, juros e vencimento para ver o resumo.',
+                          ),
+                        ],
                       ),
                   ],
                 ),
@@ -215,79 +190,129 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
 
 class _LoanHeroCard extends StatelessWidget {
   const _LoanHeroCard({
-    required this.principal,
-    required this.installmentAmount,
+    required this.manager,
+    required this.paidInstallments,
+    required this.totalInstallments,
   });
 
-  final String principal;
-  final String installmentAmount;
+  final LoanManagerStats manager;
+  final int paidInstallments;
+  final int totalInstallments;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         border: Border.all(color: context.appTheme.border),
         boxShadow: context.appTheme.cardShadow,
       ),
-      child: Column(
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 88,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '$paidInstallments/$totalInstallments',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.accent,
+                      height: 1,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'parcelas',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: context.appTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            VerticalDivider(
+              width: 1,
+              color: context.appTheme.border,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Valor emprestado',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: context.appTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    LoanSimulator.formatMoney(manager.principal),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'Valor da parcela',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: context.appTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    LoanSimulator.formatMoney(manager.installmentAmount),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoanTermsCard extends StatelessWidget {
+  const _LoanTermsCard({required this.manager});
+
+  final LoanManagerStats manager;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        border: Border.all(color: context.appTheme.border),
+      ),
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.md,
-            ),
-            child: Column(
-              children: [
-                Text(
-                  'Valor emprestado',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: context.appTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  principal,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.accent,
-                    height: 1.1,
-                  ),
-                ),
-              ],
+          Expanded(
+            child: DetailCompactCell(
+              label: 'Juros',
+              value: '${manager.interestPercent.toStringAsFixed(2)}%',
             ),
           ),
-          Divider(
-            height: 1,
-            indent: AppSpacing.lg,
-            endIndent: AppSpacing.lg,
-            color: context.appTheme.border,
-          ),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              children: [
-                Text(
-                  'Valor da parcela',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: context.appTheme.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  installmentAmount,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.accent,
-                  ),
-                ),
-              ],
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: DetailCompactCell(
+              label: 'Periodicidade',
+              value: manager.periodicityLabel,
             ),
           ),
         ],
@@ -296,69 +321,56 @@ class _LoanHeroCard extends StatelessWidget {
   }
 }
 
-class _LoanContractCard extends StatelessWidget {
-  const _LoanContractCard({required this.manager});
+class _FinancialSummaryCard extends StatelessWidget {
+  const _FinancialSummaryCard({required this.manager});
 
   final LoanManagerStats manager;
 
   @override
   Widget build(BuildContext context) {
+    final totalInterest = manager.totalWithInterest - manager.principal;
+
     return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-        border: Border.all(color: context.appTheme.border),
-      ),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.md,
         AppSpacing.lg,
         AppSpacing.md,
       ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        border: Border.all(color: context.appTheme.border),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Text(
+            'Resumo financeiro',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: DetailCompactCell(
-                  label: 'Parcelas',
-                  value: '${manager.installmentCount}',
+                  label: 'Total',
+                  value: LoanSimulator.formatMoney(manager.totalWithInterest),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: DetailCompactCell(
                   label: 'Juros',
-                  value:
-                      '${manager.interestPercent.toStringAsFixed(2)}%',
+                  value: LoanSimulator.formatMoney(totalInterest),
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: DetailCompactCell(
-                  label: 'Periodicidade',
-                  value: manager.periodicityLabel,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: DetailCompactCell(
-                  label: 'Total com juros',
-                  value: LoanSimulator.formatMoney(manager.totalWithInterest),
-                  maxLines: 1,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: DetailCompactCell(
@@ -371,139 +383,14 @@ class _LoanContractCard extends StatelessWidget {
               Expanded(
                 child: DetailCompactCell(
                   label: 'Lucro / parcela',
-                  value: LoanSimulator.formatMoney(manager.profitPerInstallment),
+                  value: LoanSimulator.formatMoney(
+                    manager.profitPerInstallment,
+                  ),
                   valueColor: AppColors.accent,
                   maxLines: 1,
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SimulationSummaryCard extends StatelessWidget {
-  const _SimulationSummaryCard({
-    required this.installmentAmount,
-    required this.totalAmount,
-    required this.totalInterest,
-  });
-
-  final double installmentAmount;
-  final double totalAmount;
-  final double totalInterest;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF1E2420), const Color(0xFF1A1F1C)]
-              : [const Color(0xFF2C2C2A), const Color(0xFF232321)],
-        ),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.sparkles,
-                size: 16,
-                color: AppColors.accent,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'Resumo financeiro',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: const Color(0xFFF4F1EA),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            LoanSimulator.formatMoney(installmentAmount),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppColors.accent,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'por parcela',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF8E8E8A),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: _DarkMiniMetric(
-                  label: 'Total',
-                  value: LoanSimulator.formatMoney(totalAmount),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _DarkMiniMetric(
-                  label: 'Juros',
-                  value: LoanSimulator.formatMoney(totalInterest),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DarkMiniMetric extends StatelessWidget {
-  const _DarkMiniMetric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: const Color(0xFF8E8E8A),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: const Color(0xFFF4F1EA),
-              fontWeight: FontWeight.w700,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -518,55 +405,118 @@ class _ClientInfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cpf = client.document != null
-        ? BrCpfInputFormatter.formatDisplay(client.document)
-        : null;
-    final phone = client.phone != null
-        ? BrPhoneInputFormatter.formatDisplay(client.phone)
-        : null;
+    final entries = <DetailInfoEntry>[
+      DetailInfoEntry(
+        icon: LucideIcons.user_round,
+        label: 'Nome',
+        value: client.name,
+      ),
+    ];
+
+    final cpf = BrCpfInputFormatter.formatDisplay(client.document);
+    if (cpf.isNotEmpty) {
+      entries.add(
+        DetailInfoEntry(icon: LucideIcons.id_card, label: 'CPF', value: cpf),
+      );
+    }
+
+    final phone = BrPhoneInputFormatter.formatDisplay(client.phone);
+    if (phone.isNotEmpty) {
+      entries.add(
+        DetailInfoEntry(icon: LucideIcons.phone, label: 'WhatsApp', value: phone),
+      );
+    }
+
+    if (client.email != null && client.email!.trim().isNotEmpty) {
+      entries.add(
+        DetailInfoEntry(
+          icon: LucideIcons.mail,
+          label: 'E-mail',
+          value: client.email!,
+        ),
+      );
+    }
+
+    if (client.address != null && client.address!.trim().isNotEmpty) {
+      entries.add(
+        DetailInfoEntry(
+          icon: LucideIcons.map_pin,
+          label: 'Endereço',
+          value: client.address!,
+        ),
+      );
+    }
+
+    return DetailInfoListCard(title: 'Dados pessoais', entries: entries);
+  }
+}
+
+class _InstallmentsSection extends StatelessWidget {
+  const _InstallmentsSection({
+    required this.loanId,
+    required this.installments,
+    required this.overview,
+  });
+
+  final String loanId;
+  final List<LoanInstallmentItem> installments;
+  final LoanOverviewStats overview;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = overview.totalInstallments > 0
+        ? overview.paidInstallments / overview.totalInstallments
+        : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DetailValueCard(
-          icon: LucideIcons.user_round,
-          label: 'Nome',
-          value: client.name,
-          emphasized: true,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Parcelas',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Text(
+              '${overview.paidInstallments}/${overview.totalInstallments} pagas',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppColors.accent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-        if (cpf != null && cpf.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
-          DetailValueCard(
-            icon: LucideIcons.id_card,
-            label: 'CPF',
-            value: cpf,
+        const SizedBox(height: AppSpacing.sm),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 6,
+            backgroundColor: context.appTheme.border,
+            color: AppColors.accent,
+          ),
+        ),
+        if (overview.overdueInstallments > 0) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '${overview.overdueInstallments} em atraso',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.error,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
-        if (phone != null && phone.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
-          DetailValueCard(
-            icon: LucideIcons.phone,
-            label: 'WhatsApp',
-            value: phone,
+        const SizedBox(height: AppSpacing.md),
+        ...installments.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: LoanInstallmentCard(loanId: loanId, item: item),
           ),
-        ],
-        if (client.email != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          DetailValueCard(
-            icon: LucideIcons.mail,
-            label: 'E-mail',
-            value: client.email!,
-          ),
-        ],
-        if (client.address != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          DetailValueCard(
-            icon: LucideIcons.map_pin,
-            label: 'Endereço',
-            value: client.address!,
-            maxLines: 4,
-          ),
-        ],
+        ),
       ],
     );
   }

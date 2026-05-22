@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../services/sync/sync_providers.dart';
-import '../../../../shared/widgets/app_card.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../domain/loan_installment_status.dart';
 import '../../domain/loan_schedule_builder.dart';
@@ -79,27 +78,12 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
   }
 
   Future<void> _undo() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Desfazer pagamento?'),
-        content: Text(
-          'A parcela ${widget.item.number} voltará a ficar em aberto.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Desfazer'),
-          ),
-        ],
-      ),
+    final confirm = await UndoInstallmentPaymentDialog.show(
+      context,
+      widget.item,
     );
 
-    if (confirm != true || !mounted) return;
+    if (!confirm || !mounted) return;
 
     setState(() => _busy = true);
     try {
@@ -134,74 +118,108 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
   Widget build(BuildContext context) {
     final item = widget.item;
 
-    return AppCard(
+    final statusColor = switch (item.status) {
+      LoanInstallmentStatus.paid => AppColors.success,
+      LoanInstallmentStatus.overdue => AppColors.error,
+      LoanInstallmentStatus.pending => AppColors.accent,
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: item.status == LoanInstallmentStatus.overdue
+              ? AppColors.error.withValues(alpha: 0.35)
+              : Theme.of(context).dividerColor.withValues(alpha: 0.85),
+        ),
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _InstallmentBadge(number: item.number),
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            ),
+            child: Text(
+              '${item.number}',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: statusColor,
+              ),
+            ),
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    _StatusChip(status: item.status),
-                    const Spacer(),
-                    Text(
-                      LoanSimulator.formatMoney(item.amount),
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                  ],
-                ),
+                _StatusChip(status: item.status),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Vencimento: ${LoanSimulator.formatDate(item.dueDate)}',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  LoanSimulator.formatMoney(item.amount),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  LoanSimulator.formatDate(item.dueDate),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 if (item.isPaid && item.paidDate != null) ...[
-                  const SizedBox(height: AppSpacing.xs),
+                  const SizedBox(height: 2),
                   Text(
-                    'Pago em: ${LoanSimulator.formatDate(item.paidDate!)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    'Pago ${LoanSimulator.formatDate(item.paidDate!)}'
+                    '${item.paymentTimingLabel != null ? ' · ${item.paymentTimingLabel}' : ''}',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: _timingColor(context, item),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (item.paymentTimingLabel != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      item.paymentTimingLabel!,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: _timingColor(context, item),
-                      ),
-                    ),
-                  ],
                 ],
               ],
             ),
           ),
-          if (_busy)
-            const Padding(
-              padding: EdgeInsets.only(left: AppSpacing.sm),
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else if (item.canPay)
-            IconButton(
-              tooltip: 'Registrar pagamento',
-              onPressed: _pay,
-              icon: const Icon(Icons.payments_outlined),
-              color: AppColors.accent,
-            )
-          else if (item.canUndo)
-            IconButton(
-              tooltip: 'Desfazer pagamento',
-              onPressed: _undo,
-              icon: const Icon(Icons.undo_rounded),
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          SizedBox(
+            width: 48,
+            child: Center(
+              child: _busy
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : item.canPay
+                  ? IconButton(
+                      tooltip: 'Registrar pagamento',
+                      onPressed: _pay,
+                      icon: const Icon(Icons.payments_outlined),
+                      color: AppColors.accent,
+                    )
+                  : item.canUndo
+                  ? IconButton(
+                      tooltip: 'Desfazer pagamento',
+                      onPressed: _undo,
+                      icon: const Icon(Icons.undo_rounded),
+                      color: AppColors.warning,
+                    )
+                  : null,
             ),
+          ),
         ],
       ),
     );
@@ -221,27 +239,6 @@ Color _timingColor(BuildContext context, LoanInstallmentItem item) {
   if (paid.isAfter(due)) return AppColors.error;
   if (paid.isBefore(due)) return AppColors.info;
   return AppColors.success;
-}
-
-class _InstallmentBadge extends StatelessWidget {
-  const _InstallmentBadge({required this.number});
-
-  final int number;
-
-  @override
-  Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 18,
-      backgroundColor: AppColors.accent.withValues(alpha: 0.15),
-      child: Text(
-        '$number',
-        style: const TextStyle(
-          color: AppColors.accent,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
 }
 
 class _StatusChip extends StatelessWidget {
