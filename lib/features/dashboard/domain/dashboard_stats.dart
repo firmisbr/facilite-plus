@@ -24,21 +24,26 @@ class UpcomingDueItem {
   final bool isOverdue;
 }
 
-/// Coluna do radar: quanto pode entrar em uma semana (ou atrasado).
+/// Agrupamento do radar de caixa (7 colunas no máximo).
+enum CashFlowGranularity { day, week, month }
+
+/// Coluna do radar: quanto pode entrar no período (ou atrasado).
 class CashFlowBucket {
   const CashFlowBucket({
     required this.label,
     required this.amount,
     required this.installmentCount,
     this.isOverdue = false,
-    this.isCurrentWeek = false,
+    this.isCurrentPeriod = false,
   });
 
   final String label;
   final double amount;
   final int installmentCount;
   final bool isOverdue;
-  final bool isCurrentWeek;
+
+  /// Destaque visual do período atual (hoje / esta semana / este mês).
+  final bool isCurrentPeriod;
 }
 
 class DashboardStats {
@@ -52,8 +57,9 @@ class DashboardStats {
     required this.overdueInstallments,
     required this.overdueAmount,
     required this.upcomingDues,
-    required this.cashFlowBuckets,
-    this.cashFlowInsight,
+    required this.cashFlowByDay,
+    required this.cashFlowByWeek,
+    required this.cashFlowByMonth,
   });
 
   final int activeLoansCount;
@@ -65,8 +71,9 @@ class DashboardStats {
   final int overdueInstallments;
   final double overdueAmount;
   final List<UpcomingDueItem> upcomingDues;
-  final List<CashFlowBucket> cashFlowBuckets;
-  final String? cashFlowInsight;
+  final List<CashFlowBucket> cashFlowByDay;
+  final List<CashFlowBucket> cashFlowByWeek;
+  final List<CashFlowBucket> cashFlowByMonth;
 
   static const empty = DashboardStats(
     activeLoansCount: 0,
@@ -78,12 +85,21 @@ class DashboardStats {
     overdueInstallments: 0,
     overdueAmount: 0,
     upcomingDues: [],
-    cashFlowBuckets: [],
+    cashFlowByDay: [],
+    cashFlowByWeek: [],
+    cashFlowByMonth: [],
   );
+
+  List<CashFlowBucket> cashFlowFor(CashFlowGranularity granularity) =>
+      switch (granularity) {
+        CashFlowGranularity.day => cashFlowByDay,
+        CashFlowGranularity.week => cashFlowByWeek,
+        CashFlowGranularity.month => cashFlowByMonth,
+      };
 }
 
 abstract final class DashboardStatsBuilder {
-  static const _weekHorizon = 6;
+  static const _maxRadarColumns = 7;
 
   static DashboardStats build({
     required List<LoanWithClient> loans,
@@ -113,8 +129,12 @@ abstract final class DashboardStatsBuilder {
 
     var overdueBucketAmount = 0.0;
     var overdueBucketCount = 0;
+    final dayAmounts = <DateTime, double>{};
+    final dayCounts = <DateTime, int>{};
     final weekAmounts = <DateTime, double>{};
     final weekCounts = <DateTime, int>{};
+    final monthAmounts = <DateTime, double>{};
+    final monthCounts = <DateTime, int>{};
 
     for (final item in loans) {
       clientIds.add(item.loan.clientId);
@@ -152,15 +172,20 @@ abstract final class DashboardStatsBuilder {
           overdueBucketAmount += installment.amount;
           overdueBucketCount++;
         } else {
-          final week = _weekStartMonday(
-            DateTime(
-              installment.dueDate.year,
-              installment.dueDate.month,
-              installment.dueDate.day,
-            ),
+          final dueDay = DateTime(
+            installment.dueDate.year,
+            installment.dueDate.month,
+            installment.dueDate.day,
           );
+          final week = _weekStartMonday(dueDay);
+          final month = DateTime(dueDay.year, dueDay.month);
+
+          dayAmounts[dueDay] = (dayAmounts[dueDay] ?? 0) + installment.amount;
+          dayCounts[dueDay] = (dayCounts[dueDay] ?? 0) + 1;
           weekAmounts[week] = (weekAmounts[week] ?? 0) + installment.amount;
           weekCounts[week] = (weekCounts[week] ?? 0) + 1;
+          monthAmounts[month] = (monthAmounts[month] ?? 0) + installment.amount;
+          monthCounts[month] = (monthCounts[month] ?? 0) + 1;
         }
 
         if (nextOpen == null ||
@@ -188,17 +213,26 @@ abstract final class DashboardStatsBuilder {
       return a.dueDate.compareTo(b.dueDate);
     });
 
-    final cashFlowBuckets = _buildCashFlowBuckets(
+    final cashFlowByDay = _buildDayBuckets(
+      today: today,
+      overdueAmount: overdueBucketAmount,
+      overdueCount: overdueBucketCount,
+      dayAmounts: dayAmounts,
+      dayCounts: dayCounts,
+    );
+    final cashFlowByWeek = _buildWeekBuckets(
       currentWeekStart: currentWeekStart,
       overdueAmount: overdueBucketAmount,
       overdueCount: overdueBucketCount,
       weekAmounts: weekAmounts,
       weekCounts: weekCounts,
     );
-
-    final cashFlowInsight = _buildCashFlowInsight(
-      buckets: cashFlowBuckets,
-      totalRemaining: totalRemaining,
+    final cashFlowByMonth = _buildMonthBuckets(
+      today: today,
+      overdueAmount: overdueBucketAmount,
+      overdueCount: overdueBucketCount,
+      monthAmounts: monthAmounts,
+      monthCounts: monthCounts,
     );
 
     return DashboardStats(
@@ -211,8 +245,9 @@ abstract final class DashboardStatsBuilder {
       overdueInstallments: overdueInstallments,
       overdueAmount: overdueAmount,
       upcomingDues: upcoming,
-      cashFlowBuckets: cashFlowBuckets,
-      cashFlowInsight: cashFlowInsight,
+      cashFlowByDay: cashFlowByDay,
+      cashFlowByWeek: cashFlowByWeek,
+      cashFlowByMonth: cashFlowByMonth,
     );
   }
 
@@ -220,15 +255,21 @@ abstract final class DashboardStatsBuilder {
     return date.subtract(Duration(days: date.weekday - 1));
   }
 
-  static List<CashFlowBucket> _buildCashFlowBuckets({
-    required DateTime currentWeekStart,
+  static int _periodSlots({required double overdueAmount}) {
+    final hasOverdue = overdueAmount > 0;
+    return _maxRadarColumns - (hasOverdue ? 1 : 0);
+  }
+
+  static List<CashFlowBucket> _buildDayBuckets({
+    required DateTime today,
     required double overdueAmount,
     required int overdueCount,
-    required Map<DateTime, double> weekAmounts,
-    required Map<DateTime, int> weekCounts,
+    required Map<DateTime, double> dayAmounts,
+    required Map<DateTime, int> dayCounts,
   }) {
     final buckets = <CashFlowBucket>[];
-    final monthFmt = DateFormat('d MMM', 'pt_BR');
+    final dayFmt = DateFormat('d/M', 'pt_BR');
+    final slots = _periodSlots(overdueAmount: overdueAmount);
 
     if (overdueAmount > 0) {
       buckets.add(
@@ -241,38 +282,22 @@ abstract final class DashboardStatsBuilder {
       );
     }
 
-    for (var i = 0; i < _weekHorizon; i++) {
-      final weekStart = currentWeekStart.add(Duration(days: 7 * i));
-      final isCurrent = weekStart == currentWeekStart;
-      final amount = weekAmounts[weekStart] ?? 0;
-      final count = weekCounts[weekStart] ?? 0;
-
-      if (!isCurrent && amount <= 0) continue;
-
-      final label = isCurrent
-          ? 'Esta sem.'
-          : monthFmt.format(weekStart);
+    for (var i = 0; i < slots; i++) {
+      final day = today.add(Duration(days: i));
+      final amount = dayAmounts[day] ?? 0;
+      final count = dayCounts[day] ?? 0;
+      final label = switch (i) {
+        0 => 'Hoje',
+        1 => 'Amanhã',
+        _ => dayFmt.format(day),
+      };
 
       buckets.add(
         CashFlowBucket(
           label: label,
           amount: amount,
           installmentCount: count,
-          isCurrentWeek: isCurrent,
-        ),
-      );
-    }
-
-    final horizonEnd = currentWeekStart.add(
-      Duration(days: 7 * (_weekHorizon - 1)),
-    );
-    for (final weekStart in weekAmounts.keys.toList()..sort()) {
-      if (!weekStart.isAfter(horizonEnd)) continue;
-      buckets.add(
-        CashFlowBucket(
-          label: monthFmt.format(weekStart),
-          amount: weekAmounts[weekStart]!,
-          installmentCount: weekCounts[weekStart] ?? 0,
+          isCurrentPeriod: i == 0,
         ),
       );
     }
@@ -280,7 +305,93 @@ abstract final class DashboardStatsBuilder {
     return buckets;
   }
 
-  static String? _buildCashFlowInsight({
+  static List<CashFlowBucket> _buildWeekBuckets({
+    required DateTime currentWeekStart,
+    required double overdueAmount,
+    required int overdueCount,
+    required Map<DateTime, double> weekAmounts,
+    required Map<DateTime, int> weekCounts,
+  }) {
+    final buckets = <CashFlowBucket>[];
+    final weekFmt = DateFormat('d MMM', 'pt_BR');
+    final slots = _periodSlots(overdueAmount: overdueAmount);
+
+    if (overdueAmount > 0) {
+      buckets.add(
+        CashFlowBucket(
+          label: 'Atrasado',
+          amount: overdueAmount,
+          installmentCount: overdueCount,
+          isOverdue: true,
+        ),
+      );
+    }
+
+    for (var i = 0; i < slots; i++) {
+      final weekStart = currentWeekStart.add(Duration(days: 7 * i));
+      final amount = weekAmounts[weekStart] ?? 0;
+      final count = weekCounts[weekStart] ?? 0;
+      final label = i == 0 ? 'Esta sem.' : weekFmt.format(weekStart);
+
+      buckets.add(
+        CashFlowBucket(
+          label: label,
+          amount: amount,
+          installmentCount: count,
+          isCurrentPeriod: i == 0,
+        ),
+      );
+    }
+
+    return buckets;
+  }
+
+  static List<CashFlowBucket> _buildMonthBuckets({
+    required DateTime today,
+    required double overdueAmount,
+    required int overdueCount,
+    required Map<DateTime, double> monthAmounts,
+    required Map<DateTime, int> monthCounts,
+  }) {
+    final buckets = <CashFlowBucket>[];
+    final monthFmt = DateFormat('MMM', 'pt_BR');
+    final slots = _periodSlots(overdueAmount: overdueAmount);
+    final currentMonth = DateTime(today.year, today.month);
+
+    if (overdueAmount > 0) {
+      buckets.add(
+        CashFlowBucket(
+          label: 'Atrasado',
+          amount: overdueAmount,
+          installmentCount: overdueCount,
+          isOverdue: true,
+        ),
+      );
+    }
+
+    for (var i = 0; i < slots; i++) {
+      final month = DateTime(today.year, today.month + i);
+      final amount = monthAmounts[month] ?? 0;
+      final count = monthCounts[month] ?? 0;
+      final label = month == currentMonth
+          ? 'Este mês'
+          : monthFmt.format(month);
+
+      buckets.add(
+        CashFlowBucket(
+          label: label,
+          amount: amount,
+          installmentCount: count,
+          isCurrentPeriod: i == 0,
+        ),
+      );
+    }
+
+    return buckets;
+  }
+
+  static String? insightFor({
+    required CashFlowGranularity granularity,
     required List<CashFlowBucket> buckets,
     required double totalRemaining,
   }) {
@@ -318,19 +429,30 @@ abstract final class DashboardStatsBuilder {
           '(${(share * 100).round()}% do que falta receber).';
     }
 
-    CashFlowBucket? thisWeek;
+    CashFlowBucket? currentPeriod;
     for (final b in buckets) {
-      if (b.isCurrentWeek && b.amount > 0) {
-        thisWeek = b;
+      if (b.isCurrentPeriod && b.amount > 0) {
+        currentPeriod = b;
         break;
       }
     }
-    if (thisWeek != null) {
-      return 'Esta semana pode entrar até '
-          '${LoanSimulator.formatMoney(thisWeek.amount)} '
-          '(${thisWeek.installmentCount} parcela(s)).';
+    if (currentPeriod != null) {
+      final periodLabel = switch (granularity) {
+        CashFlowGranularity.day => 'Hoje pode entrar até',
+        CashFlowGranularity.week => 'Esta semana pode entrar até',
+        CashFlowGranularity.month => 'Este mês pode entrar até',
+      };
+      return '$periodLabel '
+          '${LoanSimulator.formatMoney(currentPeriod.amount)} '
+          '(${currentPeriod.installmentCount} parcela(s)).';
     }
 
-    return 'Maior entrada prevista em ${peak.label}: até $peakMoney.';
+    final periodWord = switch (granularity) {
+      CashFlowGranularity.day => 'dia',
+      CashFlowGranularity.week => 'semana',
+      CashFlowGranularity.month => 'mês',
+    };
+    return 'Maior entrada prevista neste $periodWord: ${peak.label} '
+        '(até $peakMoney).';
   }
 }

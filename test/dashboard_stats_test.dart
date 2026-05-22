@@ -31,8 +31,17 @@ void main() {
     expect(stats.totalRemaining, 1000);
     expect(stats.upcomingDues, hasLength(1));
     expect(stats.upcomingDues.first.installmentNumber, 1);
-    expect(stats.cashFlowBuckets, isNotEmpty);
-    expect(stats.cashFlowInsight, isNotNull);
+    expect(stats.cashFlowByWeek, isNotEmpty);
+    expect(stats.cashFlowByWeek.length, lessThanOrEqualTo(7));
+    expect(stats.cashFlowByDay.length, lessThanOrEqualTo(7));
+    expect(
+      DashboardStatsBuilder.insightFor(
+        granularity: CashFlowGranularity.week,
+        buckets: stats.cashFlowByWeek,
+        totalRemaining: stats.totalRemaining,
+      ),
+      isNotNull,
+    );
   });
 
   test('lista proxima parcela de cada emprestimo ativo sem limite de dias', () {
