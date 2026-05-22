@@ -12,6 +12,7 @@ class PaymentLoanCardItem {
     required this.overdueInstallments,
     required this.dueSoonInstallments,
     required this.nextDueDate,
+    required this.nextInstallmentNumber,
     required this.hasOverdue,
     required this.hasDueSoon,
   });
@@ -23,6 +24,9 @@ class PaymentLoanCardItem {
   final int overdueInstallments;
   final int dueSoonInstallments;
   final DateTime? nextDueDate;
+
+  /// Parcela em aberto mais próxima (para destaque no detalhe do empréstimo).
+  final int? nextInstallmentNumber;
   final bool hasOverdue;
   final bool hasDueSoon;
 
@@ -35,28 +39,23 @@ class PaymentsOverview {
     required this.totalToReceive,
     required this.totalOverdue,
     required this.clientsOverdueCount,
-    required this.clientsDueSoonCount,
     required this.loanCards,
   });
 
   final double totalToReceive;
   final double totalOverdue;
   final int clientsOverdueCount;
-  final int clientsDueSoonCount;
   final List<PaymentLoanCardItem> loanCards;
 
   static const empty = PaymentsOverview(
     totalToReceive: 0,
     totalOverdue: 0,
     clientsOverdueCount: 0,
-    clientsDueSoonCount: 0,
     loanCards: [],
   );
 }
 
 abstract final class PaymentsOverviewBuilder {
-  static const _dueSoonDays = 7;
-
   static PaymentsOverview build({
     required List<LoanWithClient> loans,
     required List<Payment> payments,
@@ -66,8 +65,6 @@ abstract final class PaymentsOverviewBuilder {
     if (loans.isEmpty) return PaymentsOverview.empty;
 
     final now = asOf ?? DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final dueSoonLimit = today.add(const Duration(days: _dueSoonDays));
 
     final paymentsByLoan = <String, List<Payment>>{};
     for (final payment in payments) {
@@ -77,7 +74,6 @@ abstract final class PaymentsOverviewBuilder {
     var totalToReceive = 0.0;
     var totalOverdue = 0.0;
     final clientsOverdue = <String>{};
-    final clientsDueSoon = <String>{};
     final cards = <PaymentLoanCardItem>[];
 
     for (final item in loans) {
@@ -94,32 +90,34 @@ abstract final class PaymentsOverviewBuilder {
 
       var overdueAmount = 0.0;
       var overdueCount = 0;
-      var dueSoonCount = 0;
-      DateTime? nextDue;
+      LoanInstallmentItem? nextOpen;
 
       for (final installment in detail.installments) {
         if (installment.isPaid) continue;
 
-        final dueDay = DateTime(
-          installment.dueDate.year,
-          installment.dueDate.month,
-          installment.dueDate.day,
-        );
-
-        if (nextDue == null || dueDay.isBefore(nextDue)) {
-          nextDue = dueDay;
-        }
-
         if (installment.status == LoanInstallmentStatus.overdue) {
           overdueCount++;
           overdueAmount += installment.amount;
-        } else if (!dueDay.isBefore(today) && !dueDay.isAfter(dueSoonLimit)) {
-          dueSoonCount++;
+        }
+
+        if (nextOpen == null ||
+            installment.dueDate.isBefore(nextOpen.dueDate)) {
+          nextOpen = installment;
         }
       }
 
+      final nextDue = nextOpen != null
+          ? DateTime(
+              nextOpen.dueDate.year,
+              nextOpen.dueDate.month,
+              nextOpen.dueDate.day,
+            )
+          : null;
+      final hasDueSoon = nextOpen != null &&
+          nextOpen.status != LoanInstallmentStatus.overdue;
+
       final remaining = detail.overview.remainingAmount;
-      if (remaining <= 0 && overdueCount == 0 && dueSoonCount == 0) {
+      if (remaining <= 0 && overdueCount == 0 && !hasDueSoon) {
         continue;
       }
 
@@ -128,7 +126,6 @@ abstract final class PaymentsOverviewBuilder {
 
       final clientId = item.loan.clientId;
       if (overdueCount > 0) clientsOverdue.add(clientId);
-      if (dueSoonCount > 0) clientsDueSoon.add(clientId);
 
       cards.add(
         PaymentLoanCardItem(
@@ -137,10 +134,11 @@ abstract final class PaymentsOverviewBuilder {
           remainingAmount: remaining,
           overdueAmount: overdueAmount,
           overdueInstallments: overdueCount,
-          dueSoonInstallments: dueSoonCount,
+          dueSoonInstallments: hasDueSoon ? 1 : 0,
           nextDueDate: nextDue,
+          nextInstallmentNumber: nextOpen?.number,
           hasOverdue: overdueCount > 0,
-          hasDueSoon: dueSoonCount > 0,
+          hasDueSoon: hasDueSoon,
         ),
       );
     }
@@ -163,7 +161,6 @@ abstract final class PaymentsOverviewBuilder {
       totalToReceive: totalToReceive,
       totalOverdue: totalOverdue,
       clientsOverdueCount: clientsOverdue.length,
-      clientsDueSoonCount: clientsDueSoon.length,
       loanCards: cards,
     );
   }

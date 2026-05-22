@@ -23,7 +23,6 @@ class AllLoansListPage extends ConsumerStatefulWidget {
 class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
   LoanListFilter _filter = LoanListFilter.ativos;
   final _searchController = TextEditingController();
-  String _searchQuery = '';
 
   @override
   void dispose() {
@@ -39,9 +38,8 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final loansAsync = ref.watch(allLoansProvider);
-    final paymentsAsync = ref.watch(allPaymentsForUserProvider);
     final brightness = Theme.of(context).brightness;
+    final layout = ref.watch(loanListLayoutProvider);
 
     return Scaffold(
       extendBody: true,
@@ -51,168 +49,71 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
         ),
         child: SafeArea(
           bottom: false,
-          child: loansAsync.when(
-            data: (allLoans) {
-              return paymentsAsync.when(
-                data: (payments) {
-                  final filteredByStatus = LoanListFilterHelper.apply(
-                    items: allLoans,
-                    payments: payments,
-                    filter: _filter,
-                  );
-                  final loans = LoanListFilterHelper.search(
-                    items: filteredByStatus,
-                    query: _searchQuery,
-                  );
-                  final layout = ref.watch(loanListLayoutProvider);
-                  final portfolio = LoanPortfolioCounts.compute(
-                    items: allLoans,
-                    payments: payments,
-                  );
-
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      ref.invalidate(allLoansProvider);
-                      ref.invalidate(allPaymentsForUserProvider);
-                      await Future<void>.delayed(
-                        const Duration(milliseconds: 400),
-                      );
-                    },
-                    child: CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                maxWidth: AppSpacing.maxContentWidth,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  AppSpacing.lg,
-                                  AppSpacing.md,
-                                  AppSpacing.lg,
-                                  AppSpacing.sm,
-                                ),
-                                child: _LoansPortfolioCard(
-                                  counts: portfolio,
-                                  selected: _filter,
-                                  onFilterTap: _toggleFilter,
-                                  layout: layout,
-                                  onLayoutChanged: (next) => ref
-                                      .read(loanListLayoutProvider.notifier)
-                                      .setLayout(next),
-                                ),
-                              ),
-                            ),
-                          ),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(allLoansProvider);
+              ref.invalidate(allPaymentsForUserProvider);
+              await Future<void>.delayed(const Duration(milliseconds: 400));
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppSpacing.maxContentWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.md,
+                          AppSpacing.lg,
+                          AppSpacing.sm,
                         ),
-                        if (portfolio.total > 0)
-                          SliverToBoxAdapter(
-                            child: Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: AppSpacing.maxContentWidth,
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    AppSpacing.lg,
-                                    AppSpacing.md,
-                                    AppSpacing.lg,
-                                    AppSpacing.sm,
-                                  ),
-                                  child: _LoansSearchField(
-                                    controller: _searchController,
-                                    showClear: _searchQuery.isNotEmpty,
-                                    onChanged: (value) =>
-                                        setState(() => _searchQuery = value),
-                                    onClear: () {
-                                      _searchController.clear();
-                                      setState(() => _searchQuery = '');
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        const SliverToBoxAdapter(
-                          child: SizedBox(height: AppSpacing.md),
+                        child: _LoansPortfolioSection(
+                          filter: _filter,
+                          onFilterTap: _toggleFilter,
+                          layout: layout,
+                          onLayoutChanged: (next) => ref
+                              .read(loanListLayoutProvider.notifier)
+                              .setLayout(next),
                         ),
-                        if (loans.isEmpty)
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: AppSpacing.maxContentWidth,
-                                ),
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.all(AppSpacing.lg),
-                                  child: AppEmptyState(
-                                    icon: _searchQuery.trim().isNotEmpty
-                                        ? LucideIcons.search
-                                        : LucideIcons.wallet,
-                                    title: _searchQuery.trim().isNotEmpty
-                                        ? 'Nenhum resultado'
-                                        : _emptyTitle(_filter),
-                                    subtitle: _searchQuery.trim().isNotEmpty
-                                        ? 'Tente outro nome, valor ou parcelas.'
-                                        : _emptySubtitle(_filter),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.lg,
-                              0,
-                              AppSpacing.lg,
-                              kBottomNavReservedHeight + AppSpacing.lg,
-                            ),
-                            sliver: SliverList.separated(
-                              itemCount: loans.length,
-                              separatorBuilder: (_, _) => SizedBox(
-                                height: layout == LoanListCardLayout.compact
-                                    ? AppSpacing.xs
-                                    : AppSpacing.sm,
-                              ),
-                              itemBuilder: (context, index) {
-                                return Center(
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: AppSpacing.maxContentWidth,
-                                    ),
-                                    child: LoanListTile(item: loans[index]),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
-                  );
-                },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(
-                  child: AppEmptyState(
-                    icon: LucideIcons.circle_alert,
-                    title: 'Erro ao carregar pagamentos',
-                    subtitle: e.toString(),
                   ),
                 ),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: AppEmptyState(
-                icon: LucideIcons.circle_alert,
-                title: 'Erro ao carregar',
-                subtitle: e.toString(),
-              ),
+                SliverToBoxAdapter(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppSpacing.maxContentWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.md,
+                          AppSpacing.lg,
+                          AppSpacing.sm,
+                        ),
+                        child: _LoansSearchField(
+                          key: const ValueKey('loans-search-field'),
+                          controller: _searchController,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: AppSpacing.md),
+                ),
+                _buildFilteredListSliver(
+                  ref: ref,
+                  filter: _filter,
+                  searchController: _searchController,
+                  layout: layout,
+                ),
+              ],
             ),
           ),
         ),
@@ -236,23 +137,164 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
           'Empréstimos totalmente pagos aparecem aqui.',
         LoanListFilter.todos => 'Cadastre seu primeiro empréstimo.',
       };
+
+  static Widget _buildFilteredListSliver({
+    required WidgetRef ref,
+    required LoanListFilter filter,
+    required TextEditingController searchController,
+    required LoanListCardLayout layout,
+  }) {
+    final loansAsync = ref.watch(allLoansProvider);
+    final paymentsAsync = ref.watch(allPaymentsForUserProvider);
+
+    return ListenableBuilder(
+      listenable: searchController,
+      builder: (context, _) {
+        final query = searchController.text;
+
+        return loansAsync.when(
+          data: (allLoans) => paymentsAsync.when(
+            data: (payments) {
+              final filteredByStatus = LoanListFilterHelper.apply(
+                items: allLoans,
+                payments: payments,
+                filter: filter,
+              );
+              final loans = LoanListFilterHelper.search(
+                items: filteredByStatus,
+                query: query,
+              );
+
+              if (loans.isEmpty) {
+                return SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppSpacing.maxContentWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: AppEmptyState(
+                          icon: query.trim().isNotEmpty
+                              ? LucideIcons.search
+                              : LucideIcons.wallet,
+                          title: query.trim().isNotEmpty
+                              ? 'Nenhum resultado'
+                              : _emptyTitle(filter),
+                          subtitle: query.trim().isNotEmpty
+                              ? 'Tente outro nome, valor ou parcelas.'
+                              : _emptySubtitle(filter),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  kBottomNavReservedHeight + AppSpacing.lg,
+                ),
+                sliver: SliverList.separated(
+                  itemCount: loans.length,
+                  separatorBuilder: (_, _) => SizedBox(
+                    height: layout == LoanListCardLayout.compact
+                        ? AppSpacing.xs
+                        : AppSpacing.sm,
+                  ),
+                  itemBuilder: (context, index) {
+                    return Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: AppSpacing.maxContentWidth,
+                        ),
+                        child: LoanListTile(item: loans[index]),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+            loading: () => const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: AppEmptyState(
+                  icon: LucideIcons.circle_alert,
+                  title: 'Erro ao carregar pagamentos',
+                  subtitle: e.toString(),
+                ),
+              ),
+            ),
+          ),
+          loading: () => const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: AppEmptyState(
+                icon: LucideIcons.circle_alert,
+                title: 'Erro ao carregar',
+                subtitle: e.toString(),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _LoansSearchField extends StatelessWidget {
+/// Campo de busca isolado dos [StreamProvider]s da lista para não perder foco
+/// nem reabrir o teclado a cada sincronização.
+class _LoansSearchField extends StatefulWidget {
   const _LoansSearchField({
     required this.controller,
-    required this.showClear,
-    required this.onChanged,
-    required this.onClear,
+    super.key,
   });
 
   final TextEditingController controller;
-  final bool showClear;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
+
+  @override
+  State<_LoansSearchField> createState() => _LoansSearchFieldState();
+}
+
+class _LoansSearchFieldState extends State<_LoansSearchField> {
+  late final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onTextChanged() => setState(() {});
+
+  void _clear() {
+    widget.controller.clear();
+    _focusNode.unfocus();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final showClear = widget.controller.text.isNotEmpty;
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -261,8 +303,11 @@ class _LoansSearchField extends StatelessWidget {
         boxShadow: context.appTheme.cardShadow,
       ),
       child: TextField(
-        controller: controller,
-        onChanged: onChanged,
+        controller: widget.controller,
+        focusNode: _focusNode,
+        autofocus: false,
+        enableSuggestions: false,
+        autocorrect: false,
         textInputAction: TextInputAction.search,
         style: Theme.of(context).textTheme.bodyMedium,
         decoration: InputDecoration(
@@ -280,7 +325,7 @@ class _LoansSearchField extends StatelessWidget {
                     size: 20,
                     color: context.appTheme.textSecondary,
                   ),
-                  onPressed: onClear,
+                  onPressed: _clear,
                 )
               : null,
           filled: false,
@@ -292,6 +337,63 @@ class _LoansSearchField extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _LoansPortfolioSection extends ConsumerWidget {
+  const _LoansPortfolioSection({
+    required this.filter,
+    required this.onFilterTap,
+    required this.layout,
+    required this.onLayoutChanged,
+  });
+
+  final LoanListFilter filter;
+  final ValueChanged<LoanListFilter> onFilterTap;
+  final LoanListCardLayout layout;
+  final ValueChanged<LoanListCardLayout> onLayoutChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final loansAsync = ref.watch(allLoansProvider);
+    final paymentsAsync = ref.watch(allPaymentsForUserProvider);
+
+    return loansAsync.when(
+      data: (allLoans) => paymentsAsync.when(
+        data: (payments) {
+          final portfolio = LoanPortfolioCounts.compute(
+            items: allLoans,
+            payments: payments,
+          );
+          if (portfolio.total == 0) {
+            return const SizedBox.shrink();
+          }
+          return _LoansPortfolioCard(
+            counts: portfolio,
+            selected: filter,
+            onFilterTap: onFilterTap,
+            layout: layout,
+            onLayoutChanged: onLayoutChanged,
+          );
+        },
+        loading: () => const _LoansPortfolioSkeleton(),
+        error: (_, _) => const SizedBox.shrink(),
+      ),
+      loading: () => const _LoansPortfolioSkeleton(),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _LoansPortfolioSkeleton extends StatelessWidget {
+  const _LoansPortfolioSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 140,
+      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
     );
   }
 }

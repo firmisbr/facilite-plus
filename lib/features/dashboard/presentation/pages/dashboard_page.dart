@@ -309,7 +309,7 @@ class _DashboardSummaryHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            'Carteira ativa',
+            'Total emprestado',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: context.appTheme.textSecondary,
@@ -354,7 +354,7 @@ class _DashboardSummaryHero extends StatelessWidget {
               ),
               Expanded(
                 child: _HeroStat(
-                  label: 'Lucro',
+                  label: 'Lucro total',
                   value: LoanSimulator.formatMoney(stats.expectedProfit),
                   color: AppColors.premium,
                 ),
