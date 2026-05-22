@@ -166,6 +166,14 @@ class SettingsPage extends ConsumerWidget {
                       child: Column(
                         children: [
                           _SettingsActionTile(
+                            icon: LucideIcons.chart_column,
+                            title: 'Relatórios',
+                            subtitle:
+                                'Resumo, inadimplência, previsão e exportar CSV',
+                            onTap: () => context.push(AppRoutes.reports),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _SettingsActionTile(
                             icon: LucideIcons.users,
                             title: 'Clientes',
                             subtitle: 'Cadastro, edição e histórico',

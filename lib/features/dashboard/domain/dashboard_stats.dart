@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 
 import '../../loans/domain/entities/loan_with_client.dart';
 import '../../loans/domain/loan_installment_status.dart';
+import '../../loans/domain/loan_list_filter.dart';
 import '../../loans/domain/loan_schedule_builder.dart';
 import '../../loans/domain/loan_simulator.dart';
 import '../../payments/domain/entities/payment.dart';
@@ -137,12 +138,18 @@ abstract final class DashboardStatsBuilder {
     final monthCounts = <DateTime, int>{};
 
     for (final item in loans) {
-      clientIds.add(item.loan.clientId);
-      final isActive = (item.loan.status ?? 'ativo') == 'ativo';
-      if (!isActive) continue;
-
-      activeCount++;
       final loanPayments = paymentsByLoan[item.loan.id] ?? [];
+      final flags = LoanListFilterHelper.flags(
+        item: item,
+        payments: loanPayments,
+        asOf: now,
+      );
+
+      // Quitados saem; ativos e atrasados entram (cronograma, não só o campo status).
+      if (flags.isQuitado) continue;
+
+      clientIds.add(item.loan.clientId);
+      activeCount++;
       final detail = LoanScheduleBuilder.build(
         loan: item.loan,
         payments: loanPayments,
