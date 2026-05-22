@@ -131,84 +131,38 @@ class DashboardPage extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      SliverToBoxAdapter(
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              maxWidth: AppSpacing.maxContentWidth,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                AppSpacing.lg,
-                                AppSpacing.md,
-                                AppSpacing.lg,
-                                AppSpacing.sm,
+                      if (stats.cashFlowBuckets.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: AppSpacing.maxContentWidth,
                               ),
-                              child: const _DashboardSectionLabel(
-                                title: 'Indicadores',
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SliverToBoxAdapter(
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              maxWidth: AppSpacing.maxContentWidth,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.lg,
-                              ),
-                              child: GridView.count(
-                                crossAxisCount: 2,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                mainAxisSpacing: AppSpacing.md,
-                                crossAxisSpacing: AppSpacing.md,
-                                childAspectRatio: 1.08,
-                                children: [
-                                  _DashboardMetricTile(
-                                    icon: LucideIcons.banknote,
-                                    label: 'Emprestado',
-                                    value: LoanSimulator.formatMoney(
-                                      stats.totalLent,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  AppSpacing.md,
+                                  AppSpacing.lg,
+                                  AppSpacing.sm,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    const _DashboardSectionLabel(
+                                      title: 'Radar de caixa',
                                     ),
-                                    subtitle:
-                                        '${stats.activeLoansCount} ativo(s)',
-                                    color: AppColors.accent,
-                                  ),
-                                  _DashboardMetricTile(
-                                    icon: LucideIcons.circle_check,
-                                    label: 'Recebido',
-                                    value: LoanSimulator.formatMoney(
-                                      stats.totalReceived,
+                                    const SizedBox(height: AppSpacing.md),
+                                    _CashFlowRadarCard(
+                                      buckets: stats.cashFlowBuckets,
+                                      insight: stats.cashFlowInsight,
                                     ),
-                                    color: AppColors.success,
-                                  ),
-                                  _DashboardMetricTile(
-                                    icon: LucideIcons.clock,
-                                    label: 'A receber',
-                                    value: LoanSimulator.formatMoney(
-                                      stats.totalRemaining,
-                                    ),
-                                  ),
-                                  _DashboardMetricTile(
-                                    icon: LucideIcons.trending_up,
-                                    label: 'Lucro previsto',
-                                    value: LoanSimulator.formatMoney(
-                                      stats.expectedProfit,
-                                    ),
-                                    color: AppColors.premium,
-                                    subtitle: 'Juros dos ativos',
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
                       SliverToBoxAdapter(
                         child: Center(
                           child: ConstrainedBox(
@@ -454,62 +408,157 @@ class _HeroStat extends StatelessWidget {
   }
 }
 
-class _DashboardMetricTile extends StatelessWidget {
-  const _DashboardMetricTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.subtitle,
-    this.color,
+class _CashFlowRadarCard extends StatelessWidget {
+  const _CashFlowRadarCard({
+    required this.buckets,
+    this.insight,
   });
 
-  final IconData icon;
-  final String label;
-  final String value;
-  final String? subtitle;
-  final Color? color;
+  final List<CashFlowBucket> buckets;
+  final String? insight;
+
+  static const _chartHeight = 112.0;
+  static const _columnWidth = 52.0;
 
   @override
   Widget build(BuildContext context) {
-    final accent = color ?? AppColors.accent;
+    final maxAmount = buckets
+        .map((b) => b.amount)
+        .fold<double>(0, (a, b) => a > b ? a : b);
 
     return _DashboardSurfaceCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm + 2),
-            decoration: AppDecorations.iconBadge(color: accent),
-            child: Icon(icon, size: 20, color: accent),
-          ),
-          const Spacer(),
+          if (insight != null) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  LucideIcons.sparkles,
+                  size: 16,
+                  color: AppColors.premium,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    insight!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          height: 1.45,
+                          color: context.appTheme.textSecondary,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
           Text(
-            label,
+            'Quanto pode entrar por semana (parcelas em aberto)',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: context.appTheme.textSecondary,
                 ),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: accent,
-                  height: 1.1,
-                ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle!,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: context.appTheme.textSecondary,
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            height: _chartHeight,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: buckets.length,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+              itemBuilder: (context, index) {
+                final bucket = buckets[index];
+                final color = bucket.isOverdue
+                    ? AppColors.error
+                    : bucket.isCurrentWeek
+                        ? AppColors.accent
+                        : AppColors.premium;
+
+                final barFlex = maxAmount <= 0
+                    ? 1
+                    : (bucket.amount / maxAmount * 100).round().clamp(4, 100);
+
+                return SizedBox(
+                  width: _columnWidth,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (bucket.amount > 0)
+                              Text(
+                                LoanSimulator.formatMoney(bucket.amount),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: color,
+                                    ),
+                              ),
+                            const SizedBox(height: 2),
+                            Expanded(
+                              flex: barFlex,
+                              child: Container(
+                                width: 28,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.radiusSm,
+                                  ),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                    colors: [
+                                      color.withValues(alpha: 0.35),
+                                      color.withValues(alpha: 0.9),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        bucket.label,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontWeight: bucket.isCurrentWeek
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: bucket.isOverdue
+                                  ? AppColors.error
+                                  : null,
+                            ),
+                      ),
+                      if (bucket.installmentCount > 0)
+                        Text(
+                          '${bucket.installmentCount} parc.',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    fontSize: 9,
+                                    color: context.appTheme.textSecondary,
+                                  ),
+                        ),
+                    ],
                   ),
+                );
+              },
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -657,7 +706,12 @@ class _UpcomingDueTile extends StatelessWidget {
     final accent = isOverdue ? AppColors.error : AppColors.accent;
 
     return _DashboardSurfaceCard(
-      onTap: () => context.push(AppRoutes.loanDetail(due.loanId)),
+      onTap: () => context.push(
+        AppRoutes.loanDetail(
+          due.loanId,
+          highlightInstallment: due.installmentNumber,
+        ),
+      ),
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: [

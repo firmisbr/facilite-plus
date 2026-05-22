@@ -214,7 +214,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return LoanDetailPage(loanId: id);
+          final parcela = state.uri.queryParameters['parcela'];
+          final highlightInstallment = parcela != null
+              ? int.tryParse(parcela)
+              : null;
+          return LoanDetailPage(
+            loanId: id,
+            highlightInstallment: highlightInstallment,
+          );
         },
         routes: [
           GoRoute(

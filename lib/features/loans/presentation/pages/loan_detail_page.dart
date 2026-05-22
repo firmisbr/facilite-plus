@@ -16,12 +16,20 @@ import '../../domain/loan_installment_status.dart';
 import '../../domain/loan_simulator.dart';
 import '../providers/loan_detail_providers.dart';
 import '../providers/loans_providers.dart';
+import '../widgets/installment_highlight_shell.dart';
 import '../widgets/loan_installment_card.dart';
 
 class LoanDetailPage extends ConsumerStatefulWidget {
-  const LoanDetailPage({super.key, required this.loanId});
+  const LoanDetailPage({
+    super.key,
+    required this.loanId,
+    this.highlightInstallment,
+  });
 
   final String loanId;
+
+  /// Parcela a rolar e destacar (ex.: vinda do dashboard).
+  final int? highlightInstallment;
 
   @override
   ConsumerState<LoanDetailPage> createState() => _LoanDetailPageState();
@@ -29,6 +37,66 @@ class LoanDetailPage extends ConsumerStatefulWidget {
 
 class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
   bool _deleting = false;
+  final _scrollController = ScrollController();
+  final _installmentKeys = <int, GlobalKey>{};
+  int? _highlightedInstallment;
+  bool _highlightFocusDone = false;
+
+  static const _highlightDuration = Duration(seconds: 3);
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(LoanDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.loanId != widget.loanId ||
+        oldWidget.highlightInstallment != widget.highlightInstallment) {
+      _highlightFocusDone = false;
+      _highlightedInstallment = null;
+      _installmentKeys.clear();
+    }
+  }
+
+  void _scheduleInstallmentHighlight(List<LoanInstallmentItem> installments) {
+    final target = widget.highlightInstallment;
+    if (target == null || _highlightFocusDone) return;
+
+    final exists = installments.any((i) => i.number == target);
+    if (!exists) {
+      _highlightFocusDone = true;
+      return;
+    }
+
+    _highlightFocusDone = true;
+    for (final item in installments) {
+      _installmentKeys.putIfAbsent(item.number, GlobalKey.new);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 80), () {
+        if (!mounted) return;
+        final targetContext = _installmentKeys[target]?.currentContext;
+        if (targetContext == null || !targetContext.mounted) return;
+
+        Scrollable.ensureVisible(
+          targetContext,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOutCubic,
+          alignment: 0.28,
+        ).then((_) {
+          if (!mounted) return;
+          setState(() => _highlightedInstallment = target);
+          Future<void>.delayed(_highlightDuration, () {
+            if (mounted) setState(() => _highlightedInstallment = null);
+          });
+        });
+      });
+    });
+  }
 
   Future<void> _confirmDelete() async {
     final confirm = await showDialog<bool>(
@@ -96,6 +164,10 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
     final client = bundle.client;
     final detail = bundle.detail;
 
+    if (detail != null) {
+      _scheduleInstallmentHighlight(detail.installments);
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -130,6 +202,7 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
+            controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg,
               AppSpacing.sm,
@@ -163,6 +236,8 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
                         loanId: widget.loanId,
                         installments: detail.installments,
                         overview: detail.overview,
+                        installmentKeys: _installmentKeys,
+                        highlightedInstallment: _highlightedInstallment,
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       _OverviewCard(overview: detail.overview),
@@ -456,11 +531,15 @@ class _InstallmentsSection extends StatelessWidget {
     required this.loanId,
     required this.installments,
     required this.overview,
+    required this.installmentKeys,
+    required this.highlightedInstallment,
   });
 
   final String loanId;
   final List<LoanInstallmentItem> installments;
   final LoanOverviewStats overview;
+  final Map<int, GlobalKey> installmentKeys;
+  final int? highlightedInstallment;
 
   @override
   Widget build(BuildContext context) {
@@ -513,8 +592,12 @@ class _InstallmentsSection extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         ...installments.map(
           (item) => Padding(
+            key: installmentKeys[item.number],
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: LoanInstallmentCard(loanId: loanId, item: item),
+            child: InstallmentHighlightShell(
+              active: highlightedInstallment == item.number,
+              child: LoanInstallmentCard(loanId: loanId, item: item),
+            ),
           ),
         ),
       ],

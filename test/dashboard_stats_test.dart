@@ -1,8 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:facilite_plus/features/dashboard/domain/dashboard_stats.dart';
 import 'package:facilite_plus/features/loans/domain/entities/loan.dart';
 import 'package:facilite_plus/features/loans/domain/entities/loan_with_client.dart';
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('pt_BR');
+  });
+
   test('agrega totais de emprestimos ativos', () {
     const loan = Loan(
       id: 'l1',
@@ -26,6 +31,8 @@ void main() {
     expect(stats.totalRemaining, 1000);
     expect(stats.upcomingDues, hasLength(1));
     expect(stats.upcomingDues.first.installmentNumber, 1);
+    expect(stats.cashFlowBuckets, isNotEmpty);
+    expect(stats.cashFlowInsight, isNotNull);
   });
 
   test('lista proxima parcela de cada emprestimo ativo sem limite de dias', () {

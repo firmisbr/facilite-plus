@@ -23,7 +23,10 @@ abstract final class AppRoutes {
 
   /// Telas em stack (fora do shell — sem barra inferior)
   static const loanCreate = '/loans/new';
-  static String loanDetail(String id) => '/loans/$id';
+  static String loanDetail(String id, {int? highlightInstallment}) {
+    if (highlightInstallment == null) return '/loans/$id';
+    return '/loans/$id?parcela=$highlightInstallment';
+  }
   static String loanEdit(String id) => '/loans/$id/edit';
   static String loanPayments(String loanId) => '/loans/$loanId/payments';
   static String paymentNew(String loanId) => '/loans/$loanId/payments/new';
