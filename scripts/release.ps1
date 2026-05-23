@@ -24,6 +24,7 @@ param(
     [switch] $SkipBuild,
     [switch] $SkipUpload,
     [switch] $SkipVersionBump,
+    [switch] $SkipGitCommit,
     [switch] $DryRun
 )
 
@@ -266,6 +267,34 @@ if (-not $SkipUpload) {
     Write-Host "  Usuários com versão antiga verão a bolinha amarela em Config." -ForegroundColor DarkGray
 } else {
     Write-Warn 'SkipUpload: GitHub e manifesto não foram atualizados.'
+}
+
+# ─── Git commit e push ────────────────────────────────────────────────────────
+
+if (-not $SkipVersionBump -and -not $SkipGitCommit) {
+    Write-Step 'Git: commit da versão e push'
+
+    $commitMsg = "chore: release v$semver"
+
+    if ($DryRun) {
+        Write-Warn "[DryRun] git add pubspec.yaml lib/core/config/app_version.dart"
+        Write-Warn "[DryRun] git commit -m `"$commitMsg`""
+        Write-Warn "[DryRun] git push"
+    } else {
+        & git add pubspec.yaml lib/core/config/app_version.dart
+        if ($LASTEXITCODE -ne 0) { throw 'git add falhou' }
+
+        & git commit -m $commitMsg
+        if ($LASTEXITCODE -ne 0) { throw 'git commit falhou' }
+
+        & git push
+        if ($LASTEXITCODE -ne 0) { throw 'git push falhou' }
+
+        Write-Ok "Commit: $commitMsg"
+        Write-Ok 'Push: OK'
+    }
+} elseif ($SkipGitCommit) {
+    Write-Warn 'SkipGitCommit: commit e push não executados.'
 }
 
 Write-Host ''

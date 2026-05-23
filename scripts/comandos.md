@@ -88,11 +88,19 @@ Apenas atualiza os arquivos locais (`pubspec.yaml`, `app_version.dart`) e opcion
 
 ---
 
+### `-SkipGitCommit` _(switch)_
+
+Não executa `git add`, `git commit` nem `git push` ao final.  
+Útil se preferir commitar manualmente depois.
+
+---
+
 ### `-DryRun` _(switch)_
 
 Simula o upload e o PATCH no Supabase **sem enviar nada**.  
 Imprime as URLs e o payload que seriam enviados.  
-Ainda altera `pubspec.yaml` e `app_version.dart` localmente (a menos que combine com `-SkipVersionBump`).
+Ainda altera `pubspec.yaml` e `app_version.dart` localmente (a menos que combine com `-SkipVersionBump`).  
+O bloco de git também é simulado (só imprime os comandos).
 
 ---
 
@@ -224,7 +232,12 @@ Use quando houver mudança grande, breaking change ou nova versão principal (ex
 10. Monta URL pública de download
 11. PATCH em app_update_manifest (id=1) no Supabase
 12. Imprime URL final para teste
+13. git add pubspec.yaml + app_version.dart
+14. git commit -m "chore: release vX.Y.Z"
+15. git push
 ```
+
+Use `-SkipGitCommit` para pular o passo 13–15 e commitar manualmente.
 
 ---
 
@@ -232,7 +245,7 @@ Use quando houver mudança grande, breaking change ou nova versão principal (ex
 
 - Abra a **URL impressa** no navegador — deve baixar o APK.
 - No celular com versão **anterior**: Config → bolinha amarela → **Atualizações** → Baixar e instalar.
-- Faça commit dos arquivos alterados se quiser versionar:
+- O script já faz o commit de versão automaticamente. Para commitar manualmente use `-SkipGitCommit`:
 
 ```powershell
 git add pubspec.yaml lib/core/config/app_version.dart

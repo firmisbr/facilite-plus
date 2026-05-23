@@ -1,7 +1,7 @@
 name: facilite_plus
 description: Gerenciamento de finanças
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.3+3
 
 environment:
   sdk: ^3.12.0
