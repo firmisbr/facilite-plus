@@ -89,6 +89,7 @@ class ReportsPortfolioTab extends StatelessWidget {
           child: ReportsReceivedPendingChart(
             received: overview.totalReceived,
             pending: overview.totalRemaining,
+            centerLabel: 'Carteira',
           ),
         ),
         ReportSection(

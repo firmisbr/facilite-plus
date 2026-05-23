@@ -134,7 +134,7 @@ class ReportPeriodRange {
         label = preset.label;
       case ReportPeriodPreset.thisWeek:
         start = _weekStartMonday(today);
-        end = today;
+        end = _weekEndSunday(today);
         label = preset.label;
       case ReportPeriodPreset.last7Days:
         start = today.subtract(const Duration(days: 6));
@@ -204,6 +204,11 @@ class ReportPeriodRange {
 
   static DateTime _weekStartMonday(DateTime date) {
     return date.subtract(Duration(days: date.weekday - 1));
+  }
+
+  /// Domingo da semana ISO (segunda–domingo) que contém [date].
+  static DateTime _weekEndSunday(DateTime date) {
+    return _weekStartMonday(date).add(const Duration(days: 6));
   }
 
   /// Quinzena de calendário: dias 1–15 e 16–fim do mês.

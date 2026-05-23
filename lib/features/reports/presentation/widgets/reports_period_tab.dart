@@ -6,6 +6,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../domain/reports_snapshot.dart';
 import 'report_period_filter_card.dart';
 import 'reports_portfolio_highlight_card.dart';
+import 'reports_received_pending_chart.dart';
 import 'reports_shared_sections.dart';
 
 /// Aba Por período — filtro + métricas e listas do intervalo.
@@ -69,6 +70,21 @@ class ReportsPeriodTab extends StatelessWidget {
               period: snapshot.period,
             ),
           ),
+          if (snapshot.summary.receivedInPeriod > 0 ||
+              snapshot.summary.dueInPeriod > 0)
+            ReportSection(
+              title: 'Recebido vs. a receber',
+              icon: LucideIcons.chart_pie,
+              child: ReportsReceivedPendingChart(
+                received: snapshot.summary.receivedInPeriod,
+                pending: snapshot.summary.dueInPeriod,
+                centerLabel: snapshot.period.label,
+                centerSubtitle: snapshot.period.rangeCaption,
+                pendingLegendLabel: 'A receber',
+                emptyMessage:
+                    'Sem recebido nem parcelas a receber neste período.',
+              ),
+            ),
           if (snapshot.delinquentClients.isNotEmpty)
             ReportSection(
               title: 'Inadimplência no período',

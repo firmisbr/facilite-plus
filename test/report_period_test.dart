@@ -37,13 +37,23 @@ void main() {
       expect(range.end, DateTime(2026, 5, 15));
     });
 
-    test('thisWeek starts on Monday', () {
+    test('thisWeek spans Monday through Sunday', () {
       final range = ReportPeriodRange.resolvePreset(
         preset: ReportPeriodPreset.thisWeek,
         asOf: DateTime(2026, 5, 22), // Thursday
       );
       expect(range.start, DateTime(2026, 5, 18)); // Monday
-      expect(range.end, DateTime(2026, 5, 22));
+      expect(range.end, DateTime(2026, 5, 24)); // Sunday
+      expect(range.rangeCaption, '18/05/2026 – 24/05/2026');
+    });
+
+    test('thisWeek on Saturday includes Sunday', () {
+      final range = ReportPeriodRange.resolvePreset(
+        preset: ReportPeriodPreset.thisWeek,
+        asOf: DateTime(2026, 5, 23), // Saturday
+      );
+      expect(range.start, DateTime(2026, 5, 18));
+      expect(range.end, DateTime(2026, 5, 24));
     });
 
     test('custom range swaps inverted dates', () {

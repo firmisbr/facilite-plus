@@ -5,16 +5,24 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../loans/domain/loan_simulator.dart';
 
-/// Rosca Recebido vs. Pendente (carteira em aberto).
+/// Rosca Recebido vs. pendente / a receber.
 class ReportsReceivedPendingChart extends StatelessWidget {
   const ReportsReceivedPendingChart({
     required this.received,
     required this.pending,
+    this.centerLabel = 'Total',
+    this.centerSubtitle,
+    this.pendingLegendLabel = 'Pendente',
+    this.emptyMessage = 'Sem valores na carteira.',
     super.key,
   });
 
   final double received;
   final double pending;
+  final String centerLabel;
+  final String? centerSubtitle;
+  final String pendingLegendLabel;
+  final String emptyMessage;
 
   static const _pendingColor = Color(0xFFE8A04A);
 
@@ -28,7 +36,7 @@ class ReportsReceivedPendingChart extends StatelessWidget {
   Widget build(BuildContext context) {
     if (_total <= 0) {
       return Text(
-        'Sem valores na carteira.',
+        emptyMessage,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: context.appTheme.textSecondary,
             ),
@@ -58,12 +66,23 @@ class ReportsReceivedPendingChart extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Total',
+                    centerLabel,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: context.appTheme.textSecondary,
                           fontWeight: FontWeight.w600,
                         ),
                   ),
+                  if (centerSubtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      centerSubtitle!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: context.appTheme.textSecondary,
+                            fontSize: 10,
+                          ),
+                    ),
+                  ],
                   const SizedBox(height: 2),
                   Text(
                     LoanSimulator.formatMoney(_total),
@@ -109,7 +128,7 @@ class ReportsReceivedPendingChart extends StatelessWidget {
               Expanded(
                 child: _LegendColumn(
                   color: _pendingColor,
-                  label: 'Pendente',
+                  label: pendingLegendLabel,
                   value: LoanSimulator.formatMoney(pending),
                   percent: '$pendingPct%',
                 ),

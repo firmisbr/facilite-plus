@@ -249,6 +249,8 @@ class _ReportPeriodFilterCardState extends ConsumerState<ReportPeriodFilterCard>
 
     if (!mounted) return;
 
+    final maxDate = DateTime(today.year + 3, 12, 31);
+
     final result = await showModalBottomSheet<(DateTime, DateTime)?>(
       context: context,
       useRootNavigator: true,
@@ -264,7 +266,7 @@ class _ReportPeriodFilterCardState extends ConsumerState<ReportPeriodFilterCard>
           child: _CustomRangeSheet(
             initialStart: start,
             initialEnd: end,
-            lastDate: today,
+            maxDate: maxDate,
           ),
         );
       },
@@ -324,12 +326,14 @@ class _CustomRangeSheet extends StatefulWidget {
   const _CustomRangeSheet({
     required this.initialStart,
     required this.initialEnd,
-    required this.lastDate,
+    required this.maxDate,
   });
 
   final DateTime initialStart;
   final DateTime initialEnd;
-  final DateTime lastDate;
+
+  /// Limite superior do "Até" (parcelas a vencer no futuro).
+  final DateTime maxDate;
 
   @override
   State<_CustomRangeSheet> createState() => _CustomRangeSheetState();
@@ -352,7 +356,7 @@ class _CustomRangeSheetState extends State<_CustomRangeSheet> {
       context,
       initialDate: _start,
       firstDate: DateTime(2000),
-      lastDate: widget.lastDate,
+      lastDate: _end.isAfter(widget.maxDate) ? widget.maxDate : _end,
       helpText: 'Data inicial',
     );
     if (picked != null) {
@@ -368,7 +372,7 @@ class _CustomRangeSheetState extends State<_CustomRangeSheet> {
       context,
       initialDate: _end.isBefore(_start) ? _start : _end,
       firstDate: _start,
-      lastDate: widget.lastDate,
+      lastDate: widget.maxDate,
       helpText: 'Data final',
     );
     if (picked != null) {
