@@ -1,5 +1,5 @@
 name: facilite_plus
-description: Gestão de empréstimos offline-first.
+description: Gerenciamento de finanças
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -46,6 +46,7 @@ dependencies:
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
   file_picker: ^8.3.7
+  package_info_plus: ^8.3.0
 
 dev_dependencies:
   flutter_test:
