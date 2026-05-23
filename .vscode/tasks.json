@@ -1,0 +1,71 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "releaseChangelog",
+      "type": "promptString",
+      "description": "Changelog (o que mudou nesta versão)",
+      "default": ""
+    },
+    {
+      "id": "releaseVersion",
+      "type": "promptString",
+      "description": "Versão X.Y.Z (deixe vazio para usar -Bump)",
+      "default": ""
+    }
+  ],
+  "tasks": [
+    {
+      "label": "Facilite+: Release OTA (patch)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/release.ps1",
+        "-Bump",
+        "patch",
+        "-Changelog",
+        "${input:releaseChangelog}"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": false },
+      "problemMatcher": []
+    },
+    {
+      "label": "Facilite+: Release OTA (minor)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/release.ps1",
+        "-Bump",
+        "minor",
+        "-Changelog",
+        "${input:releaseChangelog}"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Facilite+: Release OTA (versão manual)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/release.ps1",
+        "-Version",
+        "${input:releaseVersion}",
+        "-Changelog",
+        "${input:releaseChangelog}"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    }
+  ]
+}

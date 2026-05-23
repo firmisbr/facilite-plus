@@ -1,0 +1,40 @@
+# Mantém o projeto Supabase (free tier) ativo com ping a cada 3 dias.
+# Secrets necessários: SUPABASE_URL, SUPABASE_ANON_KEY
+name: Supabase heartbeat
+
+on:
+  schedule:
+    # A cada 3 dias, 06:00 UTC (~03:00 BRT)
+    - cron: '0 6 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Configure SUPABASE_URL e SUPABASE_ANON_KEY nos secrets do repositório."
+            exit 1
+          fi
+
+          url="${SUPABASE_URL%/}/rest/v1/clients?select=id&limit=1"
+          code=$(curl -sS -o /tmp/supabase-heartbeat.json -w "%{http_code}" \
+            "$url" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+
+          echo "HTTP $code"
+          cat /tmp/supabase-heartbeat.json
+
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "Falha no heartbeat — verifique URL, anon key e RLS da tabela clients."
+            exit 1
+          fi
+
+          echo "Heartbeat OK."
