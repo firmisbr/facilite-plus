@@ -12,9 +12,20 @@ import '../../domain/loan_simulator.dart';
 import '../providers/loan_detail_providers.dart';
 
 class LoanListCard extends ConsumerWidget {
-  const LoanListCard({required this.item, super.key});
+  const LoanListCard({
+    required this.item,
+    super.key,
+    this.selecting = false,
+    this.selected = false,
+    this.onTap,
+    this.onLongPress,
+  });
 
   final LoanWithClient item;
+  final bool selecting;
+  final bool selected;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -50,16 +61,20 @@ class LoanListCard extends ConsumerWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.loanDetail(loan.id)),
+        onTap: onTap ?? () => context.push(AppRoutes.loanDetail(loan.id)),
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         child: Ink(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
             border: Border.all(
-              color: isOverdue
-                  ? AppColors.error.withValues(alpha: 0.45)
-                  : context.appTheme.border,
+              color: selected
+                  ? AppColors.accent.withValues(alpha: 0.65)
+                  : isOverdue
+                      ? AppColors.error.withValues(alpha: 0.45)
+                      : context.appTheme.border,
+              width: selected ? 2 : 1,
             ),
             boxShadow: context.appTheme.cardShadow,
           ),

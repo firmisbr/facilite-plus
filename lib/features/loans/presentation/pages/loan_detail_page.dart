@@ -7,6 +7,7 @@ import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/providers/app_data_invalidation.dart';
 import '../../../../services/sync/sync_providers.dart';
 import '../../../clients/domain/entities/client.dart';
 import '../../../../shared/utils/br_cpf_input_formatter.dart';
@@ -16,7 +17,9 @@ import '../../domain/loan_installment_status.dart';
 import '../../domain/loan_simulator.dart';
 import '../providers/loan_detail_providers.dart';
 import '../providers/loans_providers.dart';
+import '../widgets/delete_loans_dialog.dart';
 import '../widgets/installment_highlight_shell.dart';
+import '../widgets/loan_delete_progress_view.dart';
 import '../widgets/loan_installment_card.dart';
 
 class LoanDetailPage extends ConsumerStatefulWidget {
@@ -37,6 +40,7 @@ class LoanDetailPage extends ConsumerStatefulWidget {
 
 class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
   bool _deleting = false;
+  String? _deletingSubtitle;
   final _scrollController = ScrollController();
   final _installmentKeys = <int, GlobalKey>{};
   int? _highlightedInstallment;
@@ -99,53 +103,55 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
   }
 
   Future<void> _confirmDelete() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Excluir empréstimo?'),
-        content: const Text(
-          'O empréstimo e todos os pagamentos registrados serão '
-          'removidos. Esta ação não pode ser desfeita.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
+    final bundle = ref.read(loanDetailProvider(widget.loanId));
+    if (bundle == null) return;
+
+    final confirm = await DeleteLoansDialog.show(
+      context,
+      count: 1,
+      highlightName: bundle.client.name,
     );
 
     if (confirm != true || !mounted) return;
 
-    setState(() => _deleting = true);
-    try {
-      await ref.read(loansRepositoryProvider).delete(widget.loanId);
-      await ref.read(syncServiceProvider).processQueue();
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Empréstimo excluído')));
-        context.go(AppRoutes.loans);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Erro ao excluir: $e')));
-      }
-    } finally {
-      if (mounted) setState(() => _deleting = false);
-    }
+    setState(() {
+      _deleting = true;
+      _deletingSubtitle = bundle.client.name;
+    });
+  }
+
+  void _onDeleteComplete() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Empréstimo excluído')),
+    );
+    context.go(AppRoutes.loans);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_deleting) {
+      return LoanDeleteProgressView(
+        subtitle: _deletingSubtitle,
+        deleteAction: () async {
+          await ref.read(loansRepositoryProvider).delete(widget.loanId);
+          invalidateAppDataCacheWidgetRef(ref);
+          await ref.read(syncServiceProvider).processQueue();
+        },
+        onComplete: _onDeleteComplete,
+        onFailed: (e) {
+          if (!mounted) return;
+          setState(() {
+            _deleting = false;
+            _deletingSubtitle = null;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao excluir: $e')),
+          );
+        },
+      );
+    }
+
     final bundle = ref.watch(loanDetailProvider(widget.loanId));
     final isLoading = ref.watch(loanDetailLoadingProvider(widget.loanId));
     final brightness = Theme.of(context).brightness;
@@ -185,14 +191,8 @@ class _LoanDetailPageState extends ConsumerState<LoanDetailPage> {
           ),
           IconButton(
             tooltip: 'Excluir empréstimo',
-            icon: _deleting
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(LucideIcons.trash_2, size: 22),
-            onPressed: _deleting ? null : _confirmDelete,
+            icon: const Icon(LucideIcons.trash_2, size: 22),
+            onPressed: _confirmDelete,
           ),
         ],
       ),

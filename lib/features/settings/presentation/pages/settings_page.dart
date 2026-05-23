@@ -3,6 +3,8 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/config/app_version.dart';
+import '../../../../core/config/app_version_provider.dart';
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_decorations.dart';
@@ -35,9 +37,17 @@ class SettingsPage extends ConsumerWidget {
         ),
         child: SafeArea(
           bottom: false,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
+          child: RefreshIndicator(
+            onRefresh: () async {
+              final container = ProviderScope.containerOf(context);
+              final result = await runFullSync(container);
+              if (context.mounted) {
+                showSyncSnackBar(context, result);
+              }
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
               SliverToBoxAdapter(
                 child: Center(
                   child: ConstrainedBox(
@@ -190,14 +200,13 @@ class SettingsPage extends ConsumerWidget {
                             icon: LucideIcons.refresh_cw,
                             title: 'Sincronizar agora',
                             subtitle:
-                                'Envia alterações locais e baixa dados da nuvem',
+                                'Força envio e download agora (também é automático)',
                             onTap: () async {
                               final container =
                                   ProviderScope.containerOf(context);
                               final messenger =
                                   ScaffoldMessenger.of(context);
                               final result = await runFullSync(container);
-                              ref.invalidate(syncQueueSummaryProvider);
                               if (context.mounted) {
                                 showSyncSnackBarWithMessenger(
                                   messenger,
@@ -280,6 +289,7 @@ class SettingsPage extends ConsumerWidget {
                 ),
               ),
             ],
+            ),
           ),
         ),
       ),
@@ -287,44 +297,103 @@ class SettingsPage extends ConsumerWidget {
   }
 }
 
-class _SettingsAccountCard extends StatelessWidget {
+class _SettingsAccountCard extends ConsumerWidget {
   const _SettingsAccountCard({required this.email});
 
   final String email;
 
   @override
-  Widget build(BuildContext context) {
-    return _SettingsSurfaceCard(
-      child: Row(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final versionAsync = ref.watch(appVersionProvider);
+    final versionLabel = versionAsync.when(
+      data: (v) => 'v$v',
+      loading: () => 'v${AppVersion.fallback}',
+      error: (_, _) => 'v${AppVersion.fallback}',
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.accent.withValues(alpha: 0.18),
+            AppColors.accentSecondary.withValues(alpha: 0.12),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.35)),
+        boxShadow: context.appTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: AppDecorations.iconBadge(color: AppColors.accent),
-            child: const Icon(
-              LucideIcons.user,
-              size: 22,
-              color: AppColors.accent,
-            ),
+          Text(
+            'Sua conta',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: context.appTheme.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Configurações',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+          const SizedBox(height: 4),
+          Text(
+            email,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  height: 1.25,
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  email,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: context.appTheme.textSecondary,
-                      ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => context.push(AppRoutes.updates),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: 6,
                 ),
-              ],
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surface
+                      .withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  border: Border.all(
+                    color: AppColors.accent.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      LucideIcons.smartphone,
+                      size: 14,
+                      color: AppColors.accent,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Versão instalada $versionLabel',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.accent,
+                          ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      LucideIcons.chevron_right,
+                      size: 14,
+                      color: AppColors.accent.withValues(alpha: 0.85),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -351,9 +420,9 @@ class _SettingsCloudHintCard extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'Na mesma conta, com internet, seus dados aparecem em qualquer '
-              'celular após sincronizar. O backup é uma cópia extra de '
-              'segurança em arquivo.',
+              'Com internet, o app sincroniza sozinho ao abrir e quando a rede '
+              'volta. Na mesma conta, seus dados aparecem em qualquer celular. '
+              'O backup é cópia extra em arquivo.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: context.appTheme.textSecondary,
                     height: 1.45,
@@ -432,6 +501,15 @@ class _SyncStatusCard extends StatelessWidget {
                   ),
             ),
           ),
+          if (summary.hasPending && !summary.hasFailures)
+            const Padding(
+              padding: EdgeInsets.only(left: AppSpacing.xs),
+              child: Icon(
+                LucideIcons.refresh_cw,
+                size: 18,
+                color: AppColors.accent,
+              ),
+            ),
         ],
       ),
     );

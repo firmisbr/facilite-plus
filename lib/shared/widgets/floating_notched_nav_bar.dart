@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/update/presentation/providers/update_providers.dart';
+import '../../services/sync/sync_providers.dart';
 
 /// Altura total reservada (barra flutuante + FAB).
 const double kBottomNavReservedHeight = 108;
@@ -39,6 +40,7 @@ class FloatingNotchedNavBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasUpdate = ref.watch(hasUpdateBadgeProvider);
+    final hasSyncPending = ref.watch(hasSyncAttentionBadgeProvider);
     final notchRadius = _fabSize / 2 + 10;
 
     return SizedBox(
@@ -95,7 +97,8 @@ class FloatingNotchedNavBar extends ConsumerWidget {
                             icon: _tabs[3].icon,
                             selected: currentIndex == 3,
                             onTap: () => onTabSelected(3),
-                            badge: hasUpdate,
+                            updateBadge: hasUpdate,
+                            syncBadge: hasSyncPending,
                           ),
                         ],
                       ),
@@ -126,13 +129,15 @@ class _NavIconButton extends StatelessWidget {
     required this.icon,
     required this.selected,
     required this.onTap,
-    this.badge = false,
+    this.updateBadge = false,
+    this.syncBadge = false,
   });
 
   final IconData icon;
   final bool selected;
   final VoidCallback onTap;
-  final bool badge;
+  final bool updateBadge;
+  final bool syncBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -164,10 +169,29 @@ class _NavIconButton extends StatelessWidget {
                 size: 24,
                 color: selected ? activeColor : idleColor,
               ),
-              if (badge)
+              if (syncBadge)
+                Positioned(
+                  top: -2,
+                  right: -4,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      LucideIcons.refresh_cw,
+                      size: 6,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              if (updateBadge)
                 Positioned(
                   top: -3,
-                  right: -3,
+                  left: -3,
                   child: Container(
                     width: 9,
                     height: 9,

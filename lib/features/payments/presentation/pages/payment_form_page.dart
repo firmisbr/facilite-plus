@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../services/sync/sync_providers.dart';
+import '../../../../shared/providers/app_data_invalidation.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -122,6 +123,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
         );
       }
 
+      invalidateAppDataCacheWidgetRef(ref);
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) context.pop();
     } catch (e) {

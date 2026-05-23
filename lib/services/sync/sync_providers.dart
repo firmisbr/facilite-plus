@@ -28,3 +28,9 @@ final syncQueueSummaryProvider = FutureProvider<SyncQueueSummary>((ref) async {
   final failed = await repo.countFailed();
   return SyncQueueSummary(pending: pending, failed: failed);
 });
+
+/// Bolinha no menu Config quando há envio pendente ou erro na fila.
+final hasSyncAttentionBadgeProvider = Provider<bool>((ref) {
+  final summary = ref.watch(syncQueueSummaryProvider).valueOrNull;
+  return summary != null && summary.total > 0;
+});

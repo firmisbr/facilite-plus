@@ -13,9 +13,20 @@ import '../providers/loan_detail_providers.dart';
 
 /// Card enxuto para listas longas de empréstimos.
 class LoanListCardCompact extends ConsumerWidget {
-  const LoanListCardCompact({required this.item, super.key});
+  const LoanListCardCompact({
+    required this.item,
+    super.key,
+    this.selecting = false,
+    this.selected = false,
+    this.onTap,
+    this.onLongPress,
+  });
 
   final LoanWithClient item;
+  final bool selecting;
+  final bool selected;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -46,16 +57,20 @@ class LoanListCardCompact extends ConsumerWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.loanDetail(loan.id)),
+        onTap: onTap ?? () => context.push(AppRoutes.loanDetail(loan.id)),
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         child: Ink(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             border: Border.all(
-              color: isOverdue
-                  ? AppColors.error.withValues(alpha: 0.4)
-                  : context.appTheme.border,
+              color: selected
+                  ? AppColors.accent.withValues(alpha: 0.65)
+                  : isOverdue
+                      ? AppColors.error.withValues(alpha: 0.4)
+                      : context.appTheme.border,
+              width: selected ? 2 : 1,
             ),
             boxShadow: context.appTheme.cardShadow,
           ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/providers/app_data_invalidation.dart';
 import '../../../../shared/widgets/attention_lucide_icon.dart';
 import '../../../../services/sync/sync_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
@@ -60,7 +61,7 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
         paymentsRepo: paymentsRepo,
         loanId: widget.loanId,
       );
-      ref.invalidate(allLoansProvider);
+      invalidateAppDataCacheWidgetRef(ref);
       await ref.read(syncServiceProvider).processQueue();
       await rescheduleLoanNotifications(ref);
       if (mounted) {
@@ -100,7 +101,7 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
         paymentsRepo: paymentsRepo,
         loanId: widget.loanId,
       );
-      ref.invalidate(allLoansProvider);
+      invalidateAppDataCacheWidgetRef(ref);
       await ref.read(syncServiceProvider).processQueue();
       await rescheduleLoanNotifications(ref);
       if (mounted) {

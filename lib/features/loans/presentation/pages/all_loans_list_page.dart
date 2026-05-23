@@ -5,13 +5,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/providers/app_data_invalidation.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
+import '../../../../services/sync/sync_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
+import '../../domain/entities/loan_with_client.dart';
 import '../../domain/loan_list_filter.dart';
 import '../providers/loan_list_layout_provider.dart';
 import '../providers/loans_providers.dart';
+import '../widgets/delete_loans_dialog.dart';
 import '../widgets/loan_list_tile.dart';
 
 class AllLoansListPage extends ConsumerStatefulWidget {
@@ -24,6 +28,9 @@ class AllLoansListPage extends ConsumerStatefulWidget {
 class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
   LoanListFilter _filter = LoanListFilter.ativos;
   final _searchController = TextEditingController();
+  bool _selecting = false;
+  final Set<String> _selectedLoanIds = {};
+  bool _bulkDeleting = false;
 
   @override
   void dispose() {
@@ -37,6 +44,77 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
     });
   }
 
+  void _exitSelection() {
+    setState(() {
+      _selecting = false;
+      _selectedLoanIds.clear();
+    });
+  }
+
+  void _enterSelection(String loanId) {
+    setState(() {
+      _selecting = true;
+      _selectedLoanIds.add(loanId);
+    });
+  }
+
+  void _toggleSelection(String loanId) {
+    setState(() {
+      if (_selectedLoanIds.contains(loanId)) {
+        _selectedLoanIds.remove(loanId);
+        if (_selectedLoanIds.isEmpty) _selecting = false;
+      } else {
+        _selectedLoanIds.add(loanId);
+      }
+    });
+  }
+
+  void _selectAllVisible(List<LoanWithClient> loans) {
+    setState(() {
+      _selecting = true;
+      for (final item in loans) {
+        _selectedLoanIds.add(item.loan.id);
+      }
+    });
+  }
+
+  Future<void> _bulkDelete() async {
+    if (_selectedLoanIds.isEmpty || _bulkDeleting) return;
+
+    final count = _selectedLoanIds.length;
+    final confirm = await DeleteLoansDialog.show(context, count: count);
+    if (confirm != true || !mounted) return;
+
+    setState(() => _bulkDeleting = true);
+    try {
+      final repo = ref.read(loansRepositoryProvider);
+      for (final id in _selectedLoanIds.toList()) {
+        await repo.delete(id);
+      }
+      invalidateAppDataCacheWidgetRef(ref);
+      await ref.read(syncServiceProvider).processQueue();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            count == 1
+                ? 'Empréstimo excluído'
+                : '$count empréstimos excluídos',
+          ),
+        ),
+      );
+      _exitSelection();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao excluir: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _bulkDeleting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
@@ -44,7 +122,9 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
 
     return Scaffold(
       extendBody: true,
-      body: DecoratedBox(
+      body: Stack(
+        children: [
+          DecoratedBox(
         decoration: BoxDecoration(
           gradient: AppDecorations.screenBackground(brightness),
         ),
@@ -120,6 +200,30 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
                     ),
                   ),
                 ),
+                SliverToBoxAdapter(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppSpacing.maxContentWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.sm,
+                          AppSpacing.lg,
+                          0,
+                        ),
+                        child: _LoansSelectionToolbar(
+                          selecting: _selecting,
+                          selectedCount: _selectedLoanIds.length,
+                          onStartSelecting: () =>
+                              setState(() => _selecting = true),
+                          onCancel: _exitSelection,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 const SliverToBoxAdapter(
                   child: SizedBox(height: AppSpacing.md),
                 ),
@@ -128,11 +232,46 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
                   filter: _filter,
                   searchController: _searchController,
                   layout: layout,
+                  selecting: _selecting,
+                  selectedLoanIds: _selectedLoanIds,
+                  onToggleSelection: _toggleSelection,
+                  onEnterSelection: _enterSelection,
+                  onSelectAllVisible: _selectAllVisible,
                 ),
               ],
             ),
           ),
         ),
+      ),
+          if (_selecting && _selectedLoanIds.isNotEmpty)
+            Positioned(
+              left: AppSpacing.lg,
+              right: AppSpacing.lg,
+              bottom: kBottomNavReservedHeight + AppSpacing.sm,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxW = constraints.maxWidth.isFinite
+                      ? constraints.maxWidth
+                      : MediaQuery.sizeOf(context).width -
+                          AppSpacing.lg * 2;
+                  if (maxW <= 0) return const SizedBox.shrink();
+                  final barWidth =
+                      maxW.clamp(0.0, AppSpacing.maxContentWidth);
+                  return Align(
+                    alignment: Alignment.bottomCenter,
+                    child: SizedBox(
+                      width: barWidth,
+                      child: _LoansBulkDeleteBar(
+                        count: _selectedLoanIds.length,
+                        busy: _bulkDeleting,
+                        onDelete: _bulkDelete,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -154,11 +293,16 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
         LoanListFilter.todos => 'Cadastre seu primeiro empréstimo.',
       };
 
-  static Widget _buildFilteredListSliver({
+  Widget _buildFilteredListSliver({
     required WidgetRef ref,
     required LoanListFilter filter,
     required TextEditingController searchController,
     required LoanListCardLayout layout,
+    required bool selecting,
+    required Set<String> selectedLoanIds,
+    required ValueChanged<String> onToggleSelection,
+    required ValueChanged<String> onEnterSelection,
+    required ValueChanged<List<LoanWithClient>> onSelectAllVisible,
   }) {
     final loansAsync = ref.watch(allLoansProvider);
     final paymentsAsync = ref.watch(allPaymentsForUserProvider);
@@ -208,31 +352,73 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
                 );
               }
 
-              return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  0,
-                  AppSpacing.lg,
-                  kBottomNavReservedHeight + AppSpacing.lg,
-                ),
-                sliver: SliverList.separated(
-                  itemCount: loans.length,
-                  separatorBuilder: (_, _) => SizedBox(
-                    height: layout == LoanListCardLayout.compact
-                        ? AppSpacing.xs
-                        : AppSpacing.sm,
-                  ),
-                  itemBuilder: (context, index) {
-                    return Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: AppSpacing.maxContentWidth,
+              return SliverMainAxisGroup(
+                slivers: [
+                  if (selecting && loans.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: AppSpacing.maxContentWidth,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.lg,
+                              0,
+                              AppSpacing.lg,
+                              AppSpacing.sm,
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () => onSelectAllVisible(loans),
+                                icon: const Icon(LucideIcons.list_checks, size: 18),
+                                label: Text(
+                                  'Marcar visíveis (${loans.length})',
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                        child: LoanListTile(item: loans[index]),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      0,
+                      AppSpacing.lg,
+                      kBottomNavReservedHeight +
+                          AppSpacing.lg +
+                          (selecting && selectedLoanIds.isNotEmpty ? 72 : 0),
+                    ),
+                    sliver: SliverList.separated(
+                      itemCount: loans.length,
+                      separatorBuilder: (_, _) => SizedBox(
+                        height: layout == LoanListCardLayout.compact
+                            ? AppSpacing.xs
+                            : AppSpacing.sm,
+                      ),
+                      itemBuilder: (context, index) {
+                        final item = loans[index];
+                        final id = item.loan.id;
+                        return Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: LoanListTile(
+                              item: item,
+                              selecting: selecting,
+                              selected: selectedLoanIds.contains(id),
+                              onSelectionToggle: () => onToggleSelection(id),
+                              onEnterSelection: () => onEnterSelection(id),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               );
             },
             loading: () => const SliverFillRemaining(
@@ -595,6 +781,161 @@ class _LoansPortfolioCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LoansSelectionToolbar extends StatelessWidget {
+  const _LoansSelectionToolbar({
+    required this.selecting,
+    required this.selectedCount,
+    required this.onStartSelecting,
+    required this.onCancel,
+  });
+
+  final bool selecting;
+  final int selectedCount;
+  final VoidCallback onStartSelecting;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!selecting) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: OutlinedButton.icon(
+          onPressed: onStartSelecting,
+          icon: const Icon(LucideIcons.square_check, size: 18),
+          label: const Text('Selecionar'),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              selectedCount == 0
+                  ? 'Toque nos empréstimos ou segure um card'
+                  : '$selectedCount selecionado(s)',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent,
+                  ),
+            ),
+          ),
+          TextButton(onPressed: onCancel, child: const Text('Cancelar')),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoansBulkDeleteBar extends StatelessWidget {
+  const _LoansBulkDeleteBar({
+    required this.count,
+    required this.busy,
+    required this.onDelete,
+  });
+
+  final int count;
+  final bool busy;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 8,
+      shadowColor: Colors.black.withValues(alpha: 0.25),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+      color: Theme.of(context).colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: AppSpacing.sm),
+                child: Text(
+                  '$count para excluir',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _DeleteActionButton(busy: busy, onPressed: onDelete),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Botão compacto — evita [FilledButton] com largura infinita no [Stack].
+class _DeleteActionButton extends StatelessWidget {
+  const _DeleteActionButton({
+    required this.busy,
+    required this.onPressed,
+  });
+
+  final bool busy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: busy ? AppColors.error.withValues(alpha: 0.5) : AppColors.error,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      child: InkWell(
+        onTap: busy ? null : onPressed,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm + 2,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (busy)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              else
+                const Icon(
+                  LucideIcons.trash_2,
+                  size: 18,
+                  color: Colors.white,
+                ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                busy ? 'Excluindo…' : 'Excluir',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

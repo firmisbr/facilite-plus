@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +11,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../domain/backup_snapshot.dart';
+import '../../../../services/sync/sync_coordinator.dart';
 import '../backup_native_io.dart';
 import '../providers/backup_providers.dart';
 import '../widgets/backup_pin_dialog.dart';
@@ -22,6 +25,14 @@ class BackupPage extends ConsumerStatefulWidget {
 
 class _BackupPageState extends ConsumerState<BackupPage> {
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(backupPreviewProvider);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -283,6 +294,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             transferPin: transferPin,
           );
       invalidateDataAfterBackupRestore(ref);
+      unawaited(ref.read(syncCoordinatorProvider).requestSync(force: true));
       if (!mounted) return;
       final prefix = summary.importedFromOtherAccount
           ? 'Importado de outra conta'
@@ -291,7 +303,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         SnackBar(
           content: Text(
             '$prefix: ${summary.total} registro(s). '
-            'Sincronize para atualizar a nuvem.',
+            'Enviando para a nuvem…',
           ),
           duration: const Duration(seconds: 5),
         ),
