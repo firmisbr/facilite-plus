@@ -22,15 +22,39 @@ import '../../features/backup/presentation/pages/backup_page.dart';
 import '../../features/notifications/presentation/pages/notification_settings_page.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/admin/domain/user_role.dart';
+import '../../features/admin/presentation/pages/admin_client_loans_page.dart';
+import '../../features/admin/presentation/pages/admin_clients_page.dart';
+import '../../features/admin/presentation/pages/admin_loan_detail_page.dart';
+import '../../features/admin/presentation/pages/admin_reports_page.dart';
+import '../../features/admin/presentation/pages/admin_user_overview_page.dart';
+import '../../features/admin/presentation/pages/admin_users_page.dart';
+import '../../features/admin/presentation/providers/admin_providers.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../services/supabase/supabase_providers.dart';
 import 'routes.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+bool _isUserAppRoute(String location) {
+  const userPrefixes = [
+    AppRoutes.dashboard,
+    AppRoutes.payments,
+    AppRoutes.loans,
+    AppRoutes.settings,
+    AppRoutes.home,
+    AppRoutes.loanCreate,
+  ];
+  if (userPrefixes.contains(location)) return true;
+  return location.startsWith('/loans/') ||
+      location.startsWith('/payments/') ||
+      location.startsWith('/clients');
+}
+
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(sessionProvider);
   final passwordRecovery = ref.watch(passwordRecoveryActiveProvider);
+  final roleAsync = ref.watch(userRoleProvider);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -41,11 +65,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authState.valueOrNull != null;
       final location = state.matchedLocation;
 
-      if (isLoading) {
+      if (isLoading || (isLoggedIn && roleAsync.isLoading)) {
         return location == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
       final recovering = passwordRecovery.valueOrNull ?? false;
+      final isAdmin = roleAsync.valueOrNull == UserRole.admin;
 
       if (!isLoggedIn) {
         const authPaths = {
@@ -61,6 +86,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (!recovering && location == AppRoutes.resetPassword) {
+        return isAdmin ? AppRoutes.admin : AppRoutes.dashboard;
+      }
+
+      if (isAdmin) {
+        if (location.startsWith('/admin')) return null;
+        if (_isUserAppRoute(location) ||
+            location == AppRoutes.splash ||
+            location == AppRoutes.login ||
+            location == AppRoutes.forgotPassword) {
+          return AppRoutes.admin;
+        }
+        return null;
+      }
+
+      if (location.startsWith('/admin')) {
         return AppRoutes.dashboard;
       }
 
@@ -188,6 +228,56 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     ],
                   ),
                 ],
+              ),
+            ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppRoutes.admin,
+        builder: (context, state) => const AdminUsersPage(),
+        routes: [
+          GoRoute(
+            path: 'users/:userId',
+            builder: (context, state) {
+              final userId = state.pathParameters['userId']!;
+              return AdminUserOverviewPage(userId: userId);
+            },
+            routes: [
+              GoRoute(
+                path: 'clients',
+                builder: (context, state) {
+                  final userId = state.pathParameters['userId']!;
+                  return AdminClientsPage(userId: userId);
+                },
+                routes: [
+                  GoRoute(
+                    path: ':clientId/loans',
+                    builder: (context, state) {
+                      final userId = state.pathParameters['userId']!;
+                      final clientId = state.pathParameters['clientId']!;
+                      return AdminClientLoansPage(
+                        userId: userId,
+                        clientId: clientId,
+                      );
+                    },
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: 'loans/:loanId',
+                builder: (context, state) {
+                  final userId = state.pathParameters['userId']!;
+                  final loanId = state.pathParameters['loanId']!;
+                  return AdminLoanDetailPage(userId: userId, loanId: loanId);
+                },
+              ),
+              GoRoute(
+                path: 'reports',
+                builder: (context, state) {
+                  final userId = state.pathParameters['userId']!;
+                  return AdminReportsPage(userId: userId);
+                },
               ),
             ],
           ),

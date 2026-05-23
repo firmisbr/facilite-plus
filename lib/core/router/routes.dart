@@ -34,4 +34,14 @@ abstract final class AppRoutes {
   static String loanPayments(String loanId) => '/loans/$loanId/payments';
   static String paymentNew(String loanId) => '/loans/$loanId/payments/new';
   static String paymentEdit(String id) => '/payments/$id';
+
+  /// Painel administrativo (somente role admin)
+  static const admin = '/admin';
+  static String adminUserOverview(String userId) => '/admin/users/$userId';
+  static String adminUserClients(String userId) => '/admin/users/$userId/clients';
+  static String adminClientLoans(String userId, String clientId) =>
+      '/admin/users/$userId/clients/$clientId/loans';
+  static String adminLoanDetail(String userId, String loanId) =>
+      '/admin/users/$userId/loans/$loanId';
+  static String adminUserReports(String userId) => '/admin/users/$userId/reports';
 }

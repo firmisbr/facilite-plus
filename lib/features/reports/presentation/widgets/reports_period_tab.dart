@@ -10,23 +10,30 @@ import 'reports_shared_sections.dart';
 
 /// Aba Por período — filtro + métricas e listas do intervalo.
 class ReportsPeriodTab extends StatelessWidget {
-  const ReportsPeriodTab({required this.snapshot, super.key});
+  const ReportsPeriodTab({
+    required this.snapshot,
+    super.key,
+    this.adminUserId,
+  });
 
   final ReportsSnapshot snapshot;
+
+  /// Painel admin: filtro de período isolado por usuário alvo.
+  final String? adminUserId;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
             AppSpacing.sm,
             AppSpacing.lg,
             AppSpacing.sm,
           ),
-          child: ReportPeriodFilterCard(),
+          child: ReportPeriodFilterCard(adminUserId: adminUserId),
         ),
         if (!snapshot.hasAnyLoans)
           const Padding(

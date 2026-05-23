@@ -7,11 +7,15 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_date_picker.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../domain/report_period.dart';
+import '../../../admin/presentation/providers/admin_providers.dart';
 import '../providers/reports_providers.dart';
 
 /// Filtro de período recolhível, com abas e datas personalizadas.
 class ReportPeriodFilterCard extends ConsumerStatefulWidget {
-  const ReportPeriodFilterCard({super.key});
+  const ReportPeriodFilterCard({super.key, this.adminUserId});
+
+  /// Quando definido, usa estado de período do painel admin para esse usuário.
+  final String? adminUserId;
 
   @override
   ConsumerState<ReportPeriodFilterCard> createState() =>
@@ -21,10 +25,36 @@ class ReportPeriodFilterCard extends ConsumerStatefulWidget {
 class _ReportPeriodFilterCardState extends ConsumerState<ReportPeriodFilterCard> {
   bool _expanded = false;
 
+  ReportPeriodSelection _readSelection(WidgetRef ref) {
+    final adminId = widget.adminUserId;
+    if (adminId != null) {
+      return ref.watch(adminReportPeriodSelectionProvider(adminId));
+    }
+    return ref.watch(reportPeriodSelectionProvider);
+  }
+
+  ReportPeriodRange _readRange(WidgetRef ref) {
+    final adminId = widget.adminUserId;
+    if (adminId != null) {
+      return ref.watch(adminReportPeriodRangeProvider(adminId));
+    }
+    return ref.watch(reportPeriodRangeProvider);
+  }
+
+  void _setSelection(WidgetRef ref, ReportPeriodSelection value) {
+    final adminId = widget.adminUserId;
+    if (adminId != null) {
+      ref.read(adminReportPeriodSelectionProvider(adminId).notifier).state =
+          value;
+      return;
+    }
+    ref.read(reportPeriodSelectionProvider.notifier).state = value;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final selection = ref.watch(reportPeriodSelectionProvider);
-    final range = ref.watch(reportPeriodRangeProvider);
+    final selection = _readSelection(ref);
+    final range = _readRange(ref);
     final activeGroup = selection.effectiveGroup;
 
     return Container(
@@ -131,13 +161,14 @@ class _ReportPeriodFilterCardState extends ConsumerState<ReportPeriodFilterCard>
                       final presetInGroup = presets.contains(selection.preset)
                           ? selection.preset
                           : _defaultPresetFor(group);
-                      ref
-                          .read(reportPeriodSelectionProvider.notifier)
-                          .state = ReportPeriodSelection(
-                        preset: presetInGroup,
-                        customStart: selection.customStart,
-                        customEnd: selection.customEnd,
-                        uiGroup: group,
+                      _setSelection(
+                        ref,
+                        ReportPeriodSelection(
+                          preset: presetInGroup,
+                          customStart: selection.customStart,
+                          customEnd: selection.customEnd,
+                          uiGroup: group,
+                        ),
                       );
                     },
                     style: ButtonStyle(
@@ -156,13 +187,12 @@ class _ReportPeriodFilterCardState extends ConsumerState<ReportPeriodFilterCard>
                             label: preset.label,
                             selected: selection.preset == preset,
                             onTap: () {
-                              ref
-                                  .read(
-                                    reportPeriodSelectionProvider.notifier,
-                                  )
-                                  .state = ReportPeriodSelection(
-                                preset: preset,
-                                uiGroup: activeGroup,
+                              _setSelection(
+                                ref,
+                                ReportPeriodSelection(
+                                  preset: preset,
+                                  uiGroup: activeGroup,
+                                ),
                               );
                               setState(() => _expanded = false);
                             },
@@ -242,11 +272,14 @@ class _ReportPeriodFilterCardState extends ConsumerState<ReportPeriodFilterCard>
 
     if (result == null || !mounted) return;
 
-    ref.read(reportPeriodSelectionProvider.notifier).state = ReportPeriodSelection(
-      preset: ReportPeriodPreset.custom,
-      customStart: result.$1,
-      customEnd: result.$2,
-      uiGroup: ReportPeriodGroup.extended,
+    _setSelection(
+      ref,
+      ReportPeriodSelection(
+        preset: ReportPeriodPreset.custom,
+        customStart: result.$1,
+        customEnd: result.$2,
+        uiGroup: ReportPeriodGroup.extended,
+      ),
     );
     setState(() => _expanded = false);
   }
