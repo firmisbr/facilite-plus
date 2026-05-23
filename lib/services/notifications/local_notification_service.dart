@@ -94,6 +94,7 @@ abstract final class LocalNotificationService {
       importance: Importance.high,
       priority: Priority.high,
       icon: 'ic_notification',
+      largeIcon: const DrawableResourceAndroidBitmap('ic_logo_compact'),
       color: Color(_brandColor),
       colorized: true,
       category: AndroidNotificationCategory.reminder,
