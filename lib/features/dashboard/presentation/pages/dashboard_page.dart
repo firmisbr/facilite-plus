@@ -15,6 +15,7 @@ import '../../../../shared/widgets/attention_lucide_icon.dart';
 import '../../../../shared/widgets/extended_brand_logo.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../loans/domain/loan_simulator.dart';
+import '../../../loans/domain/portfolio_lifetime_builder.dart';
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
 import '../providers/dashboard_providers.dart';
@@ -26,6 +27,7 @@ const _paymentsShellBranchIndex = 1;
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
+  /// Entre o tamanho anterior (100) e o reduzido (72).
   static const _logoHeight = 100.0;
 
   static void _openOverdueCollections(BuildContext context, WidgetRef ref) {
@@ -65,23 +67,16 @@ class DashboardPage extends ConsumerWidget {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(
                           AppSpacing.lg,
-                          AppSpacing.xs,
+                          AppSpacing.md,
                           AppSpacing.lg,
-                          AppSpacing.sm,
+                          AppSpacing.md,
                         ),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              maxWidth: AppSpacing.maxContentWidth,
-                            ),
-                            child: const ExtendedBrandLogo(
-                              height: _logoHeight,
-                            ),
-                          ),
+                        child: const ExtendedBrandLogo(
+                          height: _logoHeight,
                         ),
                       ),
                     ),
-                    if (stats.activeLoansCount == 0)
+                    if (!stats.hasAnyLoans)
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: Center(
@@ -101,7 +96,48 @@ class DashboardPage extends ConsumerWidget {
                           ),
                         ),
                       )
-                    else ...[
+                    else if (stats.isHistoricalOnly) ...[
+                      SliverToBoxAdapter(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                AppSpacing.sm,
+                              ),
+                              child: _DashboardHistoricalBanner(
+                                quitadosCount: stats.lifetime.quitadosLoans,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppSpacing.maxContentWidth,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.sm,
+                                AppSpacing.lg,
+                                kBottomNavReservedHeight + AppSpacing.lg,
+                              ),
+                              child: _DashboardHistoricalHero(
+                                lifetime: stats.lifetime,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
                       if (stats.overdueInstallments > 0)
                         SliverToBoxAdapter(
                           child: Center(
@@ -310,6 +346,113 @@ class _DashboardSurfaceCard extends StatelessWidget {
   }
 }
 
+class _DashboardHistoricalBanner extends StatelessWidget {
+  const _DashboardHistoricalBanner({required this.quitadosCount});
+
+  final int quitadosCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            LucideIcons.circle_check,
+            color: AppColors.success,
+            size: 22,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              quitadosCount == 1
+                  ? 'Seu empréstimo está quitado. Resumo histórico abaixo.'
+                  : 'Todos os $quitadosCount empréstimos estão quitados. '
+                      'Resumo histórico abaixo.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    height: 1.35,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardHistoricalHero extends StatelessWidget {
+  const _DashboardHistoricalHero({required this.lifetime});
+
+  final PortfolioLifetimeStats lifetime;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardSurfaceCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Histórico da carteira',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Total emprestado',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: context.appTheme.textSecondary,
+                  letterSpacing: 0.3,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            LoanSimulator.formatMoney(lifetime.totalLent),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.accent,
+                  height: 1.05,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroStat(
+                  label: 'Total recebido',
+                  value: LoanSimulator.formatMoney(lifetime.totalReceived),
+                  color: AppColors.success,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 40,
+                color: context.appTheme.border,
+              ),
+              Expanded(
+                child: _HeroStat(
+                  label: 'Lucro realizado',
+                  value: LoanSimulator.formatMoney(lifetime.realizedProfit),
+                  color: AppColors.premium,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DashboardSummaryHero extends StatelessWidget {
   const _DashboardSummaryHero({required this.stats});
 
@@ -323,7 +466,9 @@ class _DashboardSummaryHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            'Total emprestado',
+            stats.lifetime.quitadosLoans > 0
+                ? 'Emprestado (carteira ativa)'
+                : 'Total emprestado',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: context.appTheme.textSecondary,
@@ -337,6 +482,35 @@ class _DashboardSummaryHero extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: AppColors.accent,
+                  height: 1.05,
+                ),
+          ),
+          if (stats.lifetime.quitadosLoans > 0) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Histórico (todos): ${LoanSimulator.formatMoney(stats.lifetime.totalLent)}',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: context.appTheme.textSecondary,
+                  ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Total a receber (com juros)',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: context.appTheme.textSecondary,
+                  letterSpacing: 0.3,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            LoanSimulator.formatMoney(stats.totalRemaining),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.accentSecondary,
                   height: 1.05,
                 ),
           ),
@@ -357,19 +531,8 @@ class _DashboardSummaryHero extends StatelessWidget {
               ),
               Expanded(
                 child: _HeroStat(
-                  label: 'A receber',
-                  value: LoanSimulator.formatMoney(stats.totalRemaining),
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 40,
-                color: context.appTheme.border,
-              ),
-              Expanded(
-                child: _HeroStat(
-                  label: 'Lucro total',
-                  value: LoanSimulator.formatMoney(stats.expectedProfit),
+                  label: 'Lucro a receber',
+                  value: LoanSimulator.formatMoney(stats.remainingProfit),
                   color: AppColors.premium,
                 ),
               ),

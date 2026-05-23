@@ -90,5 +90,48 @@ void main() {
       expect(overview.totalLent, greaterThan(0));
       expect(overview.averageProfitPerLoan, greaterThan(0));
     });
+
+    test('buildPortfolio shows historical totals when all quitados', () {
+      final loan = Loan(
+        id: 'l1',
+        clientId: 'c1',
+        amount: '1000',
+        installments: 2,
+        interest: '10',
+        periodicity: 'mensal',
+        firstDueDate: '2026-01-01',
+        status: 'quitado',
+      );
+      final payments = [
+        Payment(
+          id: 'p1',
+          loanId: 'l1',
+          amount: '550',
+          installmentNumber: 1,
+          paymentDate: '2026-01-05',
+        ),
+        Payment(
+          id: 'p2',
+          loanId: 'l1',
+          amount: '550',
+          installmentNumber: 2,
+          paymentDate: '2026-02-05',
+        ),
+      ];
+
+      final overview = ReportsBuilder.buildPortfolio(
+        loans: [LoanWithClient(loan: loan, clientName: 'Maria')],
+        payments: payments,
+        asOf: DateTime(2026, 6, 1),
+      );
+
+      expect(overview.hasActiveLoans, isFalse);
+      expect(overview.hasAnyLoans, isTrue);
+      expect(overview.isHistoricalOnly, isTrue);
+      expect(overview.totalLent, greaterThan(0));
+      expect(overview.totalReceived, greaterThan(0));
+      expect(overview.realizedProfit, greaterThan(0));
+      expect(overview.recoveryRatePercent, closeTo(100, 0.5));
+    });
   });
 }

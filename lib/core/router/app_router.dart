@@ -19,6 +19,7 @@ import '../../features/payments/presentation/pages/payment_form_page.dart';
 import '../../features/payments/presentation/pages/payments_list_page.dart';
 import '../../features/payments/presentation/pages/payments_overview_page.dart';
 import '../../features/backup/presentation/pages/backup_page.dart';
+import '../../features/notifications/presentation/pages/notification_settings_page.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
@@ -144,6 +145,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'reports',
                     builder: (context, state) => const ReportsPage(),
+                  ),
+                  GoRoute(
+                    path: 'notifications',
+                    builder: (context, state) =>
+                        const NotificationSettingsPage(),
                   ),
                   GoRoute(
                     path: 'clients',

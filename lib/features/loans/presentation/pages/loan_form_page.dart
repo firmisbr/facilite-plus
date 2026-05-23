@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
+import '../../../notifications/notification_reschedule.dart';
 import '../../domain/loan_status_sync.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -120,6 +121,8 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
         loanId: widget.loanId!,
       );
       ref.invalidate(allLoansProvider);
+      ref.invalidate(loanForPaymentsProvider(widget.loanId!));
+      await rescheduleLoanNotifications(ref);
 
       await ref.read(syncServiceProvider).processQueue();
       if (mounted) context.pop();
@@ -177,7 +180,7 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<LoanPeriodicity>(
-                    initialValue: _periodicity,
+                    value: _periodicity,
                     decoration: const InputDecoration(
                       labelText: 'Periodicidade',
                     ),
@@ -210,7 +213,7 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<String>(
-                    initialValue: _status,
+                    value: _status,
                     decoration: const InputDecoration(labelText: 'Status'),
                     items: _statusOptions
                         .map(

@@ -31,13 +31,20 @@ class PaymentsOverviewPage extends ConsumerStatefulWidget {
 }
 
 class _PaymentsOverviewPageState extends ConsumerState<PaymentsOverviewPage> {
-  PaymentListFilter _filter = PaymentListFilter.atrasados;
+  PaymentListFilter _filter = PaymentListFilter.todos;
+  bool _defaultFilterApplied = false;
   final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _consumePendingFilter());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _consumePendingFilter();
+      if (!_defaultFilterApplied) {
+        ref.read(paymentsOverviewProvider).whenData(_applyDefaultFilterIfNeeded);
+      }
+    });
   }
 
   @override
@@ -49,8 +56,27 @@ class _PaymentsOverviewPageState extends ConsumerState<PaymentsOverviewPage> {
   void _consumePendingFilter() {
     final pending = ref.read(paymentsOverviewFilterRequestProvider);
     if (pending == null || !mounted) return;
-    setState(() => _filter = pending);
+    setState(() {
+      _filter = pending;
+      _defaultFilterApplied = true;
+    });
     ref.read(paymentsOverviewFilterRequestProvider.notifier).state = null;
+  }
+
+  void _applyDefaultFilterIfNeeded(PaymentsOverview overview) {
+    if (_defaultFilterApplied) return;
+
+    final pending = ref.read(paymentsOverviewFilterRequestProvider);
+    if (pending != null) {
+      _consumePendingFilter();
+      return;
+    }
+
+    final counts = PaymentPortfolioCounts.fromCards(overview.loanCards);
+    setState(() {
+      _filter = counts.suggestedDefaultFilter();
+      _defaultFilterApplied = true;
+    });
   }
 
   void _toggleFilter(PaymentListFilter filter) {
@@ -68,6 +94,10 @@ class _PaymentsOverviewPageState extends ConsumerState<PaymentsOverviewPage> {
         _consumePendingFilter();
       },
     );
+
+    ref.listen(paymentsOverviewProvider, (previous, next) {
+      next.whenData(_applyDefaultFilterIfNeeded);
+    });
 
     final brightness = Theme.of(context).brightness;
 
@@ -385,7 +415,7 @@ class _PaymentsSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Total a receber',
+            'Falta receber',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: context.appTheme.textSecondary,

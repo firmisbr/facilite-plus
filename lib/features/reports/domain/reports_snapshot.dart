@@ -99,6 +99,7 @@ class ReportsSnapshot {
     required this.paymentsInPeriod,
     required this.dueInPeriod,
     required this.hasActiveLoans,
+    required this.hasAnyLoans,
   });
 
   final ReportPeriodRange period;
@@ -109,6 +110,7 @@ class ReportsSnapshot {
   final List<ReportPaymentRow> paymentsInPeriod;
   final List<ReportDueRow> dueInPeriod;
   final bool hasActiveLoans;
+  final bool hasAnyLoans;
 
   bool get hasPeriodData => !summary.isEmpty || delinquentClients.isNotEmpty;
 }

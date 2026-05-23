@@ -17,4 +17,6 @@ class ReportsData {
   ReportPeriodRange get period => periodReport.period;
 
   bool get hasActiveLoans => periodReport.hasActiveLoans;
+
+  bool get hasAnyLoans => portfolio.hasAnyLoans;
 }

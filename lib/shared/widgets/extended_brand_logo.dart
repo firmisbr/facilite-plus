@@ -27,28 +27,25 @@ class ExtendedBrandLogo extends StatelessWidget {
     return Semantics(
       label: 'Facilite Plus, gerenciamento de finanças',
       image: true,
-      child: SizedBox(
-        width: double.infinity,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Image.asset(
-              asset,
-              height: height,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
-              errorBuilder: (context, error, stackTrace) {
-                debugPrint('ExtendedBrandLogo: $error');
-                return Icon(
-                  Icons.image_not_supported_outlined,
-                  size: height * 0.45,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.35),
-                );
-              },
-            ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Image.asset(
+            asset,
+            height: height,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('ExtendedBrandLogo: $error');
+              return Icon(
+                Icons.image_not_supported_outlined,
+                size: height * 0.45,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.35),
+              );
+            },
           ),
         ),
       ),

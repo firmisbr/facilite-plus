@@ -30,6 +30,6 @@ final paymentsByLoanProvider =
 });
 
 final loanForPaymentsProvider =
-    FutureProvider.family<Loan?, String>((ref, loanId) {
-  return ref.watch(loansRepositoryProvider).getById(loanId);
+    StreamProvider.family<Loan?, String>((ref, loanId) {
+  return ref.watch(loansRepositoryProvider).watchById(loanId);
 });

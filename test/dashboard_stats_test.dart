@@ -30,6 +30,7 @@ void main() {
     expect(stats.activeLoansCount, 1);
     expect(stats.totalLent, 1000);
     expect(stats.totalRemaining, 1000);
+    expect(stats.remainingProfit, 0);
     expect(stats.upcomingDues, hasLength(1));
     expect(stats.upcomingDues.first.installmentNumber, 1);
     expect(stats.cashFlowByWeek, isNotEmpty);
@@ -136,5 +137,71 @@ void main() {
       stats.cashFlowByWeek.any((b) => b.isOverdue && b.amount > 0),
       isTrue,
     );
+  });
+
+  test('soma lucro a receber nas parcelas em aberto', () {
+    const loan = Loan(
+      id: 'l1',
+      clientId: 'c1',
+      amount: '1000',
+      interest: '10',
+      installments: 2,
+      periodicity: 'mensal',
+      firstDueDate: '2026-06-01',
+      status: 'ativo',
+    );
+
+    final stats = DashboardStatsBuilder.build(
+      loans: [LoanWithClient(loan: loan, clientName: 'Maria')],
+      payments: const [],
+      asOf: DateTime(2026, 5, 25),
+    );
+
+    expect(stats.totalRemaining, greaterThan(1000));
+    expect(stats.remainingProfit, greaterThan(0));
+    expect(
+      stats.totalRemaining,
+      closeTo(1000 + stats.remainingProfit, 0.02),
+    );
+  });
+
+  test('exibe dados historicos quando todos quitados', () {
+    const loan = Loan(
+      id: 'l1',
+      clientId: 'c1',
+      amount: '1000',
+      interest: '10',
+      installments: 2,
+      periodicity: 'mensal',
+      firstDueDate: '2026-01-01',
+      status: 'quitado',
+    );
+    const payments = [
+      Payment(
+        id: 'p1',
+        loanId: 'l1',
+        amount: '550',
+        installmentNumber: 1,
+        paymentDate: '2026-01-05',
+      ),
+      Payment(
+        id: 'p2',
+        loanId: 'l1',
+        amount: '550',
+        installmentNumber: 2,
+        paymentDate: '2026-02-05',
+      ),
+    ];
+
+    final stats = DashboardStatsBuilder.build(
+      loans: [LoanWithClient(loan: loan, clientName: 'Maria')],
+      payments: payments,
+      asOf: DateTime(2026, 6, 1),
+    );
+
+    expect(stats.activeLoansCount, 0);
+    expect(stats.isHistoricalOnly, isTrue);
+    expect(stats.lifetime.totalReceived, greaterThan(0));
+    expect(stats.lifetime.realizedProfit, greaterThan(0));
   });
 }

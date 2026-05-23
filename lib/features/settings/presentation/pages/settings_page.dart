@@ -69,6 +69,73 @@ class SettingsPage extends ConsumerWidget {
                         AppSpacing.lg,
                         AppSpacing.sm,
                       ),
+                      child: const _SettingsSectionLabel(title: 'Dados'),
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      child: Column(
+                        children: [
+                          _SettingsActionTile(
+                            icon: LucideIcons.bell,
+                            title: 'Notificações',
+                            subtitle:
+                                'Horário e lembretes de parcelas a vencer',
+                            onTap: () =>
+                                context.push(AppRoutes.notifications),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _SettingsActionTile(
+                            icon: LucideIcons.chart_column,
+                            title: 'Relatórios',
+                            subtitle:
+                                'Resumo, inadimplência, previsão e exportar CSV',
+                            onTap: () => context.push(AppRoutes.reports),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _SettingsActionTile(
+                            icon: LucideIcons.users,
+                            title: 'Clientes',
+                            subtitle: 'Cadastro, edição e histórico',
+                            onTap: () => context.push(AppRoutes.clients),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _SettingsActionTile(
+                            icon: LucideIcons.hard_drive,
+                            title: 'Backup',
+                            subtitle:
+                                'Exportar com PIN ou importar em outra conta',
+                            onTap: () => context.push(AppRoutes.backup),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSpacing.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                      ),
                       child: const _SettingsSectionLabel(title: 'Nuvem'),
                     ),
                   ),
@@ -128,64 +195,6 @@ class SettingsPage extends ConsumerWidget {
                                 );
                               }
                             },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.sm,
-                      ),
-                      child: const _SettingsSectionLabel(title: 'Dados'),
-                    ),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg,
-                      ),
-                      child: Column(
-                        children: [
-                          _SettingsActionTile(
-                            icon: LucideIcons.chart_column,
-                            title: 'Relatórios',
-                            subtitle:
-                                'Resumo, inadimplência, previsão e exportar CSV',
-                            onTap: () => context.push(AppRoutes.reports),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SettingsActionTile(
-                            icon: LucideIcons.users,
-                            title: 'Clientes',
-                            subtitle: 'Cadastro, edição e histórico',
-                            onTap: () => context.push(AppRoutes.clients),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SettingsActionTile(
-                            icon: LucideIcons.hard_drive,
-                            title: 'Backup',
-                            subtitle:
-                                'Exportar com PIN ou importar em outra conta',
-                            onTap: () => context.push(AppRoutes.backup),
                           ),
                         ],
                       ),

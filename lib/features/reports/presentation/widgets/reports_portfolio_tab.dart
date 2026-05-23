@@ -27,24 +27,64 @@ class ReportsPortfolioTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!overview.hasActiveLoans) {
+    if (!overview.hasAnyLoans) {
       return const Padding(
         padding: EdgeInsets.all(AppSpacing.lg),
         child: ReportsEmptyHint(
           icon: LucideIcons.wallet,
-          title: 'Carteira vazia',
-          subtitle: 'Cadastre empréstimos ativos para ver a análise geral.',
+          title: 'Sem dados para relatório',
+          subtitle: 'Cadastre empréstimos para ver a análise da carteira.',
         ),
       );
     }
 
+    final historical = overview.isHistoricalOnly;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (historical)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              0,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                border: Border.all(
+                  color: AppColors.success.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    LucideIcons.circle_check,
+                    color: AppColors.success,
+                    size: 22,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Todos os empréstimos estão quitados. '
+                      'Abaixo, o histórico da sua carteira.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            height: 1.35,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         _PortfolioHeroCard(overview: overview),
         const SizedBox(height: AppSpacing.md),
         ReportSection(
-          title: 'Recebido vs. Pendente',
+          title: historical ? 'Recebido vs. contratado' : 'Recebido vs. Pendente',
           icon: LucideIcons.chart_pie,
           child: ReportsReceivedPendingChart(
             received: overview.totalReceived,
@@ -61,30 +101,32 @@ class ReportsPortfolioTab extends StatelessWidget {
           icon: LucideIcons.layers,
           child: _PortfolioStatsRow(overview: overview),
         ),
-        ReportSection(
-          title: 'Previsão por mês',
-          icon: LucideIcons.calendar_clock,
-          child: Row(
-            children: [
-              Expanded(
-                child: _ForecastTile(
-                  label: _monthLabel(0),
-                  value: overview.dueThisMonth,
-                  subtitle: 'A vencer',
+        if (!historical) ...[
+          ReportSection(
+            title: 'Previsão por mês',
+            icon: LucideIcons.calendar_clock,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _ForecastTile(
+                    label: _monthLabel(0),
+                    value: overview.dueThisMonth,
+                    subtitle: 'A vencer',
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _ForecastTile(
-                  label: _monthLabel(1),
-                  value: overview.dueNextMonth,
-                  subtitle: 'A vencer',
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _ForecastTile(
+                    label: _monthLabel(1),
+                    value: overview.dueNextMonth,
+                    subtitle: 'A vencer',
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        if (overview.cashFlowByMonth.isNotEmpty)
+        ],
+        if (!historical && overview.cashFlowByMonth.isNotEmpty)
           ReportSection(
             title: 'Entradas previstas (meses)',
             icon: LucideIcons.chart_column_increasing,
@@ -137,35 +179,62 @@ class _PortfolioHeroCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Carteira ativa',
+              overview.isHistoricalOnly
+                  ? 'Histórico da carteira'
+                  : 'Carteira ativa',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
             ),
             const SizedBox(height: AppSpacing.lg),
             _HeroLine(
-              label: 'Total emprestado',
+              label: overview.hasMixedPortfolio
+                  ? 'Emprestado (carteira ativa)'
+                  : 'Total emprestado',
               value: LoanSimulator.formatMoney(overview.totalLent),
               color: AppColors.accent,
             ),
+            if (overview.hasMixedPortfolio) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _HeroLine(
+                label: 'Emprestado (histórico — todos)',
+                value: LoanSimulator.formatMoney(overview.lifetimeTotalLent),
+                color: context.appTheme.textSecondary,
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             _HeroLine(
               label: 'Total recebido',
               value: LoanSimulator.formatMoney(overview.totalReceived),
               color: AppColors.success,
             ),
-            const SizedBox(height: AppSpacing.sm),
-            _HeroLine(
-              label: 'A receber (em aberto)',
-              value: LoanSimulator.formatMoney(overview.totalRemaining),
-              color: AppColors.accentSecondary,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _HeroLine(
-              label: 'Lucro esperado (juros)',
-              value: LoanSimulator.formatMoney(overview.expectedProfit),
-              color: AppColors.accent,
-            ),
+            if (!overview.isHistoricalOnly) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _HeroLine(
+                label: 'Total a receber (com juros)',
+                value: LoanSimulator.formatMoney(overview.totalRemaining),
+                color: AppColors.accentSecondary,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _HeroLine(
+                label: 'Lucro a receber',
+                value: LoanSimulator.formatMoney(overview.remainingProfit),
+                color: AppColors.premium,
+              ),
+            ] else ...[
+              const SizedBox(height: AppSpacing.sm),
+              _HeroLine(
+                label: 'Lucro realizado',
+                value: LoanSimulator.formatMoney(overview.realizedProfit),
+                color: AppColors.premium,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _HeroLine(
+                label: 'Empréstimos quitados',
+                value: '${overview.quitadosLoans}',
+                color: AppColors.success,
+              ),
+            ],
           ],
         ),
       ),

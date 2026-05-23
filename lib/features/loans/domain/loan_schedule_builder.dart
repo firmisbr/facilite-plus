@@ -41,6 +41,8 @@ abstract final class LoanScheduleBuilder {
     final installmentAmount = schedule.first.amount;
     final totalWithInterest = installmentAmount * installments;
     final totalProfit = totalWithInterest - principal;
+    final profitPerInstallment =
+        installments > 0 ? totalProfit / installments : 0.0;
     final now = asOf ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -140,6 +142,12 @@ abstract final class LoanScheduleBuilder {
 
     final remainingInstallments = installments - paidCount;
     final remainingAmount = totalWithInterest - paidAmount;
+    var remainingProfit = 0.0;
+    for (final item in items) {
+      if (!item.isPaid) {
+        remainingProfit += profitPerInstallment;
+      }
+    }
 
     return LoanDetailData(
       installments: items,
@@ -151,12 +159,12 @@ abstract final class LoanScheduleBuilder {
         interestPercent: interest,
         periodicityLabel: periodicity.label,
         totalProfit: totalProfit,
-        profitPerInstallment:
-            installments > 0 ? totalProfit / installments : 0,
+        profitPerInstallment: profitPerInstallment,
       ),
       overview: LoanOverviewStats(
         paidAmount: paidAmount,
         remainingAmount: remainingAmount < 0 ? 0 : remainingAmount,
+        remainingProfit: remainingProfit < 0 ? 0 : remainingProfit,
         paidInstallments: paidCount,
         remainingInstallments: remainingInstallments < 0
             ? 0

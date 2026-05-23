@@ -25,10 +25,15 @@ abstract final class ReportsCsvExporter {
 
   static void _appendPortfolio(StringBuffer b, ReportsPortfolioOverview p) {
     _section(b, 'Visão geral da carteira');
-    _line(b, 'Total emprestado', _money(p.totalLent));
+    _line(b, 'Emprestado (carteira ativa)', _money(p.totalLent));
+    if (p.hasMixedPortfolio || p.isHistoricalOnly) {
+      _line(b, 'Emprestado (histórico — todos)', _money(p.lifetimeTotalLent));
+    }
     _line(b, 'Total recebido', _money(p.totalReceived));
-    _line(b, 'A receber (em aberto)', _money(p.totalRemaining));
-    _line(b, 'Lucro esperado (juros)', _money(p.expectedProfit));
+    _line(b, 'Total a receber (com juros)', _money(p.totalRemaining));
+    _line(b, 'Lucro a receber', _money(p.remainingProfit));
+    _line(b, 'Lucro realizado', _money(p.realizedProfit));
+    _line(b, 'Lucro total dos contratos', _money(p.expectedProfit));
     _line(b, 'Média de lucro por empréstimo', _money(p.averageProfitPerLoan));
     _line(b, 'Ticket médio', _money(p.averageTicketPerLoan));
     _line(b, 'Taxa de recuperação', '${p.recoveryRatePercent.toStringAsFixed(1)}%');

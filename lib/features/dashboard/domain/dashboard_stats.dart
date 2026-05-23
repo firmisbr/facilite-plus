@@ -5,6 +5,7 @@ import '../../loans/domain/loan_installment_status.dart';
 import '../../loans/domain/loan_list_filter.dart';
 import '../../loans/domain/loan_schedule_builder.dart';
 import '../../loans/domain/loan_simulator.dart';
+import '../../loans/domain/portfolio_lifetime_builder.dart';
 import '../../payments/domain/entities/payment.dart';
 
 class UpcomingDueItem {
@@ -54,6 +55,7 @@ class DashboardStats {
     required this.totalLent,
     required this.totalReceived,
     required this.totalRemaining,
+    required this.remainingProfit,
     required this.expectedProfit,
     required this.overdueInstallments,
     required this.overdueAmount,
@@ -61,6 +63,7 @@ class DashboardStats {
     required this.cashFlowByDay,
     required this.cashFlowByWeek,
     required this.cashFlowByMonth,
+    required this.lifetime,
   });
 
   final int activeLoansCount;
@@ -68,6 +71,11 @@ class DashboardStats {
   final double totalLent;
   final double totalReceived;
   final double totalRemaining;
+
+  /// Juros/lucro ainda nas parcelas em aberto.
+  final double remainingProfit;
+
+  /// Lucro total dos contratos ativos (todas as parcelas).
   final double expectedProfit;
   final int overdueInstallments;
   final double overdueAmount;
@@ -75,6 +83,12 @@ class DashboardStats {
   final List<CashFlowBucket> cashFlowByDay;
   final List<CashFlowBucket> cashFlowByWeek;
   final List<CashFlowBucket> cashFlowByMonth;
+  final PortfolioLifetimeStats lifetime;
+
+  bool get hasAnyLoans => lifetime.hasLoans;
+
+  /// Carteira só com empréstimos quitados (ou sem saldo em aberto).
+  bool get isHistoricalOnly => lifetime.hasLoans && activeLoansCount == 0;
 
   static const empty = DashboardStats(
     activeLoansCount: 0,
@@ -82,6 +96,7 @@ class DashboardStats {
     totalLent: 0,
     totalReceived: 0,
     totalRemaining: 0,
+    remainingProfit: 0,
     expectedProfit: 0,
     overdueInstallments: 0,
     overdueAmount: 0,
@@ -89,6 +104,7 @@ class DashboardStats {
     cashFlowByDay: [],
     cashFlowByWeek: [],
     cashFlowByMonth: [],
+    lifetime: PortfolioLifetimeStats.empty,
   );
 
   List<CashFlowBucket> cashFlowFor(CashFlowGranularity granularity) =>
@@ -118,9 +134,16 @@ abstract final class DashboardStatsBuilder {
       paymentsByLoan.putIfAbsent(payment.loanId, () => []).add(payment);
     }
 
+    final lifetime = PortfolioLifetimeBuilder.build(
+      loans: loans,
+      payments: payments,
+      asOf: now,
+    );
+
     var totalLent = 0.0;
     var totalReceived = 0.0;
     var totalRemaining = 0.0;
+    var remainingProfit = 0.0;
     var expectedProfit = 0.0;
     var overdueInstallments = 0;
     var overdueAmount = 0.0;
@@ -164,6 +187,7 @@ abstract final class DashboardStatsBuilder {
       totalLent += detail.manager.principal;
       totalReceived += detail.overview.paidAmount;
       totalRemaining += detail.overview.remainingAmount;
+      remainingProfit += detail.overview.remainingProfit;
       expectedProfit += detail.manager.totalProfit;
       overdueInstallments += detail.overview.overdueInstallments;
 
@@ -248,6 +272,7 @@ abstract final class DashboardStatsBuilder {
       totalLent: totalLent,
       totalReceived: totalReceived,
       totalRemaining: totalRemaining,
+      remainingProfit: remainingProfit,
       expectedProfit: expectedProfit,
       overdueInstallments: overdueInstallments,
       overdueAmount: overdueAmount,
@@ -255,6 +280,7 @@ abstract final class DashboardStatsBuilder {
       cashFlowByDay: cashFlowByDay,
       cashFlowByWeek: cashFlowByWeek,
       cashFlowByMonth: cashFlowByMonth,
+      lifetime: lifetime,
     );
   }
 

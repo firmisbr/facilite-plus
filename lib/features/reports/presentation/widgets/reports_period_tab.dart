@@ -28,7 +28,7 @@ class ReportsPeriodTab extends StatelessWidget {
           ),
           child: ReportPeriodFilterCard(),
         ),
-        if (!snapshot.hasActiveLoans)
+        if (!snapshot.hasAnyLoans)
           const Padding(
             padding: EdgeInsets.all(AppSpacing.lg),
             child: ReportsEmptyHint(

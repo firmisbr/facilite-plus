@@ -3,6 +3,7 @@ import '../../loans/domain/entities/loan_with_client.dart';
 import '../../loans/domain/loan_installment_status.dart';
 import '../../loans/domain/loan_schedule_builder.dart';
 import '../../loans/domain/loan_simulator.dart';
+import '../../loans/domain/portfolio_lifetime_builder.dart';
 import '../../payments/domain/entities/payment.dart';
 import 'report_period.dart';
 import 'reports_portfolio_overview.dart';
@@ -57,6 +58,7 @@ abstract final class ReportsBuilder {
     final dueRows = <ReportDueRow>[];
 
     var hasActiveLoans = false;
+    final hasAnyLoans = loans.isNotEmpty;
     final today = DateTime(now.year, now.month, now.day);
 
     for (final item in loans) {
@@ -127,6 +129,7 @@ abstract final class ReportsBuilder {
       paymentsInPeriod: paymentRows,
       dueInPeriod: dueRows,
       hasActiveLoans: hasActiveLoans,
+      hasAnyLoans: hasAnyLoans,
     );
   }
 
@@ -142,6 +145,13 @@ abstract final class ReportsBuilder {
       payments: payments,
       asOf: now,
     );
+    final lifetime = PortfolioLifetimeBuilder.build(
+      loans: loans,
+      payments: payments,
+      asOf: now,
+    );
+    final hasAnyLoans = lifetime.hasLoans;
+    final historicalOnly = hasAnyLoans && stats.activeLoansCount == 0;
 
     final paymentsByLoan = <String, List<Payment>>{};
     for (final p in payments) {
@@ -197,33 +207,50 @@ abstract final class ReportsBuilder {
     }
 
     final active = stats.activeLoansCount;
-    final totalLent = stats.totalLent;
-    final totalReceived = stats.totalReceived;
-    final totalRemaining = stats.totalRemaining;
-    final expectedProfit = stats.expectedProfit;
+    final totalLent =
+        historicalOnly ? lifetime.totalLent : stats.totalLent;
+    final totalReceived =
+        historicalOnly ? lifetime.totalReceived : stats.totalReceived;
+    final totalRemaining = historicalOnly ? 0.0 : stats.totalRemaining;
+    final remainingProfit =
+        historicalOnly ? 0.0 : stats.remainingProfit;
+    final expectedProfit =
+        historicalOnly ? lifetime.realizedProfit : stats.expectedProfit;
+    final realizedProfit = lifetime.realizedProfit;
 
-    final contractTotal = totalReceived + totalRemaining;
+    final contractTotal = historicalOnly
+        ? lifetime.contractTotal
+        : totalReceived + totalRemaining;
     final recoveryRatePercent = contractTotal > 0
         ? (totalReceived / contractTotal) * 100
         : 0.0;
-    final profitMarginPercent =
-        totalLent > 0 ? (expectedProfit / totalLent) * 100 : 0.0;
-    final averageProfitPerLoan =
-        active > 0 ? expectedProfit / active : 0.0;
-    final averageTicketPerLoan = active > 0 ? totalLent / active : 0.0;
+    final profitMarginPercent = totalLent > 0
+        ? (expectedProfit / totalLent) * 100
+        : 0.0;
+    final loanCountForAvg = historicalOnly ? lifetime.totalLoans : active;
+    final averageProfitPerLoan = loanCountForAvg > 0
+        ? expectedProfit / loanCountForAvg
+        : 0.0;
+    final averageTicketPerLoan = loanCountForAvg > 0
+        ? totalLent / loanCountForAvg
+        : 0.0;
 
     return ReportsPortfolioOverview(
       totalLent: totalLent,
+      lifetimeTotalLent: lifetime.totalLent,
       totalReceived: totalReceived,
       totalRemaining: totalRemaining,
+      remainingProfit: remainingProfit,
       expectedProfit: expectedProfit,
       averageProfitPerLoan: averageProfitPerLoan,
       averageTicketPerLoan: averageTicketPerLoan,
       recoveryRatePercent: recoveryRatePercent,
       profitMarginPercent: profitMarginPercent,
       activeLoans: active,
-      activeClients: stats.clientsCount,
-      quitadosLoans: quitados,
+      activeClients: historicalOnly
+          ? lifetime.clientCount
+          : stats.clientsCount,
+      quitadosLoans: historicalOnly ? lifetime.quitadosLoans : quitados,
       overdueInstallments: stats.overdueInstallments,
       overdueAmount: stats.overdueAmount,
       dueThisMonth: dueThisMonth,
@@ -232,6 +259,9 @@ abstract final class ReportsBuilder {
       delinquentClients: delinquency.clients,
       cashFlowByMonth: stats.cashFlowByMonth,
       hasActiveLoans: hasActiveLoans,
+      hasAnyLoans: hasAnyLoans,
+      realizedProfit: realizedProfit,
+      isHistoricalOnly: historicalOnly,
     );
   }
 

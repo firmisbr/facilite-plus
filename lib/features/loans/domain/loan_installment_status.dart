@@ -1,7 +1,7 @@
 enum LoanInstallmentStatus {
   paid('Paga', 'paga'),
   overdue('Atrasada', 'atrasada'),
-  pending('No prazo', 'no_prazo');
+  pending('A vencer', 'no_prazo');
 
   const LoanInstallmentStatus(this.label, this.value);
 
@@ -32,6 +32,15 @@ class LoanInstallmentItem {
   bool get canPay => !isPaid;
   bool get canUndo => isPaid && paymentId != null;
 
+  /// Parcela em aberto com vencimento no dia de hoje.
+  bool get isDueToday {
+    if (status != LoanInstallmentStatus.pending) return false;
+    final now = DateTime.now();
+    return dueDate.year == now.year &&
+        dueDate.month == now.month &&
+        dueDate.day == now.day;
+  }
+
   /// Texto curto: no dia, X dias em atraso, ou antecipado.
   String? get paymentTimingLabel {
     if (paidDate == null) return null;
@@ -48,6 +57,7 @@ class LoanOverviewStats {
   const LoanOverviewStats({
     required this.paidAmount,
     required this.remainingAmount,
+    required this.remainingProfit,
     required this.paidInstallments,
     required this.remainingInstallments,
     required this.overdueInstallments,
@@ -56,7 +66,12 @@ class LoanOverviewStats {
   });
 
   final double paidAmount;
+
+  /// Parcelas em aberto (principal + juros).
   final double remainingAmount;
+
+  /// Juros/lucro ainda nas parcelas não pagas.
+  final double remainingProfit;
   final int paidInstallments;
   final int remainingInstallments;
   final int overdueInstallments;

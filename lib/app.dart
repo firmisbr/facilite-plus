@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
+import 'features/notifications/presentation/providers/notification_providers.dart';
 import 'services/database/drift/drift_providers.dart';
 import 'services/sync/sync_coordinator.dart';
 
@@ -17,6 +18,7 @@ class FacilitePlusApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     ref.watch(appDatabaseProvider);
     ref.watch(syncCoordinatorProvider);
+    ref.watch(notificationCoordinatorProvider);
 
     return MaterialApp.router(
       title: 'Facilite Plus',

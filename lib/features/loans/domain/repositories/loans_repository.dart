@@ -8,6 +8,8 @@ abstract class LoansRepository {
 
   Future<Loan?> getById(String id);
 
+  Stream<Loan?> watchById(String id);
+
   Future<Loan> create({
     required String clientId,
     required String amount,

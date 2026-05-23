@@ -19,7 +19,10 @@ import '../../../../shared/widgets/app_wheel_picker_dialog.dart';
 import '../../../../shared/widgets/floating_label_input_card.dart';
 import '../../domain/loan_periodicity.dart';
 import '../../domain/loan_simulator.dart';
+import '../../../notifications/notification_reschedule.dart';
 import '../providers/loans_providers.dart';
+import '../widgets/select_existing_client_dialog.dart';
+import '../../../clients/domain/entities/client.dart';
 
 class LoanCreatePage extends ConsumerStatefulWidget {
   const LoanCreatePage({super.key, this.clientId});
@@ -49,6 +52,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   bool _showFullSchedule = false;
   bool _lockPersonalFields = false;
   String? _matchedClientName;
+  String? _selectedClientId;
 
   final _pageController = PageController();
   int _pageIndex = 0;
@@ -83,9 +87,44 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
     _emailController.text = client.email ?? '';
     _addressController.text = client.address ?? '';
     setState(() {
+      _selectedClientId = client.id;
       _lockPersonalFields = true;
       _matchedClientName = client.name;
     });
+  }
+
+  void _applySelectedClient(Client client) {
+    _selectedClientId = client.id;
+    _nameController.text = client.name;
+    _cpfController.text = BrCpfInputFormatter.formatDisplay(client.document);
+    _whatsappController.text =
+        BrPhoneInputFormatter.formatDisplay(client.phone);
+    _emailController.text = client.email ?? '';
+    _addressController.text = client.address ?? '';
+    setState(() {
+      _lockPersonalFields = true;
+      _matchedClientName = client.name;
+    });
+  }
+
+  void _clearSelectedClient() {
+    _selectedClientId = null;
+    _nameController.clear();
+    _cpfController.clear();
+    _whatsappController.clear();
+    _emailController.clear();
+    _addressController.clear();
+    setState(() {
+      _lockPersonalFields = false;
+      _matchedClientName = null;
+    });
+  }
+
+  Future<void> _openExistingClientPicker() async {
+    final client = await SelectExistingClientDialog.show(context);
+    if (client != null && mounted) {
+      _applySelectedClient(client);
+    }
   }
 
   void _onFormChanged() => setState(() {});
@@ -152,9 +191,11 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   }
 
   bool get _clientStepValid {
-    if (_lockPersonalFields && widget.clientId != null) return true;
+    if (_selectedClientId != null) return true;
     return _nameController.text.trim().isNotEmpty;
   }
+
+  bool get _hasSelectedExistingClient => _selectedClientId != null;
 
   bool get _loanStepValid {
     final principal = LoanSimulator.parseAmount(_amountController.text);
@@ -234,7 +275,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   }
 
   bool _validatePersonal({required bool requireAll}) {
-    if (_lockPersonalFields && widget.clientId != null) return true;
+    if (_selectedClientId != null) return true;
     if (_nameController.text.trim().isEmpty) return false;
     if (requireAll && _whatsappController.text.trim().isEmpty) return false;
     return true;
@@ -285,20 +326,8 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
     try {
       String clientId;
 
-      if (widget.clientId != null && !createNewClient) {
-        clientId = widget.clientId!;
-        final existing = await clientsRepo.getById(clientId);
-        if (existing != null) {
-          await clientsRepo.update(
-            existing.copyWith(
-              name: _nameController.text.trim(),
-              phone: _opt(_whatsappController.text),
-              email: _opt(_emailController.text),
-              document: _opt(_cpfController.text),
-              address: _opt(_addressController.text),
-            ),
-          );
-        }
+      if (_selectedClientId != null) {
+        clientId = _selectedClientId!;
       } else if (createNewClient) {
         final client = await clientsRepo.create(
           userId: userId,
@@ -310,35 +339,15 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
         );
         clientId = client.id;
       } else {
-        final match = await clientsRepo.findByDocumentOrPhone(
-          userId: userId,
-          document: _opt(_cpfController.text),
-          phone: _whatsappController.text.trim(),
-        );
-        if (match == null) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Cliente não encontrado. Use CPF ou WhatsApp já cadastrado, '
-                'ou toque em "Criar empréstimo + cliente".',
-              ),
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Selecione um cliente existente na lista ou use "+ novo cliente".',
             ),
-          );
-          return;
-        }
-        clientId = match.id;
-        await clientsRepo.update(
-          match.copyWith(
-            name: _nameController.text.trim().isEmpty
-                ? match.name
-                : _nameController.text.trim(),
-            phone: _opt(_whatsappController.text) ?? match.phone,
-            email: _opt(_emailController.text) ?? match.email,
-            document: _opt(_cpfController.text) ?? match.document,
-            address: _opt(_addressController.text) ?? match.address,
           ),
         );
+        return;
       }
 
       final dueIso = _formatIsoDate(_parseDueDate()!);
@@ -352,6 +361,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
       );
 
       await ref.read(syncServiceProvider).processQueue();
+      await rescheduleLoanNotifications(ref);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Empréstimo criado com sucesso')),
@@ -452,6 +462,8 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
                         whatsappController: _whatsappController,
                         emailController: _emailController,
                         addressController: _addressController,
+                        onPickExistingClient: _openExistingClientPicker,
+                        onClearSelectedClient: _clearSelectedClient,
                       ),
                     ],
                   ),
@@ -460,6 +472,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
                   loading: _loading,
                   pageIndex: _pageIndex,
                   isLastStep: isLastStep,
+                  hasSelectedExistingClient: _hasSelectedExistingClient,
                   canAdvance: _pageIndex == 0
                       ? _loanStepValid
                       : _pageIndex == 1
@@ -658,6 +671,8 @@ class _ClientStepPage extends StatelessWidget {
     required this.whatsappController,
     required this.emailController,
     required this.addressController,
+    required this.onPickExistingClient,
+    required this.onClearSelectedClient,
   });
 
   final bool lockPersonalFields;
@@ -667,6 +682,8 @@ class _ClientStepPage extends StatelessWidget {
   final TextEditingController whatsappController;
   final TextEditingController emailController;
   final TextEditingController addressController;
+  final VoidCallback onPickExistingClient;
+  final VoidCallback onClearSelectedClient;
 
   @override
   Widget build(BuildContext context) {
@@ -677,7 +694,10 @@ class _ClientStepPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (lockPersonalFields && matchedClientName != null)
-            _LinkedClientHero(name: matchedClientName!)
+            _LinkedClientHero(
+              name: matchedClientName!,
+              onChangeClient: onClearSelectedClient,
+            )
           else ...[
             FloatingLabelInputCard(
               icon: LucideIcons.user_round,
@@ -689,6 +709,12 @@ class _ClientStepPage extends StatelessWidget {
               fieldStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w700,
                 height: 1.2,
+              ),
+              suffixIcon: IconButton(
+                tooltip: 'Cliente existente',
+                onPressed: onPickExistingClient,
+                icon: const Icon(LucideIcons.user_search),
+                color: AppColors.accent,
               ),
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'Obrigatório' : null,
@@ -747,9 +773,13 @@ class _ClientStepPage extends StatelessWidget {
 }
 
 class _LinkedClientHero extends StatelessWidget {
-  const _LinkedClientHero({required this.name});
+  const _LinkedClientHero({
+    required this.name,
+    required this.onChangeClient,
+  });
 
   final String name;
+  final VoidCallback onChangeClient;
 
   @override
   Widget build(BuildContext context) {
@@ -806,7 +836,7 @@ class _LinkedClientHero extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Cliente já vinculado',
+                      'Cliente existente selecionado',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: AppColors.success,
                         fontWeight: FontWeight.w600,
@@ -814,6 +844,12 @@ class _LinkedClientHero extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextButton.icon(
+                onPressed: onChangeClient,
+                icon: const Icon(LucideIcons.arrow_left_right, size: 18),
+                label: const Text('Trocar cliente'),
               ),
             ],
           ),
@@ -1707,6 +1743,7 @@ class _FlowBottomBar extends StatelessWidget {
     required this.loading,
     required this.pageIndex,
     required this.isLastStep,
+    required this.hasSelectedExistingClient,
     required this.canAdvance,
     required this.onBack,
     required this.onNext,
@@ -1718,6 +1755,7 @@ class _FlowBottomBar extends StatelessWidget {
   final bool loading;
   final int pageIndex;
   final bool isLastStep;
+  final bool hasSelectedExistingClient;
   final bool canAdvance;
   final VoidCallback? onBack;
   final VoidCallback? onNext;
@@ -1750,46 +1788,81 @@ class _FlowBottomBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isLastStep) ...[
-            FilledButton.icon(
-              onPressed: loading ? null : onSave,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
-              ),
-              icon: loading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(LucideIcons.circle_check),
-              label: const Text('Criar empréstimo'),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: loading ? null : onCancel,
-                    child: const Text('Cancelar'),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  flex: 2,
-                  child: FilledButton.tonal(
-                    onPressed: loading ? null : onSaveWithClient,
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(LucideIcons.user_plus, size: 18),
-                        SizedBox(width: 6),
-                        Text('+ novo cliente'),
-                      ],
+            if (hasSelectedExistingClient)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: loading ? null : onCancel,
+                      child: const Text('Cancelar'),
                     ),
                   ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.icon(
+                      onPressed: loading ? null : onSave,
+                      style: FilledButton.styleFrom(
+                        minimumSize:
+                            const Size.fromHeight(AppSpacing.buttonHeight),
+                      ),
+                      icon: loading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(LucideIcons.circle_check),
+                      label: const Text('Criar empréstimo'),
+                    ),
+                  ),
+                ],
+              )
+            else ...[
+              FilledButton.icon(
+                onPressed: loading ? null : onSave,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
                 ),
-              ],
-            ),
+                icon: loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(LucideIcons.circle_check),
+                label: const Text('Criar empréstimo'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: loading ? null : onCancel,
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.tonal(
+                      onPressed: loading ? null : onSaveWithClient,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.user_plus, size: 18),
+                          SizedBox(width: 6),
+                          Text('+ novo cliente'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ] else
             Row(
               children: [

@@ -26,7 +26,7 @@ class ReportsPage extends ConsumerStatefulWidget {
 
 class _ReportsPageState extends ConsumerState<ReportsPage> {
   bool _exporting = false;
-  _ReportsTab _tab = _ReportsTab.period;
+  _ReportsTab _tab = _ReportsTab.portfolio;
 
   Future<void> _exportCsv() async {
     final data = ref.read(reportsDataProvider).valueOrNull;
@@ -51,7 +51,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   }
 
   bool _canExport(ReportsData? data) {
-    if (data == null || !data.hasActiveLoans) return false;
+    if (data == null || !data.hasAnyLoans) return false;
     if (_tab == _ReportsTab.period) {
       return data.periodReport.hasPeriodData;
     }

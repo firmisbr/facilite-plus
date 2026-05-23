@@ -61,6 +61,13 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
   }
 
   @override
+  Stream<Loan?> watchById(String id) {
+    return (_db.select(_db.loansTable)..where((l) => l.id.equals(id)))
+        .watchSingleOrNull()
+        .map((row) => row == null ? null : _mapRow(row));
+  }
+
+  @override
   Future<Loan> create({
     required String clientId,
     required String amount,

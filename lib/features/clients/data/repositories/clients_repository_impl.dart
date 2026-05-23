@@ -51,19 +51,29 @@ class ClientsRepositoryImpl extends SyncableRepository
           ..where((c) => c.userId.equals(userId)))
         .get();
 
+    Client? docMatch;
+    Client? phoneMatch;
+
     for (final row in rows) {
+      final client = _mapRow(row);
       if (docDigits != null &&
           row.document != null &&
           _digitsOnly(row.document) == docDigits) {
-        return _mapRow(row);
+        if (docMatch != null && docMatch.id != client.id) return null;
+        docMatch = client;
       }
       if (phoneDigits != null &&
           row.phone != null &&
           _digitsOnly(row.phone) == phoneDigits) {
-        return _mapRow(row);
+        if (phoneMatch != null && phoneMatch.id != client.id) return null;
+        phoneMatch = client;
       }
     }
-    return null;
+
+    if (docMatch != null && phoneMatch != null && docMatch.id != phoneMatch.id) {
+      return null;
+    }
+    return docMatch ?? phoneMatch;
   }
 
   String? _digitsOnly(String? value) {

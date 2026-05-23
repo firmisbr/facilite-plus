@@ -26,6 +26,13 @@ class PaymentPortfolioCounts {
       aVencer: aVencer,
     );
   }
+
+  /// Filtro inicial da aba Cobranças conforme a carteira.
+  PaymentListFilter suggestedDefaultFilter() {
+    if (atrasados > 0) return PaymentListFilter.atrasados;
+    if (aVencer > 0) return PaymentListFilter.aVencer;
+    return PaymentListFilter.todos;
+  }
 }
 
 abstract final class PaymentListFilterHelper {
