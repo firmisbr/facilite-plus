@@ -1,4 +1,5 @@
 import '../../payments/domain/entities/payment.dart';
+import '../../settings/domain/daily_loan_sunday_policy.dart';
 import 'entities/loan.dart' show Loan;
 import 'loan_installment_status.dart';
 import 'loan_periodicity.dart';
@@ -35,6 +36,7 @@ abstract final class LoanScheduleBuilder {
       interestPercent: interest,
       periodicity: periodicity,
       firstDueDate: due,
+      skipSundayOnDaily: DailyLoanSundayPolicy.appliesTo(periodicity),
     );
     if (schedule == null || schedule.isEmpty) return null;
 

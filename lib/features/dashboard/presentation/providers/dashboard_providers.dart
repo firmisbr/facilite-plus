@@ -2,10 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
+import '../../../settings/presentation/providers/daily_loan_skip_sunday_provider.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../domain/dashboard_stats.dart';
 
 final dashboardStatsProvider = Provider<AsyncValue<DashboardStats>>((ref) {
+  ref.watch(dailyLoanSkipSundayProvider);
   final userId = ref.watch(currentUserIdProvider);
   if (userId == null) {
     return const AsyncValue.data(DashboardStats.empty);

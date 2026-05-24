@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../loans/domain/loan_schedule_builder.dart';
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
+import '../../../settings/presentation/providers/daily_loan_skip_sunday_provider.dart';
 import '../../domain/client_list_entry.dart';
 import 'clients_providers.dart';
 
 final clientListEntriesProvider =
     Provider<AsyncValue<List<ClientListEntry>>>((ref) {
+  ref.watch(dailyLoanSkipSundayProvider);
   final clients = ref.watch(clientsStreamProvider);
   final loans = ref.watch(allLoansProvider);
   final payments = ref.watch(allPaymentsForUserProvider);

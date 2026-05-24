@@ -6,6 +6,7 @@ import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../domain/entities/loan.dart';
 import '../../domain/loan_installment_status.dart';
 import '../../domain/loan_schedule_builder.dart';
+import '../../../settings/presentation/providers/daily_loan_skip_sunday_provider.dart';
 import 'loans_providers.dart';
 
 class LoanDetailBundle {
@@ -23,6 +24,7 @@ class LoanDetailBundle {
 }
 
 final loanDetailProvider = Provider.family<LoanDetailBundle?, String>((ref, loanId) {
+  ref.watch(dailyLoanSkipSundayProvider);
   final payments = ref.watch(paymentsByLoanProvider(loanId)).valueOrNull;
   if (payments == null) return null;
 
@@ -53,6 +55,7 @@ final loanDetailLoadingProvider =
 
 final loanCardSummaryProvider =
     Provider.family<LoanCardSummary?, String>((ref, loanId) {
+  ref.watch(dailyLoanSkipSundayProvider);
   final payments = ref.watch(paymentsByLoanProvider(loanId)).valueOrNull;
   final loans = ref.watch(allLoansProvider).valueOrNull;
   if (payments == null || loans == null) return null;

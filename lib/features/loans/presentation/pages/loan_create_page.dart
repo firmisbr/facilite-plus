@@ -20,6 +20,7 @@ import '../../../../shared/widgets/floating_label_input_card.dart';
 import '../../domain/loan_periodicity.dart';
 import '../../domain/loan_simulator.dart';
 import '../../../notifications/notification_reschedule.dart';
+import '../../../settings/presentation/providers/daily_loan_skip_sunday_provider.dart';
 import '../providers/loans_providers.dart';
 import '../widgets/select_existing_client_dialog.dart';
 import '../../../clients/domain/entities/client.dart';
@@ -386,6 +387,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(dailyLoanSkipSundayProvider);
     final simulation = _simulation;
     final installments = int.tryParse(_installmentsController.text.trim());
     final brightness = Theme.of(context).brightness;

@@ -1,3 +1,5 @@
+import '../../settings/domain/daily_loan_sunday_policy.dart';
+import 'daily_loan_due_dates.dart';
 import 'loan_periodicity.dart';
 
 class LoanInstallmentPreview {
@@ -57,6 +59,7 @@ abstract final class LoanSimulator {
     required LoanPeriodicity periodicity,
     required DateTime firstDueDate,
     int maxScheduleRows = 6,
+    bool? skipSundayOnDaily,
   }) {
     if (principal <= 0 || installments < 1 || interestPercent < 0) {
       return null;
@@ -74,7 +77,12 @@ abstract final class LoanSimulator {
       schedule.add(
         LoanInstallmentPreview(
           number: i + 1,
-          dueDate: _nextDueDate(firstDueDate, periodicity, i),
+          dueDate: _nextDueDate(
+            firstDueDate,
+            periodicity,
+            i,
+            skipSundayOnDaily: skipSundayOnDaily,
+          ),
           amount: installment,
         ),
       );
@@ -96,6 +104,7 @@ abstract final class LoanSimulator {
     required double interestPercent,
     required LoanPeriodicity periodicity,
     required DateTime firstDueDate,
+    bool? skipSundayOnDaily,
   }) {
     final sim = simulate(
       principal: principal,
@@ -104,6 +113,7 @@ abstract final class LoanSimulator {
       periodicity: periodicity,
       firstDueDate: firstDueDate,
       maxScheduleRows: installments,
+      skipSundayOnDaily: skipSundayOnDaily,
     );
     if (sim == null) return null;
 
@@ -111,7 +121,12 @@ abstract final class LoanSimulator {
       installments,
       (i) => LoanInstallmentPreview(
         number: i + 1,
-        dueDate: _nextDueDate(firstDueDate, periodicity, i),
+        dueDate: _nextDueDate(
+          firstDueDate,
+          periodicity,
+          i,
+          skipSundayOnDaily: skipSundayOnDaily,
+        ),
         amount: sim.installmentAmount,
       ),
     );
@@ -120,10 +135,16 @@ abstract final class LoanSimulator {
   static DateTime _nextDueDate(
     DateTime first,
     LoanPeriodicity periodicity,
-    int index,
-  ) {
+    int index, {
+    bool? skipSundayOnDaily,
+  }) {
+    final skipSunday = skipSundayOnDaily ?? DailyLoanSundayPolicy.skipSunday;
     return switch (periodicity) {
-      LoanPeriodicity.diaria => first.add(Duration(days: index)),
+      LoanPeriodicity.diaria => DailyLoanDueDates.dueDate(
+          first,
+          installmentIndex: index,
+          skipSunday: skipSunday,
+        ),
       LoanPeriodicity.semanal => first.add(Duration(days: 7 * index)),
       LoanPeriodicity.quinzenal => first.add(Duration(days: 14 * index)),
       LoanPeriodicity.mensal => DateTime(

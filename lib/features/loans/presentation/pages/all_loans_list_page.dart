@@ -13,6 +13,7 @@ import '../../../../services/sync/sync_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../domain/entities/loan_with_client.dart';
 import '../../domain/loan_list_filter.dart';
+import '../../../settings/presentation/providers/daily_loan_skip_sunday_provider.dart';
 import '../providers/loan_list_layout_provider.dart';
 import '../providers/loans_providers.dart';
 import '../widgets/delete_loans_dialog.dart';
@@ -304,6 +305,7 @@ class _AllLoansListPageState extends ConsumerState<AllLoansListPage> {
     required ValueChanged<String> onEnterSelection,
     required ValueChanged<List<LoanWithClient>> onSelectAllVisible,
   }) {
+    ref.watch(dailyLoanSkipSundayProvider);
     final loansAsync = ref.watch(allLoansProvider);
     final paymentsAsync = ref.watch(allPaymentsForUserProvider);
 
@@ -558,6 +560,7 @@ class _LoansPortfolioSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(dailyLoanSkipSundayProvider);
     final loansAsync = ref.watch(allLoansProvider);
     final paymentsAsync = ref.watch(allPaymentsForUserProvider);
 

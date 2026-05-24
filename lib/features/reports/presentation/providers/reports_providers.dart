@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
+import '../../../settings/presentation/providers/daily_loan_skip_sunday_provider.dart';
 import '../../domain/report_period.dart';
 import '../../domain/reports_builder.dart';
 import '../../domain/reports_data.dart';
@@ -16,6 +17,7 @@ final reportPeriodRangeProvider = Provider<ReportPeriodRange>((ref) {
 });
 
 final reportsDataProvider = Provider<AsyncValue<ReportsData>>((ref) {
+  ref.watch(dailyLoanSkipSundayProvider);
   final loansAsync = ref.watch(allLoansProvider);
   final paymentsAsync = ref.watch(allPaymentsForUserProvider);
   final period = ref.watch(reportPeriodRangeProvider);

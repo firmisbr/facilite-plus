@@ -110,6 +110,15 @@ class SettingsPage extends ConsumerWidget {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           _SettingsActionTile(
+                            icon: LucideIcons.sliders_horizontal,
+                            title: 'Ajustes',
+                            subtitle:
+                                'Regras de cobrança para empréstimos diários',
+                            onTap: () =>
+                                context.push('${AppRoutes.settings}/adjustments'),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _SettingsActionTile(
                             icon: LucideIcons.chart_column,
                             title: 'Relatórios',
                             subtitle:
