@@ -3,7 +3,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 /// Versão do app (fonte: `pubspec.yaml` via build nativo).
 abstract final class AppVersion {
   /// Fallback síncrono — manter igual ao campo `version` do pubspec.
-  static const fallback = '1.0.4';
+  static const fallback = '1.1.0';
 
   static Future<String> resolve() async {
     try {
