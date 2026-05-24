@@ -4,12 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_page_header.dart';
 import '../../domain/admin_user.dart';
+import '../../../../core/router/routes.dart';
 import '../admin_routes.dart';
+import '../../../support/presentation/providers/admin_support_providers.dart';
 import '../providers/admin_providers.dart';
 import '../widgets/admin_app_bar_actions.dart';
 
@@ -31,6 +34,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(adminSupportRealtimeProvider);
+    ref.watch(adminSupportTicketsProvider);
     final usersAsync = ref.watch(adminUsersProvider);
     final query = _searchController.text.trim().toLowerCase();
     final brightness = Theme.of(context).brightness;
@@ -84,6 +89,26 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                                   'Selecione um gerente para ver clientes, '
                                   'parcelas e relatórios na nuvem.',
                               centered: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: AppSpacing.maxContentWidth,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.lg,
+                              0,
+                              AppSpacing.lg,
+                              AppSpacing.sm,
+                            ),
+                            child: _AdminSupportEntryCard(
+                              onTap: () => context.push(AppRoutes.adminSupport),
                             ),
                           ),
                         ),
@@ -183,6 +208,129 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminSupportEntryCard extends ConsumerWidget {
+  const _AdminSupportEntryCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final openCount = ref.watch(adminOpenSupportTicketsCountProvider);
+
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration:
+                        AppDecorations.iconBadge(color: AppColors.info),
+                    child: const Icon(
+                      LucideIcons.life_buoy,
+                      size: 20,
+                      color: AppColors.info,
+                    ),
+                  ),
+                  if (openCount > 0)
+                    Positioned(
+                      top: -6,
+                      right: -6,
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 18),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.all(Radius.circular(99)),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          openCount > 99 ? '99+' : '$openCount',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            height: 1.1,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Chamados de suporte',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (openCount > 0) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(99),
+                              border: Border.all(
+                                color: AppColors.error.withValues(alpha: 0.45),
+                              ),
+                            ),
+                            child: Text(
+                              openCount == 1
+                                  ? '1 pendente'
+                                  : '$openCount pendentes',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.error,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Responder bugs, sugestões e dúvidas dos usuários',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: context.appTheme.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
           ),
         ),
       ),

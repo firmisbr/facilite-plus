@@ -2,7 +2,9 @@
 enum SyncEntityType {
   client('clients'),
   loan('loans'),
-  payment('payments');
+  payment('payments'),
+  supportTicket('support_tickets'),
+  ticketMessage('ticket_messages');
 
   const SyncEntityType(this.tableName);
 

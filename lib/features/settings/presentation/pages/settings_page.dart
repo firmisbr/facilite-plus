@@ -11,6 +11,7 @@ import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../features/auth/presentation/providers/auth_controller.dart';
+import '../../../../features/support/presentation/providers/support_providers.dart';
 import '../../../../features/update/presentation/providers/update_providers.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
@@ -28,6 +29,7 @@ class SettingsPage extends ConsumerWidget {
     final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
     final brightness = Theme.of(context).brightness;
     final hasUpdate = ref.watch(hasUpdateBadgeProvider);
+    final hasSupportUpdate = ref.watch(hasSupportAttentionBadgeProvider);
 
     return Scaffold(
       extendBody: true,
@@ -136,6 +138,15 @@ class SettingsPage extends ConsumerWidget {
                             subtitle: 'Verificar e instalar novas versões',
                             onTap: () => context.push(AppRoutes.updates),
                             badge: hasUpdate,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _SettingsActionTile(
+                            icon: LucideIcons.life_buoy,
+                            title: 'Suporte',
+                            subtitle:
+                                'Bugs, sugestões e chamados com a equipe',
+                            onTap: () => context.push(AppRoutes.support),
+                            badge: hasSupportUpdate,
                           ),
                         ],
                       ),

@@ -9,4 +9,6 @@ abstract final class AdminRoutes {
   static String loanDetail(String userId, String loanId) =>
       AppRoutes.adminLoanDetail(userId, loanId);
   static String userReports(String userId) => AppRoutes.adminUserReports(userId);
+  static const support = AppRoutes.adminSupport;
+  static String supportTicket(String id) => AppRoutes.adminSupportTicket(id);
 }

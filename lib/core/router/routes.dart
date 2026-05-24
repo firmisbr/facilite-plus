@@ -15,6 +15,9 @@ abstract final class AppRoutes {
   static const reports = '/settings/reports';
   static const notifications = '/settings/notifications';
   static const updates = '/settings/updates';
+  static const support = '/settings/support';
+  static String supportNew(String type) => '/settings/support/new?type=$type';
+  static String supportTicket(String id) => '/settings/support/$id';
   static const clients = '/settings/clients';
   static const clientNew = '/settings/clients/new';
   static String clientEdit(String id) => '/settings/clients/$id';
@@ -38,6 +41,8 @@ abstract final class AppRoutes {
 
   /// Painel administrativo (somente role admin)
   static const admin = '/admin';
+  static const adminSupport = '/admin/support';
+  static String adminSupportTicket(String id) => '/admin/support/$id';
   static String adminUserOverview(String userId) => '/admin/users/$userId';
   static String adminUserClients(String userId) => '/admin/users/$userId/clients';
   static String adminClientLoans(String userId, String clientId) =>

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/update/presentation/providers/update_providers.dart';
+import '../../features/support/presentation/providers/support_providers.dart';
 import '../../services/sync/sync_providers.dart';
 
 /// Altura total reservada (barra flutuante + FAB).
@@ -41,6 +42,7 @@ class FloatingNotchedNavBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hasUpdate = ref.watch(hasUpdateBadgeProvider);
     final hasSyncPending = ref.watch(hasSyncAttentionBadgeProvider);
+    final hasSupportUpdate = ref.watch(hasSupportAttentionBadgeProvider);
     final notchRadius = _fabSize / 2 + 10;
 
     return SizedBox(
@@ -99,6 +101,7 @@ class FloatingNotchedNavBar extends ConsumerWidget {
                             onTap: () => onTabSelected(3),
                             updateBadge: hasUpdate,
                             syncBadge: hasSyncPending,
+                            supportBadge: hasSupportUpdate,
                           ),
                         ],
                       ),
@@ -131,6 +134,7 @@ class _NavIconButton extends StatelessWidget {
     required this.onTap,
     this.updateBadge = false,
     this.syncBadge = false,
+    this.supportBadge = false,
   });
 
   final IconData icon;
@@ -138,6 +142,7 @@ class _NavIconButton extends StatelessWidget {
   final VoidCallback onTap;
   final bool updateBadge;
   final bool syncBadge;
+  final bool supportBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -197,6 +202,19 @@ class _NavIconButton extends StatelessWidget {
                     height: 9,
                     decoration: const BoxDecoration(
                       color: AppColors.warning,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              if (supportBadge)
+                Positioned(
+                  bottom: -2,
+                  left: -4,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: const BoxDecoration(
+                      color: AppColors.info,
                       shape: BoxShape.circle,
                     ),
                   ),

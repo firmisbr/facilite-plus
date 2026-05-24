@@ -23,6 +23,12 @@ import '../../features/notifications/presentation/pages/notification_settings_pa
 import '../../features/update/presentation/pages/update_page.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/support/domain/support_ticket_type.dart';
+import '../../features/support/presentation/pages/new_ticket_page.dart';
+import '../../features/support/presentation/pages/support_home_page.dart';
+import '../../features/support/presentation/pages/ticket_detail_page.dart';
+import '../../features/support/presentation/pages/admin/admin_support_tickets_page.dart';
+import '../../features/support/presentation/pages/admin/admin_ticket_detail_page.dart';
 import '../../features/admin/domain/user_role.dart';
 import '../../features/admin/presentation/pages/admin_client_loans_page.dart';
 import '../../features/admin/presentation/pages/admin_clients_page.dart';
@@ -197,6 +203,29 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const UpdatePage(),
                   ),
                   GoRoute(
+                    path: 'support',
+                    builder: (context, state) => const SupportHomePage(),
+                    routes: [
+                      GoRoute(
+                        path: 'new',
+                        builder: (context, state) {
+                          final typeRaw =
+                              state.uri.queryParameters['type'] ?? 'suporte';
+                          return NewTicketPage(
+                            type: SupportTicketType.fromValue(typeRaw),
+                          );
+                        },
+                      ),
+                      GoRoute(
+                        path: ':id',
+                        builder: (context, state) {
+                          final id = state.pathParameters['id']!;
+                          return TicketDetailPage(ticketId: id);
+                        },
+                      ),
+                    ],
+                  ),
+                  GoRoute(
                     path: 'clients',
                     builder: (context, state) => const ClientsListPage(),
                     routes: [
@@ -242,6 +271,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.admin,
         builder: (context, state) => const AdminUsersPage(),
         routes: [
+          GoRoute(
+            path: 'support',
+            builder: (context, state) => const AdminSupportTicketsPage(),
+            routes: [
+              GoRoute(
+                path: ':ticketId',
+                builder: (context, state) {
+                  final ticketId = state.pathParameters['ticketId']!;
+                  return AdminTicketDetailPage(ticketId: ticketId);
+                },
+              ),
+            ],
+          ),
           GoRoute(
             path: 'users/:userId',
             builder: (context, state) {

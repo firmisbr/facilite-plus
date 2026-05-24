@@ -83,6 +83,8 @@ class SyncService {
     await _pullClients(userId);
     await _pullLoans(userId);
     await _pullPayments(userId);
+    await _pullSupportTickets(userId);
+    await _pullTicketMessages(userId);
   }
 
   Future<void> _pullLoans(String userId) async {
@@ -187,6 +189,96 @@ class SyncService {
     });
 
     _log.info('Pull payments: ${list.length} registro(s)');
+  }
+
+  Future<void> _pullSupportTickets(String userId) async {
+    final rows = await _supabase
+        .from('support_tickets')
+        .select()
+        .eq('user_id', userId);
+
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return;
+
+    await _db.batch((batch) {
+      for (final raw in list) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final id = row['id'] as String;
+        batch.insert(
+          _db.supportTicketsTable,
+          SupportTicketsTableCompanion.insert(
+            id: id,
+            userId: row['user_id'] as String,
+            type: row['type'] as String,
+            title: row['title'] as String,
+            description: row['description'] as String,
+            extraField: Value(row['extra_field'] as String?),
+            status: row['status'] as String,
+            devResponse: Value(row['dev_response'] as String?),
+            createdAt: _formatRemoteDate(row['created_at'])!,
+            updatedAt: _formatRemoteDate(row['updated_at'])!,
+          ),
+          onConflict: DoUpdate(
+            (old) => SupportTicketsTableCompanion(
+              type: Value(row['type'] as String),
+              title: Value(row['title'] as String),
+              description: Value(row['description'] as String),
+              extraField: Value(row['extra_field'] as String?),
+              status: Value(row['status'] as String),
+              devResponse: Value(row['dev_response'] as String?),
+              createdAt: Value(_formatRemoteDate(row['created_at'])!),
+              updatedAt: Value(_formatRemoteDate(row['updated_at'])!),
+            ),
+            target: [_db.supportTicketsTable.id],
+          ),
+        );
+      }
+    });
+
+    _log.info('Pull support_tickets: ${list.length} registro(s)');
+  }
+
+  Future<void> _pullTicketMessages(String userId) async {
+    final ticketRows = await (_db.select(_db.supportTicketsTable)
+          ..where((t) => t.userId.equals(userId)))
+        .get();
+    if (ticketRows.isEmpty) return;
+
+    final ticketIds = ticketRows.map((t) => t.id).toList();
+    final rows = await _supabase
+        .from('ticket_messages')
+        .select()
+        .inFilter('ticket_id', ticketIds);
+
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return;
+
+    await _db.batch((batch) {
+      for (final raw in list) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final id = row['id'] as String;
+        batch.insert(
+          _db.ticketMessagesTable,
+          TicketMessagesTableCompanion.insert(
+            id: id,
+            ticketId: row['ticket_id'] as String,
+            authorId: row['author_id'] as String,
+            authorRole: row['author_role'] as String,
+            body: row['body'] as String,
+            createdAt: _formatRemoteDate(row['created_at'])!,
+          ),
+          onConflict: DoUpdate(
+            (old) => TicketMessagesTableCompanion(
+              body: Value(row['body'] as String),
+              createdAt: Value(_formatRemoteDate(row['created_at'])!),
+            ),
+            target: [_db.ticketMessagesTable.id],
+          ),
+        );
+      }
+    });
+
+    _log.info('Pull ticket_messages: ${list.length} registro(s)');
   }
 
   Future<void> _pullClients(String userId) async {

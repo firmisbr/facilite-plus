@@ -3,18 +3,27 @@ import 'package:drift/drift.dart';
 import 'tables/clients_table.dart';
 import 'tables/loans_table.dart';
 import 'tables/payments_table.dart';
+import 'tables/support_tickets_table.dart';
 import 'tables/sync_queue_table.dart';
+import 'tables/ticket_messages_table.dart';
 
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [ClientsTable, LoansTable, PaymentsTable, SyncQueueTable],
+  tables: [
+    ClientsTable,
+    LoansTable,
+    PaymentsTable,
+    SupportTicketsTable,
+    TicketMessagesTable,
+    SyncQueueTable,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -46,6 +55,10 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_id ON payments(id)',
             );
+          }
+          if (from < 6) {
+            await m.createTable(supportTicketsTable);
+            await m.createTable(ticketMessagesTable);
           }
         },
       );
