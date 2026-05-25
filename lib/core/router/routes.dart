@@ -15,6 +15,7 @@ abstract final class AppRoutes {
   static const reports = '/settings/reports';
   static const notifications = '/settings/notifications';
   static const adjustments = '/settings/adjustments';
+  static const profile = '/settings/profile';
   static const updates = '/settings/updates';
   static const support = '/settings/support';
   static String supportNew(String type) => '/settings/support/new?type=$type';

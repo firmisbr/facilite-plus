@@ -160,6 +160,7 @@ class _UpdateBody extends ConsumerWidget {
             entries: entries,
             installedVersion: installedVersion,
             availableVersion: availableVersion,
+            featuredVersion: result.info?.version,
           ),
           loading: () => const Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),

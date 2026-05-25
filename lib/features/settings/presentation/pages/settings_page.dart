@@ -11,6 +11,7 @@ import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../features/auth/presentation/providers/auth_controller.dart';
+import '../../../../features/profile/presentation/providers/profile_providers.dart';
 import '../../../../features/support/presentation/providers/support_providers.dart';
 import '../../../../features/update/presentation/providers/update_providers.dart';
 import '../../../../services/supabase/supabase_providers.dart';
@@ -70,243 +71,125 @@ class SettingsPage extends ConsumerWidget {
                   ),
                 ),
               ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.sm,
-                      ),
-                      child: const _SettingsSectionLabel(title: 'Dados'),
-                    ),
+              // ── Acesso rápido (telas principais) ──────────────────────
+              _SettingsSection(
+                label: 'Gestão',
+                children: [
+                  _SettingsActionTile(
+                    icon: LucideIcons.users,
+                    title: 'Clientes',
+                    subtitle: 'Cadastro, edição e histórico de empréstimos',
+                    onTap: () => context.push(AppRoutes.clients),
                   ),
-                ),
+                  _SettingsActionTile(
+                    icon: LucideIcons.chart_column,
+                    title: 'Relatórios',
+                    subtitle: 'Análise de carteira, inadimplência e exportação',
+                    onTap: () => context.push(AppRoutes.reports),
+                  ),
+                ],
               ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg,
-                      ),
-                      child: Column(
-                        children: [
-                          _SettingsActionTile(
-                            icon: LucideIcons.bell,
-                            title: 'Notificações',
-                            subtitle:
-                                'Horário e lembretes de parcelas a vencer',
-                            onTap: () =>
-                                context.push(AppRoutes.notifications),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SettingsActionTile(
-                            icon: LucideIcons.sliders_horizontal,
-                            title: 'Ajustes',
-                            subtitle:
-                                'Regras de cobrança para empréstimos diários',
-                            onTap: () =>
-                                context.push('${AppRoutes.settings}/adjustments'),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SettingsActionTile(
-                            icon: LucideIcons.chart_column,
-                            title: 'Relatórios',
-                            subtitle:
-                                'Resumo, inadimplência, previsão e exportar CSV',
-                            onTap: () => context.push(AppRoutes.reports),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SettingsActionTile(
-                            icon: LucideIcons.users,
-                            title: 'Clientes',
-                            subtitle: 'Cadastro, edição e histórico',
-                            onTap: () => context.push(AppRoutes.clients),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SettingsActionTile(
-                            icon: LucideIcons.hard_drive,
-                            title: 'Backup',
-                            subtitle:
-                                'Exportar com PIN ou importar em outra conta',
-                            onTap: () => context.push(AppRoutes.backup),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SettingsActionTile(
-                            icon: LucideIcons.cloud_download,
-                            title: 'Atualizações',
-                            subtitle: 'Verificar e instalar novas versões',
-                            onTap: () => context.push(AppRoutes.updates),
-                            badge: hasUpdate,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SettingsActionTile(
-                            icon: LucideIcons.life_buoy,
-                            title: 'Suporte',
-                            subtitle:
-                                'Bugs, sugestões e chamados com a equipe',
-                            onTap: () => context.push(AppRoutes.support),
-                            badge: hasSupportUpdate,
-                          ),
-                        ],
-                      ),
-                    ),
+
+              // ── Preferências ───────────────────────────────────────────
+              _SettingsSection(
+                label: 'Preferências',
+                children: [
+                  _SettingsActionTile(
+                    icon: LucideIcons.bell,
+                    title: 'Notificações',
+                    subtitle: 'Horário e lembretes de parcelas a vencer',
+                    onTap: () => context.push(AppRoutes.notifications),
                   ),
-                ),
+                  _SettingsActionTile(
+                    icon: LucideIcons.sliders_horizontal,
+                    title: 'Ajustes',
+                    subtitle: 'Regras de cobrança para empréstimos diários',
+                    onTap: () =>
+                        context.push('${AppRoutes.settings}/adjustments'),
+                  ),
+                  _SettingsActionTile(
+                    icon: isDark ? LucideIcons.sun : LucideIcons.moon,
+                    title: isDark ? 'Tema claro' : 'Tema escuro',
+                    subtitle: 'Alternar aparência do aplicativo',
+                    onTap: () =>
+                        ref.read(themeModeProvider.notifier).toggle(),
+                  ),
+                ],
               ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.sm,
-                      ),
-                      child: const _SettingsSectionLabel(title: 'Nuvem'),
-                    ),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg,
-                      ),
-                      child: Column(
-                        children: [
-                          const _SettingsCloudHintCard(),
-                          const SizedBox(height: AppSpacing.sm),
-                          syncSummary.when(
-                            data: (summary) => _SyncStatusCard(
-                              summary: summary,
-                            ),
-                            loading: () => const _SettingsSurfaceCard(
-                              child: Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(AppSpacing.lg),
-                                  child: SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            error: (_, _) => const SizedBox.shrink(),
+
+              // ── Nuvem & sincronização ──────────────────────────────────
+              _SettingsSection(
+                label: 'Nuvem',
+                children: [
+                  const _SettingsCloudHintCard(),
+                  syncSummary.when(
+                    data: (summary) => _SyncStatusCard(summary: summary),
+                    loading: () => const _SettingsSurfaceCard(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(AppSpacing.lg),
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SettingsActionTile(
-                            icon: LucideIcons.refresh_cw,
-                            title: 'Sincronizar agora',
-                            subtitle:
-                                'Força envio e download agora (também é automático)',
-                            onTap: () async {
-                              final container =
-                                  ProviderScope.containerOf(context);
-                              final messenger =
-                                  ScaffoldMessenger.of(context);
-                              final result = await runFullSync(container);
-                              if (context.mounted) {
-                                showSyncSnackBarWithMessenger(
-                                  messenger,
-                                  result,
-                                );
-                              }
-                            },
-                          ),
-                        ],
+                        ),
                       ),
                     ),
+                    error: (_, _) => const SizedBox.shrink(),
                   ),
-                ),
+                  _SettingsActionTile(
+                    icon: LucideIcons.refresh_cw,
+                    title: 'Sincronizar agora',
+                    subtitle:
+                        'Força envio e download (sincronização também é automática)',
+                    onTap: () async {
+                      final container = ProviderScope.containerOf(context);
+                      final messenger = ScaffoldMessenger.of(context);
+                      final result = await runFullSync(container);
+                      if (context.mounted) {
+                        showSyncSnackBarWithMessenger(messenger, result);
+                      }
+                    },
+                  ),
+                ],
               ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.sm,
-                      ),
-                      child: const _SettingsSectionLabel(title: 'Aparência'),
-                    ),
+
+              // ── Conta ─────────────────────────────────────────────────
+              _SettingsSection(
+                label: 'Conta',
+                bottomPad: kBottomNavReservedHeight + AppSpacing.lg,
+                children: [
+                  _SettingsActionTile(
+                    icon: LucideIcons.hard_drive,
+                    title: 'Backup',
+                    subtitle: 'Exportar com PIN ou importar em outra conta',
+                    onTap: () => context.push(AppRoutes.backup),
                   ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg,
-                      ),
-                      child: _SettingsActionTile(
-                        icon: isDark
-                            ? LucideIcons.sun
-                            : LucideIcons.moon,
-                        title: isDark ? 'Tema claro' : 'Tema escuro',
-                        subtitle: 'Alternar aparência do aplicativo',
-                        onTap: () =>
-                            ref.read(themeModeProvider.notifier).toggle(),
-                      ),
-                    ),
+                  _SettingsActionTile(
+                    icon: LucideIcons.cloud_download,
+                    title: 'Atualizações',
+                    subtitle: 'Verificar e instalar novas versões',
+                    onTap: () => context.push(AppRoutes.updates),
+                    badge: hasUpdate,
                   ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSpacing.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        kBottomNavReservedHeight + AppSpacing.lg,
-                      ),
-                      child: _SettingsActionTile(
-                        icon: LucideIcons.log_out,
-                        title: 'Sair da conta',
-                        subtitle: 'Encerrar sessão neste dispositivo',
-                        iconColor: AppColors.error,
-                        titleColor: AppColors.error,
-                        onTap: () =>
-                            ref.read(authControllerProvider.notifier).signOut(),
-                      ),
-                    ),
+                  _SettingsActionTile(
+                    icon: LucideIcons.life_buoy,
+                    title: 'Suporte',
+                    subtitle: 'Bugs, sugestões e chamados com a equipe',
+                    onTap: () => context.push(AppRoutes.support),
+                    badge: hasSupportUpdate,
                   ),
-                ),
+                  _SettingsActionTile(
+                    icon: LucideIcons.log_out,
+                    title: 'Sair da conta',
+                    subtitle: 'Encerrar sessão neste dispositivo',
+                    iconColor: AppColors.error,
+                    titleColor: AppColors.error,
+                    onTap: () =>
+                        ref.read(authControllerProvider.notifier).signOut(),
+                  ),
+                ],
               ),
             ],
             ),
@@ -325,11 +208,14 @@ class _SettingsAccountCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final versionAsync = ref.watch(appVersionProvider);
+    final profileAsync = ref.watch(profileProvider);
     final versionLabel = versionAsync.when(
       data: (v) => 'v$v',
       loading: () => 'v${AppVersion.fallback}',
       error: (_, _) => 'v${AppVersion.fallback}',
     );
+    final displayName = profileAsync.valueOrNull?.name?.trim();
+    final hasName = displayName != null && displayName.isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -347,69 +233,136 @@ class _SettingsAccountCard extends ConsumerWidget {
         border: Border.all(color: AppColors.accent.withValues(alpha: 0.35)),
         boxShadow: context.appTheme.cardShadow,
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            'Sua conta',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: context.appTheme.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
+          // ── Info da conta ──────────────────────────────────────────────
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasName) ...[
+                  Text(
+                    displayName,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          height: 1.25,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    email,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.appTheme.textSecondary,
+                        ),
+                  ),
+                ] else
+                  Text(
+                    email,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                        ),
+                  ),
+                const SizedBox(height: AppSpacing.md),
+                // Versão instalada
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => context.push(AppRoutes.updates),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surface
+                            .withValues(alpha: 0.75),
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.radiusMd),
+                        border: Border.all(
+                          color: AppColors.accent.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            LucideIcons.smartphone,
+                            size: 13,
+                            color: AppColors.accent,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Versão $versionLabel',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accent,
+                                ),
+                          ),
+                          const SizedBox(width: 3),
+                          Icon(
+                            LucideIcons.chevron_right,
+                            size: 13,
+                            color: AppColors.accent.withValues(alpha: 0.85),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            email,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  height: 1.25,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.md),
+
+          const SizedBox(width: AppSpacing.md),
+
+          // ── Botão Meu Perfil ───────────────────────────────────────────
           Material(
             color: Colors.transparent,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             child: InkWell(
-              onTap: () => context.push(AppRoutes.updates),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              onTap: () => context.push(AppRoutes.profile),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
-                  vertical: 6,
+                  vertical: AppSpacing.md,
                 ),
                 decoration: BoxDecoration(
                   color: Theme.of(context)
                       .colorScheme
                       .surface
-                      .withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      .withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                   border: Border.all(
-                    color: AppColors.accent.withValues(alpha: 0.35),
+                    color: AppColors.accent.withValues(alpha: 0.3),
                   ),
                 ),
-                child: Row(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      LucideIcons.smartphone,
-                      size: 14,
+                      LucideIcons.circle_user_round,
+                      size: 22,
                       color: AppColors.accent,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(height: 4),
                     Text(
-                      'Versão instalada $versionLabel',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      'Meu perfil',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall
+                          ?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: AppColors.accent,
                           ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      LucideIcons.chevron_right,
-                      size: 14,
-                      color: AppColors.accent.withValues(alpha: 0.85),
                     ),
                   ],
                 ),
@@ -531,6 +484,50 @@ class _SyncStatusCard extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Seção com label e lista de itens, sem repetir ConstrainedBox/Padding.
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({
+    required this.label,
+    required this.children,
+    this.bottomPad,
+  });
+
+  final String label;
+  final List<Widget> children;
+  final double? bottomPad;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              bottomPad ?? AppSpacing.sm,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SettingsSectionLabel(title: label),
+                const SizedBox(height: AppSpacing.md),
+                for (var i = 0; i < children.length; i++) ...[
+                  children[i],
+                  if (i < children.length - 1)
+                    const SizedBox(height: AppSpacing.sm),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

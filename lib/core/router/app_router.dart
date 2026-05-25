@@ -23,6 +23,7 @@ import '../../features/notifications/presentation/pages/notification_settings_pa
 import '../../features/update/presentation/pages/update_page.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/settings/presentation/pages/app_adjustments_page.dart';
+import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/support/domain/support_ticket_type.dart';
 import '../../features/support/presentation/pages/new_ticket_page.dart';
@@ -202,6 +203,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'adjustments',
                     builder: (context, state) => const AppAdjustmentsPage(),
+                  ),
+                  GoRoute(
+                    path: 'profile',
+                    builder: (context, state) => const ProfilePage(),
                   ),
                   GoRoute(
                     path: 'updates',

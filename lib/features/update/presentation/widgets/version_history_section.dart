@@ -13,11 +13,16 @@ class VersionHistorySection extends StatefulWidget {
     required this.entries,
     required this.installedVersion,
     this.availableVersion,
+    this.featuredVersion,
   });
 
   final List<AppVersionHistoryEntry> entries;
   final String installedVersion;
   final String? availableVersion;
+
+  /// Versão já exibida no card de destaque (changelog do topo).
+  /// Entradas com este valor são omitidas do histórico para evitar duplicação.
+  final String? featuredVersion;
 
   static HistoryEntryStatus entryStatus(
     String version, {
@@ -56,7 +61,13 @@ class _VersionHistorySectionState extends State<VersionHistorySection> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.entries.isEmpty) {
+    final visibleEntries = widget.featuredVersion != null
+        ? widget.entries
+            .where((e) => e.version != widget.featuredVersion)
+            .toList()
+        : widget.entries;
+
+    if (visibleEntries.isEmpty) {
       return _EmptyHistoryHint();
     }
 
@@ -91,19 +102,19 @@ class _VersionHistorySectionState extends State<VersionHistorySection> {
               ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        for (var i = 0; i < widget.entries.length; i++) ...[
+        for (var i = 0; i < visibleEntries.length; i++) ...[
           _HistoryTimelineRow(
-            entry: widget.entries[i],
+            entry: visibleEntries[i],
             isFirst: i == 0,
-            isLast: i == widget.entries.length - 1,
-            dateLabel: dateFormat.format(widget.entries[i].releasedAt.toLocal()),
+            isLast: i == visibleEntries.length - 1,
+            dateLabel: dateFormat.format(visibleEntries[i].releasedAt.toLocal()),
             status: VersionHistorySection.entryStatus(
-              widget.entries[i].version,
+              visibleEntries[i].version,
               installedVersion: widget.installedVersion,
               availableVersion: widget.availableVersion,
             ),
-            expanded: _expandedKeys.contains(_entryKey(widget.entries[i])),
-            onToggle: () => _toggle(widget.entries[i]),
+            expanded: _expandedKeys.contains(_entryKey(visibleEntries[i])),
+            onToggle: () => _toggle(visibleEntries[i]),
           ),
         ],
       ],
