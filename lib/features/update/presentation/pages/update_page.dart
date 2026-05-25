@@ -8,6 +8,8 @@ import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/app_update_info.dart';
 import '../providers/update_providers.dart';
+import '../widgets/changelog_notes_card.dart';
+import '../widgets/version_history_section.dart';
 
 class UpdatePage extends ConsumerWidget {
   const UpdatePage({super.key});
@@ -102,11 +104,15 @@ class _UpdateBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final download = ref.watch(downloadNotifierProvider);
     final notifier = ref.read(downloadNotifierProvider.notifier);
+    final historyAsync = ref.watch(versionHistoryProvider);
     final installedVersion = ref.watch(appVersionProvider).valueOrNull ??
         result.currentVersion ??
         '—';
+    final availableVersion =
+        result.hasUpdate ? result.info?.version : null;
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.sm,
@@ -120,12 +126,21 @@ class _UpdateBody extends ConsumerWidget {
         ),
         if (result.info != null) ...[
           const SizedBox(height: AppSpacing.lg),
-          _ReleaseNotesCard(
+          ChangelogNotesCard(
             changelog: result.info!.changelog,
-            hasUpdate: result.hasUpdate,
             versionLabel: result.hasUpdate
                 ? result.info!.version
                 : installedVersion,
+            title: result.hasUpdate ? 'Na próxima versão' : 'Nesta versão',
+            subtitle: result.hasUpdate
+                ? 'Novidades da v${result.info!.version} disponível para instalar'
+                : 'O que há de novo na v$installedVersion que você já usa',
+            accent: result.hasUpdate ? AppColors.warning : AppColors.success,
+            leadingIcon:
+                result.hasUpdate ? LucideIcons.rocket : LucideIcons.sparkles,
+            bulletIcon: result.hasUpdate
+                ? LucideIcons.arrow_right
+                : LucideIcons.circle_check,
           ),
         ],
         if (result.hasUpdate && result.info != null) ...[
@@ -140,8 +155,24 @@ class _UpdateBody extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: AppSpacing.xl),
+        historyAsync.when(
+          data: (entries) => VersionHistorySection(
+            entries: entries,
+            installedVersion: installedVersion,
+            availableVersion: availableVersion,
+          ),
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (_, _) => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: AppSpacing.xl),
         _UpToDateFooter(
-          onRefresh: () => ref.invalidate(updateCheckProvider),
+          onRefresh: () {
+            ref.invalidate(updateCheckProvider);
+            ref.invalidate(versionHistoryProvider);
+          },
         ),
       ],
     );
@@ -315,192 +346,6 @@ class _VersionPill extends StatelessWidget {
                   color: highlighted ? color : null,
                 ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-List<String> _parseChangelogLines(String? raw) {
-  final text = raw?.trim();
-  if (text == null || text.isEmpty) return const [];
-  return text
-      .split(RegExp(r'\r?\n'))
-      .map((l) => l.trim())
-      .where((l) => l.isNotEmpty)
-      .map((l) => l.replaceFirst(RegExp(r'^[-•*]\s*'), ''))
-      .toList();
-}
-
-class _ReleaseNotesCard extends StatelessWidget {
-  const _ReleaseNotesCard({
-    required this.changelog,
-    required this.hasUpdate,
-    required this.versionLabel,
-  });
-
-  final String? changelog;
-  final bool hasUpdate;
-  final String versionLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final lines = _parseChangelogLines(changelog);
-    final accent = hasUpdate ? AppColors.warning : AppColors.success;
-    final title = hasUpdate ? 'Na próxima versão' : 'Nesta versão';
-    final subtitle = hasUpdate
-        ? 'Novidades da v$versionLabel disponível para instalar'
-        : 'O que há de novo na v$versionLabel que você já usa';
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-        border: Border.all(color: accent.withValues(alpha: 0.28)),
-        boxShadow: context.appTheme.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  accent.withValues(alpha: 0.12),
-                  AppColors.premium.withValues(alpha: 0.06),
-                ],
-              ),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppSpacing.radiusXl),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.15),
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusMd),
-                        border: Border.all(
-                          color: accent.withValues(alpha: 0.35),
-                        ),
-                      ),
-                      child: Text(
-                        'v$versionLabel',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: accent,
-                            ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      hasUpdate ? LucideIcons.rocket : LucideIcons.sparkles,
-                      size: 20,
-                      color: accent,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: context.appTheme.textSecondary,
-                        height: 1.35,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          if (lines.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                0,
-                AppSpacing.lg,
-                AppSpacing.lg,
-              ),
-              child: Text(
-                'Nenhuma nota de versão foi publicada para esta release.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: context.appTheme.textSecondary,
-                      height: 1.4,
-                    ),
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.lg,
-              ),
-              child: Column(
-                children: [
-                  for (var i = 0; i < lines.length; i++) ...[
-                    if (i > 0)
-                      Divider(
-                        height: AppSpacing.lg,
-                        color: context.appTheme.border.withValues(alpha: 0.6),
-                      ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(top: 2),
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            hasUpdate
-                                ? LucideIcons.arrow_right
-                                : LucideIcons.circle_check,
-                            size: 14,
-                            color: hasUpdate ? accent : AppColors.success,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            lines[i],
-                            style:
-                                Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      height: 1.45,
-                                    ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
         ],
       ),
     );

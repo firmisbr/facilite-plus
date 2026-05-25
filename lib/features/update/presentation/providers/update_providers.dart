@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../data/update_repository.dart';
 import '../../domain/app_update_info.dart';
+import '../../domain/app_version_history_entry.dart';
 import '../../domain/update_service.dart';
 
 final updateRepositoryProvider = Provider<UpdateRepository>((ref) {
@@ -21,6 +22,12 @@ final updateServiceProvider = Provider<UpdateService>((ref) {
 final updateCheckProvider = FutureProvider<UpdateCheckResult>((ref) async {
   ref.watch(sessionProvider);
   return ref.watch(updateServiceProvider).check();
+});
+
+final versionHistoryProvider =
+    FutureProvider<List<AppVersionHistoryEntry>>((ref) async {
+  ref.watch(sessionProvider);
+  return ref.watch(updateRepositoryProvider).fetchVersionHistory();
 });
 
 final hasUpdateBadgeProvider = Provider<bool>((ref) {

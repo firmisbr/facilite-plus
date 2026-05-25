@@ -123,24 +123,7 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    final isDueToday = item.isDueToday;
-
-    final statusColor = switch (item.status) {
-      LoanInstallmentStatus.paid => AppColors.success,
-      LoanInstallmentStatus.overdue => AppColors.error,
-      LoanInstallmentStatus.pending when isDueToday => AppColors.warning,
-      LoanInstallmentStatus.pending => AppColors.accent,
-    };
-
-    final cardFill = isDueToday
-        ? AppColors.warning.withValues(alpha: 0.14)
-        : Theme.of(context).colorScheme.surface;
-    final cardBorder = switch (item.status) {
-      LoanInstallmentStatus.overdue =>
-        AppColors.error.withValues(alpha: 0.35),
-      _ when isDueToday => AppColors.warning.withValues(alpha: 0.55),
-      _ => Theme.of(context).dividerColor.withValues(alpha: 0.85),
-    };
+    final style = _InstallmentCardStyle.resolve(item);
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -148,18 +131,10 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
         vertical: AppSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: cardFill,
+        color: style.fill,
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        border: Border.all(color: cardBorder, width: isDueToday ? 1.5 : 1),
-        boxShadow: isDueToday
-            ? [
-                BoxShadow(
-                  color: AppColors.warning.withValues(alpha: 0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : null,
+        border: Border.all(color: style.border, width: style.borderWidth),
+        boxShadow: style.shadow,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -167,15 +142,15 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
           _InstallmentStatusBadge(
             number: item.number,
             status: item.status,
-            isDueToday: isDueToday,
-            color: statusColor,
+            isDueToday: item.isDueToday,
+            color: style.color,
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _StatusChip(status: item.status, isDueToday: isDueToday),
+                _StatusChip(style: style),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   LoanSimulator.formatMoney(item.amount),
@@ -221,7 +196,7 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
                       tooltip: 'Registrar pagamento',
                       onPressed: _pay,
                       icon: const Icon(Icons.payments_outlined),
-                      color: AppColors.accent,
+                      color: style.color,
                     )
                   : item.canUndo
                   ? IconButton(
@@ -236,6 +211,72 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
         ],
       ),
     );
+  }
+}
+
+/// Cores por status: azul a vencer, verde paga, vermelho atrasada, amarelo hoje.
+class _InstallmentCardStyle {
+  const _InstallmentCardStyle({
+    required this.color,
+    required this.fill,
+    required this.border,
+    required this.borderWidth,
+    required this.status,
+    required this.isDueToday,
+    this.shadow,
+  });
+
+  final Color color;
+  final Color fill;
+  final Color border;
+  final double borderWidth;
+  final LoanInstallmentStatus status;
+  final bool isDueToday;
+  final List<BoxShadow>? shadow;
+
+  static _InstallmentCardStyle resolve(LoanInstallmentItem item) {
+    final isDueToday = item.isDueToday;
+    return switch (item.status) {
+      LoanInstallmentStatus.paid => _InstallmentCardStyle(
+          color: AppColors.success,
+          fill: AppColors.success.withValues(alpha: 0.1),
+          border: AppColors.success.withValues(alpha: 0.38),
+          borderWidth: 1,
+          status: item.status,
+          isDueToday: false,
+        ),
+      LoanInstallmentStatus.overdue => _InstallmentCardStyle(
+          color: AppColors.error,
+          fill: AppColors.error.withValues(alpha: 0.12),
+          border: AppColors.error.withValues(alpha: 0.45),
+          borderWidth: 1.25,
+          status: item.status,
+          isDueToday: false,
+        ),
+      LoanInstallmentStatus.pending when isDueToday => _InstallmentCardStyle(
+          color: AppColors.warning,
+          fill: AppColors.warning.withValues(alpha: 0.16),
+          border: AppColors.warning.withValues(alpha: 0.55),
+          borderWidth: 1.5,
+          status: item.status,
+          isDueToday: true,
+          shadow: [
+            BoxShadow(
+              color: AppColors.warning.withValues(alpha: 0.22),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+      LoanInstallmentStatus.pending => _InstallmentCardStyle(
+          color: AppColors.info,
+          fill: AppColors.info.withValues(alpha: 0.1),
+          border: AppColors.info.withValues(alpha: 0.4),
+          borderWidth: 1,
+          status: item.status,
+          isDueToday: false,
+        ),
+    };
   }
 }
 
@@ -329,31 +370,20 @@ class _InstallmentStatusBadge extends StatelessWidget {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({
-    required this.status,
-    required this.isDueToday,
-  });
+  const _StatusChip({required this.style});
 
-  final LoanInstallmentStatus status;
-  final bool isDueToday;
+  final _InstallmentCardStyle style;
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status) {
-      LoanInstallmentStatus.paid => AppColors.success,
-      LoanInstallmentStatus.overdue => AppColors.error,
-      LoanInstallmentStatus.pending when isDueToday => AppColors.warning,
-      LoanInstallmentStatus.pending => AppColors.accent,
-    };
-
-    final icon = switch (status) {
+    final icon = switch (style.status) {
       LoanInstallmentStatus.paid => LucideIcons.circle_check,
       LoanInstallmentStatus.overdue => LucideIcons.triangle_alert,
-      LoanInstallmentStatus.pending when isDueToday => LucideIcons.bell,
+      LoanInstallmentStatus.pending when style.isDueToday => LucideIcons.bell,
       LoanInstallmentStatus.pending => LucideIcons.clock,
     };
 
-    final label = isDueToday ? 'Vence hoje' : status.label;
+    final label = style.isDueToday ? 'Vence hoje' : style.status.label;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -361,21 +391,19 @@ class _StatusChip extends StatelessWidget {
         vertical: 2,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: isDueToday ? 0.22 : 0.15),
+        color: style.color.withValues(alpha: style.isDueToday ? 0.22 : 0.18),
         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-        border: isDueToday
-            ? Border.all(color: color.withValues(alpha: 0.45))
-            : null,
+        border: Border.all(color: style.color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
+          Icon(icon, size: 12, color: style.color),
           const SizedBox(width: 4),
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
+                  color: style.color,
                   fontWeight: FontWeight.w700,
                 ),
           ),

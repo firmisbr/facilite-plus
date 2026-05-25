@@ -185,6 +185,43 @@ function Send-GitHubRelease {
 
 # ─── Supabase manifest ────────────────────────────────────────────────────────
 
+function Add-SupabaseVersionHistory {
+    param($v, $changelogText)
+
+    $baseUrl = [Environment]::GetEnvironmentVariable('SUPABASE_URL').TrimEnd('/')
+    $key     = [Environment]::GetEnvironmentVariable('SUPABASE_SERVICE_ROLE_KEY')
+    $semver  = "$($v.Major).$($v.Minor).$($v.Patch)"
+
+    if (-not $baseUrl) { throw "SUPABASE_URL ausente em .env.release" }
+    if (-not $key)     { throw "SUPABASE_SERVICE_ROLE_KEY ausente em .env.release" }
+
+    Write-Step 'Registrar versão em app_version_history'
+
+    $headers = @{
+        Authorization  = "Bearer $key"
+        apikey         = $key
+        'Content-Type' = 'application/json'
+        Prefer         = 'resolution=merge-duplicates,return=minimal'
+    }
+
+    $body = @{
+        version     = $semver
+        build       = $v.Build
+        changelog   = $changelogText
+        released_at = (Get-Date).ToUniversalTime().ToString('o')
+    } | ConvertTo-Json -Compress
+
+    if ($DryRun) {
+        Write-Warn "[DryRun] POST $baseUrl/rest/v1/app_version_history (upsert version+build)"
+        Write-Warn $body
+    } else {
+        Invoke-RestMethod `
+            -Uri "$baseUrl/rest/v1/app_version_history?on_conflict=version,build" `
+            -Method Post -Headers $headers -Body $body | Out-Null
+        Write-Ok "Histórico → v$semver (build $($v.Build))"
+    }
+}
+
 function Update-SupabaseManifest {
     param($v, $apkUrl, $changelogText)
 
@@ -194,6 +231,16 @@ function Update-SupabaseManifest {
 
     if (-not $baseUrl) { throw "SUPABASE_URL ausente em .env.release" }
     if (-not $key)     { throw "SUPABASE_SERVICE_ROLE_KEY ausente em .env.release" }
+
+    Add-SupabaseVersionHistory -v $v -changelogText $changelogText
+
+    Write-Step 'Sincronizar histórico com GitHub Releases (backfill)'
+    $backfill = Join-Path $root 'scripts\backfill_version_history.ps1'
+    if (Test-Path $backfill) {
+        & $backfill
+    } else {
+        Write-Warn 'backfill_version_history.ps1 não encontrado — só a versão atual foi registrada.'
+    }
 
     Write-Step 'Atualizar app_update_manifest no Supabase (id=1)'
 
