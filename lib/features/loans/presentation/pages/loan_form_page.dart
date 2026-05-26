@@ -180,7 +180,7 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<LoanPeriodicity>(
-                    value: _periodicity,
+                    initialValue: _periodicity,
                     decoration: const InputDecoration(
                       labelText: 'Periodicidade',
                     ),
@@ -213,7 +213,7 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<String>(
-                    value: _status,
+                    initialValue: _status,
                     decoration: const InputDecoration(labelText: 'Status'),
                     items: _statusOptions
                         .map(

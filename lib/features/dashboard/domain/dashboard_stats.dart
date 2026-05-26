@@ -13,17 +13,28 @@ class UpcomingDueItem {
     required this.loanId,
     required this.clientName,
     required this.installmentNumber,
+    required this.paidInstallments,
+    required this.totalInstallments,
     required this.dueDate,
     required this.amount,
-    required this.isOverdue,
+    required this.status,
+    required this.isDueToday,
   });
 
   final String loanId;
   final String clientName;
   final int installmentNumber;
+  final int paidInstallments;
+  final int totalInstallments;
   final DateTime dueDate;
   final double amount;
-  final bool isOverdue;
+  final LoanInstallmentStatus status;
+  final bool isDueToday;
+
+  bool get isOverdue => status == LoanInstallmentStatus.overdue;
+
+  String get installmentsProgressLabel =>
+      '$paidInstallments/$totalInstallments';
 }
 
 /// Agrupamento do radar de caixa (7 colunas no máximo).
@@ -231,9 +242,12 @@ abstract final class DashboardStatsBuilder {
             loanId: item.loan.id,
             clientName: item.clientName,
             installmentNumber: nextOpen.number,
+            paidInstallments: detail.overview.paidInstallments,
+            totalInstallments: detail.overview.totalInstallments,
             dueDate: nextOpen.dueDate,
             amount: nextOpen.amount,
-            isOverdue: nextOpen.status == LoanInstallmentStatus.overdue,
+            status: nextOpen.status,
+            isDueToday: nextOpen.isDueToday,
           ),
         );
       }

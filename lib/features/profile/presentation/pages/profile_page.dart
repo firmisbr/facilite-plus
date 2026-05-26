@@ -63,7 +63,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         child: profileAsync.when(
           loading: () =>
               const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Center(
+          error: (_, _) => const Center(
             child: Text('Não foi possível carregar o perfil.'),
           ),
           data: (profile) {

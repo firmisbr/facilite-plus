@@ -14,6 +14,7 @@ import '../../domain/loan_status_sync.dart';
 import '../../domain/loan_simulator.dart';
 import '../../../notifications/notification_reschedule.dart';
 import '../providers/loans_providers.dart';
+import 'installment_card_style.dart';
 import 'pay_installment_dialog.dart';
 
 class LoanInstallmentCard extends ConsumerStatefulWidget {
@@ -123,7 +124,7 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    final style = _InstallmentCardStyle.resolve(item);
+    final style = InstallmentCardStyle.resolve(item);
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -211,72 +212,6 @@ class _LoanInstallmentCardState extends ConsumerState<LoanInstallmentCard> {
         ],
       ),
     );
-  }
-}
-
-/// Cores por status: azul a vencer, verde paga, vermelho atrasada, amarelo hoje.
-class _InstallmentCardStyle {
-  const _InstallmentCardStyle({
-    required this.color,
-    required this.fill,
-    required this.border,
-    required this.borderWidth,
-    required this.status,
-    required this.isDueToday,
-    this.shadow,
-  });
-
-  final Color color;
-  final Color fill;
-  final Color border;
-  final double borderWidth;
-  final LoanInstallmentStatus status;
-  final bool isDueToday;
-  final List<BoxShadow>? shadow;
-
-  static _InstallmentCardStyle resolve(LoanInstallmentItem item) {
-    final isDueToday = item.isDueToday;
-    return switch (item.status) {
-      LoanInstallmentStatus.paid => _InstallmentCardStyle(
-          color: AppColors.success,
-          fill: AppColors.success.withValues(alpha: 0.1),
-          border: AppColors.success.withValues(alpha: 0.38),
-          borderWidth: 1,
-          status: item.status,
-          isDueToday: false,
-        ),
-      LoanInstallmentStatus.overdue => _InstallmentCardStyle(
-          color: AppColors.error,
-          fill: AppColors.error.withValues(alpha: 0.12),
-          border: AppColors.error.withValues(alpha: 0.45),
-          borderWidth: 1.25,
-          status: item.status,
-          isDueToday: false,
-        ),
-      LoanInstallmentStatus.pending when isDueToday => _InstallmentCardStyle(
-          color: AppColors.warning,
-          fill: AppColors.warning.withValues(alpha: 0.16),
-          border: AppColors.warning.withValues(alpha: 0.55),
-          borderWidth: 1.5,
-          status: item.status,
-          isDueToday: true,
-          shadow: [
-            BoxShadow(
-              color: AppColors.warning.withValues(alpha: 0.22),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-      LoanInstallmentStatus.pending => _InstallmentCardStyle(
-          color: AppColors.info,
-          fill: AppColors.info.withValues(alpha: 0.1),
-          border: AppColors.info.withValues(alpha: 0.4),
-          borderWidth: 1,
-          status: item.status,
-          isDueToday: false,
-        ),
-    };
   }
 }
 
@@ -372,7 +307,7 @@ class _InstallmentStatusBadge extends StatelessWidget {
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.style});
 
-  final _InstallmentCardStyle style;
+  final InstallmentCardStyle style;
 
   @override
   Widget build(BuildContext context) {

@@ -21,6 +21,7 @@ import '../widgets/delete_loans_dialog.dart';
 import '../widgets/installment_highlight_shell.dart';
 import '../widgets/loan_delete_progress_view.dart';
 import '../widgets/loan_installment_card.dart';
+import '../widgets/loan_installment_status_strip.dart';
 
 class LoanDetailPage extends ConsumerStatefulWidget {
   const LoanDetailPage({
@@ -570,14 +571,11 @@ class _InstallmentsSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 6,
-            backgroundColor: context.appTheme.border,
-            color: AppColors.accent,
-          ),
+        LoanInstallmentStatusStrip(
+          installments: installments,
+          height: 6,
+          fallbackProgress: progress,
+          fallbackColor: AppColors.accent,
         ),
         if (overview.overdueInstallments > 0) ...[
           const SizedBox(height: AppSpacing.sm),

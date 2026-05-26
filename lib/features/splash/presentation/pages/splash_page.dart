@@ -99,7 +99,7 @@ class _SplashPageState extends State<SplashPage>
                             height: 120,
                             fit: BoxFit.contain,
                             filterQuality: FilterQuality.high,
-                            errorBuilder: (_, e, __) => Icon(
+                            errorBuilder: (_, e, _) => Icon(
                               Icons.account_balance_wallet_outlined,
                               size: 72,
                               color: AppColors.accent,

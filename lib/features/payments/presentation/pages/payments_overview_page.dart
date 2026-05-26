@@ -342,7 +342,7 @@ class _PaymentsOverviewPageState extends ConsumerState<PaymentsOverviewPage> {
 
   static IconData _emptyIcon(PaymentListFilter filter) => switch (filter) {
         PaymentListFilter.atrasados => LucideIcons.circle_check,
-        PaymentListFilter.aVencer => LucideIcons.calendar,
+        PaymentListFilter.aVencer => LucideIcons.bell,
         PaymentListFilter.todos => LucideIcons.wallet,
       };
 
@@ -562,10 +562,10 @@ class _PaymentsPortfolioCard extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: _PaymentFilterStat(
-                    icon: LucideIcons.calendar_clock,
+                    icon: LucideIcons.bell,
                     label: 'A vencer',
                     count: counts.aVencer,
-                    color: AppColors.info,
+                    color: AppColors.warning,
                     selected: selected == PaymentListFilter.aVencer,
                     onTap: () => onFilterTap(PaymentListFilter.aVencer),
                   ),

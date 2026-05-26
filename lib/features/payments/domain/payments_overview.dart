@@ -11,8 +11,12 @@ class PaymentLoanCardItem {
     required this.overdueAmount,
     required this.overdueInstallments,
     required this.dueSoonInstallments,
+    required this.paidInstallments,
+    required this.totalInstallments,
+    required this.installments,
     required this.nextDueDate,
     required this.nextInstallmentNumber,
+    required this.isNextDueToday,
     required this.hasOverdue,
     required this.hasDueSoon,
   });
@@ -23,15 +27,22 @@ class PaymentLoanCardItem {
   final double overdueAmount;
   final int overdueInstallments;
   final int dueSoonInstallments;
+  final int paidInstallments;
+  final int totalInstallments;
+  final List<LoanInstallmentItem> installments;
   final DateTime? nextDueDate;
 
   /// Parcela em aberto mais próxima (para destaque no detalhe do empréstimo).
   final int? nextInstallmentNumber;
+  final bool isNextDueToday;
   final bool hasOverdue;
   final bool hasDueSoon;
 
   String get clientName => loanItem.clientName;
   String get loanId => loanItem.loan.id;
+
+  String get installmentsProgressLabel =>
+      '$paidInstallments/$totalInstallments';
 }
 
 class PaymentsOverview {
@@ -135,8 +146,12 @@ abstract final class PaymentsOverviewBuilder {
           overdueAmount: overdueAmount,
           overdueInstallments: overdueCount,
           dueSoonInstallments: hasDueSoon ? 1 : 0,
+          paidInstallments: detail.overview.paidInstallments,
+          totalInstallments: detail.overview.totalInstallments,
+          installments: detail.installments,
           nextDueDate: nextDue,
           nextInstallmentNumber: nextOpen?.number,
+          isNextDueToday: nextOpen?.isDueToday ?? false,
           hasOverdue: overdueCount > 0,
           hasDueSoon: hasDueSoon,
         ),

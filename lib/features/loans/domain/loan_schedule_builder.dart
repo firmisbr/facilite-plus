@@ -208,6 +208,7 @@ abstract final class LoanScheduleBuilder {
     return LoanCardSummary(
       paidInstallments: detail.overview.paidInstallments,
       totalInstallments: detail.overview.totalInstallments,
+      installments: detail.installments,
       nextDueDate: nextOpen?.dueDate ?? detail.overview.nextDueDate,
       nextInstallmentNumber: nextOpen?.number,
       isNextDueOverdue:

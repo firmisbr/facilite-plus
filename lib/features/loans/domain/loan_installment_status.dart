@@ -117,6 +117,7 @@ class LoanCardSummary {
   const LoanCardSummary({
     required this.paidInstallments,
     required this.totalInstallments,
+    this.installments = const [],
     this.nextDueDate,
     this.nextInstallmentNumber,
     this.isNextDueOverdue = false,
@@ -125,6 +126,7 @@ class LoanCardSummary {
 
   final int paidInstallments;
   final int totalInstallments;
+  final List<LoanInstallmentItem> installments;
   final DateTime? nextDueDate;
   final int? nextInstallmentNumber;
   final bool isNextDueOverdue;

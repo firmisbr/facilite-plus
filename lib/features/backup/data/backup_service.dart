@@ -20,9 +20,8 @@ import '../domain/backup_transfer_pin.dart';
 class BackupService {
   BackupService({
     required AppDatabase database,
-    required SyncQueueRepository syncQueue,
-  })  : _db = database,
-        _syncQueue = syncQueue;
+    required this._syncQueue,
+  })  : _db = database;
 
   final AppDatabase _db;
   final SyncQueueRepository _syncQueue;

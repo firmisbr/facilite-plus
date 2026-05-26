@@ -165,7 +165,7 @@ class _AdminTicketDetailPageState extends ConsumerState<AdminTicketDetailPage> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     DropdownButtonFormField<SupportTicketStatus>(
-                      value: _selectedStatus,
+                      initialValue: _selectedStatus,
                       decoration: const InputDecoration(
                         labelText: 'Status',
                         border: OutlineInputBorder(),

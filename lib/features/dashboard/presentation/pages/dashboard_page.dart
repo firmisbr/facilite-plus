@@ -15,17 +15,51 @@ import '../../../../shared/widgets/attention_lucide_icon.dart';
 import '../../../../shared/widgets/extended_brand_logo.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../loans/domain/loan_simulator.dart';
+import '../../../loans/presentation/widgets/installment_card_style.dart';
 import '../../../loans/domain/portfolio_lifetime_builder.dart';
 import '../../../loans/presentation/providers/loans_providers.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
+import '../../../update/presentation/providers/whats_new_provider.dart';
+import '../../../update/presentation/widgets/whats_new_dialog.dart';
 import '../providers/dashboard_providers.dart';
+import '../providers/dashboard_summary_hero_provider.dart';
 import '../../domain/dashboard_stats.dart';
+import '../../domain/dashboard_summary_scope.dart';
+import '../widgets/dashboard_summary_scope_dialog.dart';
 
 /// Índice da aba Cobranças no [StatefulNavigationShell].
 const _paymentsShellBranchIndex = 1;
 
-class DashboardPage extends ConsumerWidget {
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  bool _whatsNewChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowWhatsNew());
+  }
+
+  void _maybeShowWhatsNew() {
+    if (_whatsNewChecked) return;
+    _whatsNewChecked = true;
+    ref.read(whatsNewProvider.future).then((state) {
+      if (!mounted) return;
+      if (!state.shouldShow || state.entry == null) return;
+      showWhatsNewDialog(
+        context,
+        ref,
+        version: state.currentVersion,
+        entry: state.entry!,
+      );
+    });
+  }
 
   /// Entre o tamanho anterior (100) e o reduzido (72).
   static const _logoHeight = 100.0;
@@ -38,7 +72,7 @@ class DashboardPage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final statsAsync = ref.watch(dashboardStatsProvider);
     final brightness = Theme.of(context).brightness;
     return Scaffold(
@@ -180,7 +214,7 @@ class DashboardPage extends ConsumerWidget {
                                 AppSpacing.lg,
                                 AppSpacing.sm,
                               ),
-                              child: _DashboardSummaryHero(stats: stats),
+                              child: const _DashboardSummaryHero(),
                             ),
                           ),
                         ),
@@ -453,90 +487,119 @@ class _DashboardHistoricalHero extends StatelessWidget {
   }
 }
 
-class _DashboardSummaryHero extends StatelessWidget {
-  const _DashboardSummaryHero({required this.stats});
-
-  final DashboardStats stats;
+class _DashboardSummaryHero extends ConsumerWidget {
+  const _DashboardSummaryHero();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final metrics = ref.watch(dashboardSummaryHeroMetricsProvider);
+    if (metrics == null) {
+      return const SizedBox.shrink();
+    }
+
     return _DashboardSurfaceCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Text(
-            stats.lifetime.quitadosLoans > 0
-                ? 'Emprestado (carteira ativa)'
-                : 'Total emprestado',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: context.appTheme.textSecondary,
-                  letterSpacing: 0.3,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            LoanSimulator.formatMoney(stats.totalLent),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.accent,
-                  height: 1.05,
-                ),
-          ),
-          if (stats.lifetime.quitadosLoans > 0) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Histórico (todos): ${LoanSimulator.formatMoney(stats.lifetime.totalLent)}',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: context.appTheme.textSecondary,
-                  ),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          Text(
-            'Total a receber (com juros)',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: context.appTheme.textSecondary,
-                  letterSpacing: 0.3,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            LoanSimulator.formatMoney(stats.totalRemaining),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.accentSecondary,
-                  height: 1.05,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: _HeroStat(
-                  label: 'Recebido',
-                  value: LoanSimulator.formatMoney(stats.totalReceived),
-                  color: AppColors.success,
+              if (metrics.scope == DashboardSummaryScope.currentMonth) ...[
+                Text(
+                  metrics.periodCaption,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              Text(
+                metrics.lentTitle,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: context.appTheme.textSecondary,
+                      letterSpacing: 0.3,
+                    ),
               ),
-              Container(
-                width: 1,
-                height: 40,
-                color: context.appTheme.border,
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                LoanSimulator.formatMoney(metrics.totalLent),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accent,
+                      height: 1.05,
+                    ),
               ),
-              Expanded(
-                child: _HeroStat(
-                  label: 'Lucro a receber',
-                  value: LoanSimulator.formatMoney(stats.remainingProfit),
-                  color: AppColors.premium,
+              if (metrics.lentFootnote != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  metrics.lentFootnote!,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: context.appTheme.textSecondary,
+                      ),
                 ),
+              ],
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                metrics.remainingTitle,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: context.appTheme.textSecondary,
+                      letterSpacing: 0.3,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                LoanSimulator.formatMoney(metrics.totalRemaining),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accentSecondary,
+                      height: 1.05,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: _HeroStat(
+                      label: metrics.receivedTitle,
+                      value: LoanSimulator.formatMoney(metrics.totalReceived),
+                      color: AppColors.success,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: context.appTheme.border,
+                  ),
+                  Expanded(
+                    child: _HeroStat(
+                      label: metrics.profitTitle,
+                      value: LoanSimulator.formatMoney(metrics.remainingProfit),
+                      color: AppColors.premium,
+                    ),
+                  ),
+                ],
               ),
             ],
+          ),
+          Positioned(
+            top: -AppSpacing.xs,
+            right: -AppSpacing.xs,
+            child: IconButton(
+              tooltip: 'Período do resumo',
+              icon: Icon(
+                Icons.more_vert,
+                color: context.appTheme.textSecondary,
+              ),
+              onPressed: () => showDashboardSummaryScopeDialog(context, ref),
+            ),
           ),
         ],
       ),
@@ -973,7 +1036,11 @@ class _UpcomingDueTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOverdue = due.isOverdue;
-    final accent = isOverdue ? AppColors.error : AppColors.accent;
+    final style = InstallmentCardStyle.resolveFor(
+      status: due.status,
+      isDueToday: due.isDueToday,
+    );
+    final accent = style.color;
 
     return _DashboardSurfaceCard(
       onTap: () => context.push(
@@ -989,16 +1056,14 @@ class _UpcomingDueTile extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: AppDecorations.iconBadge(color: accent),
             child: isOverdue
-                ? const AttentionLucideIcon(
+                ? AttentionLucideIcon(
                     icon: LucideIcons.triangle_alert,
                     size: 20,
-                    color: AppColors.error,
-                  )
-                : Icon(
-                    LucideIcons.calendar,
-                    size: 20,
                     color: accent,
-                  ),
+                  )
+                : due.isDueToday
+                    ? Icon(LucideIcons.bell, size: 20, color: accent)
+                    : Icon(LucideIcons.calendar, size: 20, color: accent),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -1013,12 +1078,21 @@ class _UpcomingDueTile extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Parcela ${due.installmentNumber} · '
-                  '${LoanSimulator.formatDate(due.dueDate)}',
+                  LoanSimulator.formatDate(due.dueDate),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: context.appTheme.textSecondary,
                       ),
                 ),
+                if (due.isDueToday) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Vence hoje',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: accent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1027,7 +1101,9 @@ class _UpcomingDueTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                LoanSimulator.formatMoney(due.amount),
+                '${due.installmentsProgressLabel} · '
+                '${LoanSimulator.formatMoney(due.amount)}',
+                textAlign: TextAlign.end,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: accent,

@@ -8,8 +8,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/attention_lucide_icon.dart';
 import '../../domain/entities/loan_with_client.dart';
+import '../../domain/loan_installment_status.dart';
 import '../../domain/loan_simulator.dart';
 import '../providers/loan_detail_providers.dart';
+import 'installment_card_style.dart';
+import 'loan_installment_status_strip.dart';
 
 /// Card enxuto para listas longas de empréstimos.
 class LoanListCardCompact extends ConsumerWidget {
@@ -37,6 +40,7 @@ class LoanListCardCompact extends ConsumerWidget {
       LoanSimulator.parseAmount(loan.amount) ?? 0,
     );
 
+    final installments = summary?.installments ?? const <LoanInstallmentItem>[];
     final nextDue = summary?.nextDueDate;
     final nextDueText = nextDue != null
         ? LoanSimulator.formatDate(nextDue)
@@ -47,12 +51,27 @@ class LoanListCardCompact extends ConsumerWidget {
     final total = summary?.totalInstallments ?? loan.installments ?? 0;
     final progress = total > 0 ? paid / total : 0.0;
     final isQuitado = total > 0 && paid >= total;
+    final isNextDueToday =
+        InstallmentCardStyle.nextOpenInstallment(installments)?.isDueToday ??
+            false;
 
-    final accent = isOverdue
-        ? AppColors.error
-        : isQuitado
-            ? AppColors.success
-            : AppColors.accent;
+    final style = InstallmentCardStyle.forLoanCard(
+      installments: installments,
+      isQuitado: isQuitado,
+    );
+    final accent = style.color;
+
+    final borderColor = selected
+        ? AppColors.accent.withValues(alpha: 0.65)
+        : isOverdue || isNextDueToday
+            ? style.border.withValues(alpha: 0.55)
+            : context.appTheme.border;
+
+    final subtitle = isQuitado
+        ? '$principalText · $paid/$total · Quitado'
+        : isNextDueToday
+            ? '$paid/$total · $principalText · Vence hoje'
+            : '$paid/$total · $principalText · $nextDueText';
 
     return Material(
       color: Colors.transparent,
@@ -65,11 +84,7 @@ class LoanListCardCompact extends ConsumerWidget {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             border: Border.all(
-              color: selected
-                  ? AppColors.accent.withValues(alpha: 0.65)
-                  : isOverdue
-                      ? AppColors.error.withValues(alpha: 0.4)
-                      : context.appTheme.border,
+              color: borderColor,
               width: selected ? 2 : 1,
             ),
             boxShadow: context.appTheme.cardShadow,
@@ -86,19 +101,10 @@ class LoanListCardCompact extends ConsumerWidget {
                   children: [
                     SizedBox(
                       width: 28,
-                      child: isOverdue
-                          ? const AttentionLucideIcon(
-                              icon: LucideIcons.triangle_alert,
-                              size: 16,
-                              color: AppColors.error,
-                            )
-                          : Icon(
-                              isQuitado
-                                  ? LucideIcons.circle_check
-                                  : LucideIcons.banknote,
-                              size: 16,
-                              color: accent,
-                            ),
+                      child: _CompactStatusIcon(
+                        style: style,
+                        isQuitado: isQuitado,
+                      ),
                     ),
                     Expanded(
                       child: Column(
@@ -115,14 +121,17 @@ class LoanListCardCompact extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '$principalText · $paid/$total · $nextDueText',
+                            subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style:
                                 Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: isOverdue
-                                          ? AppColors.error
+                                      color: isOverdue || isNextDueToday
+                                          ? accent
                                           : context.appTheme.textSecondary,
+                                      fontWeight: isOverdue || isNextDueToday
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
                                     ),
                           ),
                         ],
@@ -142,11 +151,11 @@ class LoanListCardCompact extends ConsumerWidget {
                   borderRadius: const BorderRadius.vertical(
                     bottom: Radius.circular(AppSpacing.radiusLg),
                   ),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 3,
-                    backgroundColor: accent.withValues(alpha: 0.1),
-                    color: accent,
+                  child: LoanInstallmentStatusStrip(
+                    installments: installments,
+                    height: 3,
+                    fallbackProgress: progress,
+                    fallbackColor: accent,
                   ),
                 ),
             ],
@@ -154,5 +163,42 @@ class LoanListCardCompact extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+class _CompactStatusIcon extends StatelessWidget {
+  const _CompactStatusIcon({
+    required this.style,
+    required this.isQuitado,
+  });
+
+  final InstallmentCardStyle style;
+  final bool isQuitado;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isQuitado) {
+      return Icon(LucideIcons.circle_check, size: 16, color: style.color);
+    }
+    if (style.isDueToday) {
+      return Icon(LucideIcons.bell, size: 16, color: style.color);
+    }
+    return switch (style.status) {
+      LoanInstallmentStatus.overdue => AttentionLucideIcon(
+          icon: LucideIcons.triangle_alert,
+          size: 16,
+          color: style.color,
+        ),
+      LoanInstallmentStatus.pending => Icon(
+          LucideIcons.clock,
+          size: 16,
+          color: style.color,
+        ),
+      LoanInstallmentStatus.paid => Icon(
+          LucideIcons.circle_check,
+          size: 16,
+          color: style.color,
+        ),
+    };
   }
 }
