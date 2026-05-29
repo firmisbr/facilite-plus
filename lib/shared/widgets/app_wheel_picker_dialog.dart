@@ -54,6 +54,7 @@ class _WheelPickerSheetState<T> extends State<_WheelPickerSheet<T>> {
   late FixedExtentScrollController _controller;
   late T _current;
 
+  // ignore: unused_element
   int get _selectedIndex {
     final i = widget.items.indexOf(_current);
     return i < 0 ? 0 : i;
