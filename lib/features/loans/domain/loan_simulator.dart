@@ -1,3 +1,4 @@
+import '../../../shared/utils/br_currency_input_formatter.dart';
 import '../../settings/domain/daily_loan_sunday_policy.dart';
 import 'daily_loan_due_dates.dart';
 import 'loan_periodicity.dart';
@@ -45,11 +46,47 @@ abstract final class LoanSimulator {
       normalized = cleaned.replaceAll('.', '').replaceAll(',', '.');
     } else if (hasComma) {
       normalized = cleaned.replaceAll(',', '.');
+    } else if (hasDot) {
+      // App é BR: "1.500" / "1.000.000" = milhar; "1.5" / "1500.50" = decimal.
+      // "1.000.00" (edição sem máscara) = milhar + centavos.
+      normalized = _normalizeDotOnlyAmount(cleaned);
     } else {
       normalized = cleaned;
     }
 
     return double.tryParse(normalized);
+  }
+
+  /// Interpreta string só com pontos no padrão brasileiro (milhar) ou decimal.
+  static String _normalizeDotOnlyAmount(String cleaned) {
+    final parts = cleaned.split('.');
+    if (parts.length == 1) return cleaned;
+
+    if (parts.length == 2 && parts[1].length <= 2) {
+      return cleaned;
+    }
+
+    final thousandGroups = parts.skip(1).every((p) => p.length == 3);
+    if (thousandGroups) {
+      return cleaned.replaceAll('.', '');
+    }
+
+    final last = parts.last;
+    final middle = parts.skip(1).take(parts.length - 2);
+    if (last.length <= 2 && middle.every((p) => p.length == 3)) {
+      return '${parts.take(parts.length - 1).join()}.$last';
+    }
+
+    // Ambíguo: remove pontos (evita quebrar cronograma na edição).
+    return cleaned.replaceAll('.', '');
+  }
+
+  /// Valor para o campo com [BrCurrencyInputFormatter] a partir do que está no banco.
+  static String amountForCurrencyInput(String raw) {
+    final parsed = parseAmount(raw);
+    if (parsed == null) return '';
+    final cents = (parsed * 100).round().abs();
+    return BrCurrencyInputFormatter.formatFromDigits(cents.toString());
   }
 
   static LoanSimulationResult? simulate({

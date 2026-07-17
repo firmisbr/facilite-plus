@@ -35,4 +35,23 @@ void main() {
   test('parseAmount aceita vírgula', () {
     expect(LoanSimulator.parseAmount('1.500,50'), 1500.50);
   });
+
+  test('parseAmount trata milhar BR sem vírgula', () {
+    expect(LoanSimulator.parseAmount('1.500'), 1500);
+    expect(LoanSimulator.parseAmount('1.000.000'), 1000000);
+  });
+
+  test('parseAmount trata decimal com um ponto', () {
+    expect(LoanSimulator.parseAmount('1.5'), 1.5);
+    expect(LoanSimulator.parseAmount('1500.50'), 1500.50);
+  });
+
+  test('parseAmount recupera edição quebrada 1.000.00', () {
+    expect(LoanSimulator.parseAmount('1.000.00'), 1000.00);
+  });
+
+  test('amountForCurrencyInput normaliza para máscara BR', () {
+    expect(LoanSimulator.amountForCurrencyInput('1500'), '1.500,00');
+    expect(LoanSimulator.amountForCurrencyInput('1.500,50'), '1.500,50');
+  });
 }

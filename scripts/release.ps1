@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Build release APK, cria GitHub Release, envia APK e atualiza app_update_manifest no Supabase.
@@ -106,12 +106,20 @@ function Get-ReleaseApkPath {
 
 function Invoke-FlutterBuild {
     Write-Step 'Flutter: pub get + build apk --release'
-    & flutter pub get 2>&1 | ForEach-Object { Write-Host $_ }
-    if ($LASTEXITCODE -ne 0) { throw 'flutter pub get falhou' }
+    # Flutter escreve WARNING no stderr; com $ErrorActionPreference=Stop isso
+    # vira NativeCommandError mesmo com exit code 0. Captura sem abortar.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & flutter pub get 2>&1 | ForEach-Object { Write-Host $_ }
+        if ($LASTEXITCODE -ne 0) { throw 'flutter pub get falhou' }
 
-    Write-Ok 'APK universal (todas as arquiteturas)'
-    & flutter build apk --release 2>&1 | ForEach-Object { Write-Host $_ }
-    if ($LASTEXITCODE -ne 0) { throw 'flutter build apk falhou' }
+        Write-Ok 'APK universal (todas as arquiteturas)'
+        & flutter build apk --release 2>&1 | ForEach-Object { Write-Host $_ }
+        if ($LASTEXITCODE -ne 0) { throw 'flutter build apk falhou' }
+    } finally {
+        $ErrorActionPreference = $prevEap
+    }
 
     return ,(Get-ReleaseApkPath)
 }
@@ -172,7 +180,8 @@ function Send-GitHubRelease {
     $uploadHeaders = $ghHeaders.Clone()
     $uploadHeaders['Content-Type'] = 'application/vnd.android.package-archive'
 
-    Write-Step "Upload APK: $apkName ($([math]::Round((Get-Item -LiteralPath $apkPath).Length / 1MB, 2)) MB)"
+        $apkSizeMb = [math]::Round((Get-Item -LiteralPath $apkPath).Length / 1MB, 2)
+    Write-Step ('Upload APK: {0} ({1} MB)' -f $apkName, $apkSizeMb)
     $bytes = [System.IO.File]::ReadAllBytes($apkPath)
     Invoke-RestMethod -Uri $uploadUrl -Method Post -Headers $uploadHeaders -Body $bytes | Out-Null
     Write-Ok 'APK enviado'
@@ -237,7 +246,19 @@ function Update-SupabaseManifest {
     Write-Step 'Sincronizar histórico com GitHub Releases (backfill)'
     $backfill = Join-Path $root 'scripts\backfill_version_history.ps1'
     if (Test-Path $backfill) {
-        & $backfill
+        # Backfill é best-effort: não deve impedir o PATCH do manifesto OTA.
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            & $backfill
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warn 'Backfill falhou — manifesto será atualizado mesmo assim.'
+            }
+        } catch {
+            Write-Warn "Backfill falhou: $_"
+        } finally {
+            $ErrorActionPreference = $prevEap
+        }
     } else {
         Write-Warn 'backfill_version_history.ps1 não encontrado — só a versão atual foi registrada.'
     }
@@ -298,10 +319,12 @@ $apk = $null
 if (-not $SkipBuild) {
     $apk = Invoke-FlutterBuild
     if ($apk -is [array]) { $apk = $apk[-1] }
-    Write-Ok "APK: $apk ($([math]::Round((Get-Item -LiteralPath $apk).Length / 1MB, 2)) MB)"
+        $builtSizeMb = [math]::Round((Get-Item -LiteralPath $apk).Length / 1MB, 2)
+    Write-Ok ('APK: {0} ({1} MB)' -f $apk, $builtSizeMb)
 } else {
     $apk = Get-ReleaseApkPath
-    Write-Ok "SkipBuild: usando $apk ($([math]::Round((Get-Item -LiteralPath $apk).Length / 1MB, 2)) MB)"
+        $skipSizeMb = [math]::Round((Get-Item -LiteralPath $apk).Length / 1MB, 2)
+    Write-Ok ('SkipBuild: usando {0} ({1} MB)' -f $apk, $skipSizeMb)
 }
 
 if (-not $SkipUpload) {

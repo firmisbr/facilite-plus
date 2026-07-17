@@ -4,14 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_spacing.dart';
-import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../../../services/sync/sync_providers.dart';
+import '../../../../shared/utils/br_currency_input_formatter.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
-import '../../../notifications/notification_reschedule.dart';
-import '../../domain/loan_status_sync.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../notifications/notification_reschedule.dart';
+import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../domain/loan_periodicity.dart';
+import '../../domain/loan_simulator.dart';
+import '../../domain/loan_status_sync.dart';
 import '../providers/loans_providers.dart';
 
 class LoanFormPage extends ConsumerStatefulWidget {
@@ -56,14 +58,22 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
     final loan =
         await ref.read(loansRepositoryProvider).getById(widget.loanId!);
     if (loan == null || !mounted) return;
-    _amountController.text = loan.amount;
+    _amountController.text = LoanSimulator.amountForCurrencyInput(loan.amount);
     _interestController.text = loan.interest ?? '';
     _installmentsController.text =
         loan.installments?.toString() ?? '';
-    _dueDateController.text = loan.firstDueDate ?? '';
+    _dueDateController.text = _normalizeDueDate(loan.firstDueDate);
     _periodicity = LoanPeriodicity.fromValue(loan.periodicity);
     _status = loan.status ?? 'ativo';
     setState(() => _initialLoad = false);
+  }
+
+  /// Garante `yyyy-MM-dd` no campo (evita ISO com hora que confunde o picker).
+  static String _normalizeDueDate(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    final parsed = DateTime.tryParse(raw.trim());
+    if (parsed == null) return raw.trim();
+    return _formatIsoDate(parsed);
   }
 
   Future<void> _pickDueDate() async {
@@ -96,7 +106,21 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
     final repo = ref.read(loansRepositoryProvider);
 
     try {
-      final installments = int.tryParse(_installmentsController.text.trim());
+      final amountText = _amountController.text.trim();
+      final amount = LoanSimulator.parseAmount(amountText);
+      if (amount == null || amount <= 0) {
+        throw StateError('Valor do empréstimo inválido');
+      }
+
+      final installmentsRaw = _installmentsController.text.trim();
+      final installments = installmentsRaw.isEmpty
+          ? null
+          : int.tryParse(installmentsRaw);
+      if (installmentsRaw.isNotEmpty &&
+          (installments == null || installments < 1)) {
+        throw StateError('Número de parcelas inválido');
+      }
+
       final interest = _interestController.text.trim();
       final interestVal = interest.isEmpty ? null : interest;
       final due = _dueDateController.text.trim();
@@ -104,9 +128,11 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
 
       final existing = await repo.getById(widget.loanId!);
       if (existing == null) throw StateError('Empréstimo não encontrado');
+
+      // Persiste no mesmo formato da criação (máscara BR) para o cronograma.
       await repo.update(
         existing.copyWith(
-          amount: _amountController.text.trim(),
+          amount: amountText,
           interest: interestVal,
           installments: installments,
           periodicity: _periodicity.value,
@@ -166,10 +192,17 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
                   AppTextField(
                     controller: _amountController,
                     label: 'Valor (R\$) *',
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'Obrigatório' : null,
+                    hint: '1.000,00',
+                    prefixText: 'R\$ ',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: const [BrCurrencyInputFormatter()],
+                    validator: (v) {
+                      final amount = LoanSimulator.parseAmount(v ?? '');
+                      if (amount == null || amount <= 0) {
+                        return 'Informe um valor válido';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
@@ -177,6 +210,13 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
                     label: 'Parcelas',
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (v) {
+                      final t = v?.trim() ?? '';
+                      if (t.isEmpty) return null;
+                      final n = int.tryParse(t);
+                      if (n == null || n < 1) return 'Parcelas inválidas';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<LoanPeriodicity>(
