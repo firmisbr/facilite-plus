@@ -12,6 +12,7 @@ import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
+import '../../../loans/presentation/providers/loans_providers.dart';
 import '../providers/clients_providers.dart';
 
 class ClientFormPage extends ConsumerStatefulWidget {
@@ -106,6 +107,12 @@ class _ClientFormPageState extends ConsumerState<ClientFormPage> {
 
       final sync = ref.read(syncServiceProvider);
       await sync.processQueue();
+
+      ref.invalidate(clientsStreamProvider);
+      if (widget.isEditing) {
+        ref.invalidate(clientForLoansProvider(widget.clientId!));
+        ref.invalidate(allLoansProvider);
+      }
 
       if (mounted) context.pop();
     } catch (e) {

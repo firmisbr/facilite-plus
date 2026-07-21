@@ -61,10 +61,12 @@ class DetailInfoListCard extends StatelessWidget {
   const DetailInfoListCard({
     super.key,
     this.title,
+    this.titleTrailing,
     required this.entries,
   });
 
   final String? title;
+  final Widget? titleTrailing;
   final List<DetailInfoEntry> entries;
 
   @override
@@ -82,17 +84,24 @@ class DetailInfoListCard extends StatelessWidget {
         children: [
           if (title != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 AppSpacing.lg,
-                AppSpacing.md,
-                AppSpacing.lg,
+                titleTrailing != null ? AppSpacing.sm : AppSpacing.md,
+                titleTrailing != null ? AppSpacing.sm : AppSpacing.lg,
                 AppSpacing.xs,
               ),
-              child: Text(
-                title!,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title!,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (titleTrailing != null) titleTrailing!,
+                ],
               ),
             ),
           ...entries.asMap().entries.map((e) {

@@ -9,6 +9,7 @@ import '../../../../shared/utils/br_currency_input_formatter.dart';
 import '../../../../shared/widgets/app_bar_actions.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../clients/presentation/providers/clients_providers.dart';
 import '../../../notifications/notification_reschedule.dart';
 import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../domain/loan_periodicity.dart';
@@ -30,12 +31,15 @@ class LoanFormPage extends ConsumerStatefulWidget {
 
 class _LoanFormPageState extends ConsumerState<LoanFormPage> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _interestController = TextEditingController();
   final _installmentsController = TextEditingController();
   final _dueDateController = TextEditingController();
   LoanPeriodicity _periodicity = LoanPeriodicity.mensal;
   String _status = 'ativo';
+  String? _clientId;
+  String _originalClientName = '';
   bool _loading = false;
   bool _initialLoad = true;
 
@@ -58,6 +62,13 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
     final loan =
         await ref.read(loansRepositoryProvider).getById(widget.loanId!);
     if (loan == null || !mounted) return;
+
+    final client =
+        await ref.read(clientsRepositoryProvider).getById(loan.clientId);
+    _clientId = loan.clientId;
+    _originalClientName = client?.name ?? '';
+    _nameController.text = _originalClientName;
+
     _amountController.text = LoanSimulator.amountForCurrencyInput(loan.amount);
     _interestController.text = loan.interest ?? '';
     _installmentsController.text =
@@ -92,6 +103,7 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _amountController.dispose();
     _interestController.dispose();
     _installmentsController.dispose();
@@ -104,8 +116,10 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
 
     setState(() => _loading = true);
     final repo = ref.read(loansRepositoryProvider);
+    final clientsRepo = ref.read(clientsRepositoryProvider);
 
     try {
+      final clientName = _nameController.text.trim();
       final amountText = _amountController.text.trim();
       final amount = LoanSimulator.parseAmount(amountText);
       if (amount == null || amount <= 0) {
@@ -129,6 +143,13 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
       final existing = await repo.getById(widget.loanId!);
       if (existing == null) throw StateError('Empréstimo não encontrado');
 
+      final clientId = _clientId ?? existing.clientId;
+      if (clientName != _originalClientName) {
+        final client = await clientsRepo.getById(clientId);
+        if (client == null) throw StateError('Cliente não encontrado');
+        await clientsRepo.update(client.copyWith(name: clientName));
+      }
+
       // Persiste no mesmo formato da criação (máscara BR) para o cronograma.
       await repo.update(
         existing.copyWith(
@@ -148,6 +169,8 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
       );
       ref.invalidate(allLoansProvider);
       ref.invalidate(loanForPaymentsProvider(widget.loanId!));
+      ref.invalidate(clientsStreamProvider);
+      ref.invalidate(clientForLoansProvider(clientId));
       await rescheduleLoanNotifications(ref);
 
       await ref.read(syncServiceProvider).processQueue();
@@ -189,6 +212,15 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  AppTextField(
+                    controller: _nameController,
+                    label: 'Nome do cliente *',
+                    hint: 'Nome completo',
+                    textCapitalization: TextCapitalization.words,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Obrigatório' : null,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   AppTextField(
                     controller: _amountController,
                     label: 'Valor (R\$) *',

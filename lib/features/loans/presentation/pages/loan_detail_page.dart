@@ -523,7 +523,16 @@ class _ClientInfoSection extends StatelessWidget {
       );
     }
 
-    return DetailInfoListCard(title: 'Dados pessoais', entries: entries);
+    return DetailInfoListCard(
+      title: 'Dados pessoais',
+      titleTrailing: IconButton(
+        tooltip: 'Editar cliente',
+        visualDensity: VisualDensity.compact,
+        icon: const Icon(LucideIcons.pencil, size: 18),
+        onPressed: () => context.push(AppRoutes.clientEditFromLoan(client.id)),
+      ),
+      entries: entries,
+    );
   }
 }
 

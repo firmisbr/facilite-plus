@@ -23,6 +23,8 @@ abstract final class AppRoutes {
   static const clients = '/settings/clients';
   static const clientNew = '/settings/clients/new';
   static String clientEdit(String id) => '/settings/clients/$id';
+  /// Edição fora do shell (ex.: a partir do detalhe do empréstimo).
+  static String clientEditFromLoan(String id) => '/client/$id/edit';
   static String clientLoans(String clientId) => '/settings/clients/$clientId/loans';
   static String loanNew(String clientId) =>
       '/settings/clients/$clientId/loans/new';

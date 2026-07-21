@@ -373,6 +373,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoanCreatePage(),
       ),
       GoRoute(
+        path: '/client/:id/edit',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ClientFormPage(clientId: id);
+        },
+      ),
+      GoRoute(
         path: '/loans/:id',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
