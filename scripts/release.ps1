@@ -255,7 +255,8 @@ function Add-SupabaseVersionHistory {
         build       = $v.Build
         changelog   = $changelogText
         released_at = (Get-Date).ToUniversalTime().ToString('o')
-    } | ConvertTo-Json -Compress
+    } | ConvertTo-Json -Compress -Depth 5
+    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($body)
 
     if ($DryRun) {
         Write-Warn "[DryRun] POST $baseUrl/rest/v1/app_version_history (upsert version+build)"
@@ -263,7 +264,7 @@ function Add-SupabaseVersionHistory {
     } else {
         Invoke-RestMethod `
             -Uri "$baseUrl/rest/v1/app_version_history?on_conflict=version,build" `
-            -Method Post -Headers $headers -Body $body | Out-Null
+            -Method Post -Headers $headers -Body $bodyBytes | Out-Null
         Write-Ok "Histórico → v$semver (build $($v.Build))"
     }
 }
@@ -315,14 +316,15 @@ function Update-SupabaseManifest {
         apk_url    = $apkUrl
         changelog  = $changelogText
         updated_at = (Get-Date).ToUniversalTime().ToString('o')
-    } | ConvertTo-Json -Compress
+    } | ConvertTo-Json -Compress -Depth 5
+    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($body)
 
     if ($DryRun) {
         Write-Warn "[DryRun] PATCH $baseUrl/rest/v1/app_update_manifest?id=eq.1"
         Write-Warn $body
     } else {
         Invoke-RestMethod -Uri "$baseUrl/rest/v1/app_update_manifest?id=eq.1" `
-            -Method Patch -Headers $headers -Body $body | Out-Null
+            -Method Patch -Headers $headers -Body $bodyBytes | Out-Null
         Write-Ok "Manifesto → v$semver (build $($v.Build))"
     }
 }
