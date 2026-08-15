@@ -47,6 +47,7 @@ class CashFlowBucket {
     required this.amount,
     required this.installmentCount,
     this.isOverdue = false,
+    this.isConsolidatedOverdue = false,
     this.isCurrentPeriod = false,
   });
 
@@ -54,6 +55,9 @@ class CashFlowBucket {
   final double amount;
   final int installmentCount;
   final bool isOverdue;
+
+  /// Coluna única "Atrasado" (soma de todos os atrasos).
+  final bool isConsolidatedOverdue;
 
   /// Destaque visual do período atual (hoje / esta semana / este mês).
   final bool isCurrentPeriod;
@@ -289,18 +293,35 @@ abstract final class DashboardStatsBuilder {
 
         if (installment.isPaid) continue;
 
+        final dueDay = DateTime(
+          installment.dueDate.year,
+          installment.dueDate.month,
+          installment.dueDate.day,
+        );
+        final week = _weekStartMonday(dueDay);
+        final month = DateTime(dueDay.year, dueDay.month);
+        final currentMonth = DateTime(today.year, today.month);
+
         if (installment.status == LoanInstallmentStatus.overdue) {
+          // Coluna consolidada "Atrasado" (não entra em Hoje / esta sem. / este mês).
           overdueBucketAmount += installment.amount;
           overdueBucketCount++;
-        } else {
-          final dueDay = DateTime(
-            installment.dueDate.year,
-            installment.dueDate.month,
-            installment.dueDate.day,
-          );
-          final week = _weekStartMonday(dueDay);
-          final month = DateTime(dueDay.year, dueDay.month);
 
+          // Também na data original — ao rolar para trás a barra aparece vermelha.
+          dayAmounts[dueDay] = (dayAmounts[dueDay] ?? 0) + installment.amount;
+          dayCounts[dueDay] = (dayCounts[dueDay] ?? 0) + 1;
+
+          // Semanas/meses já fechados: atraso aparece no período original.
+          if (week.isBefore(currentWeekStart)) {
+            weekAmounts[week] = (weekAmounts[week] ?? 0) + installment.amount;
+            weekCounts[week] = (weekCounts[week] ?? 0) + 1;
+          }
+          if (month.isBefore(currentMonth)) {
+            monthAmounts[month] =
+                (monthAmounts[month] ?? 0) + installment.amount;
+            monthCounts[month] = (monthCounts[month] ?? 0) + 1;
+          }
+        } else {
           dayAmounts[dueDay] = (dayAmounts[dueDay] ?? 0) + installment.amount;
           dayCounts[dueDay] = (dayCounts[dueDay] ?? 0) + 1;
           weekAmounts[week] = (weekAmounts[week] ?? 0) + installment.amount;
@@ -438,13 +459,31 @@ abstract final class DashboardStatsBuilder {
     return (timeline.hasOverdue ? 1 : 0) + (max - min + 1);
   }
 
+  /// Slot da coluna "Atrasado": imediatamente antes de "Hoje".
+  static int? radarOverdueItemIndex({
+    required CashFlowTimeline timeline,
+    required CashFlowGranularity granularity,
+  }) {
+    if (!timeline.hasOverdue) return null;
+    final (min, _) = radarPeriodRange(granularity);
+    // Índice de Hoje sem a coluna Atrasado = -min; com Atrasado, Hoje anda +1.
+    return -min;
+  }
+
   static int radarPeriodIndexForItem({
     required CashFlowTimeline timeline,
     required CashFlowGranularity granularity,
     required int itemIndex,
   }) {
     final (min, _) = radarPeriodRange(granularity);
-    return min + itemIndex - (timeline.hasOverdue ? 1 : 0);
+    final overdueIndex = radarOverdueItemIndex(
+      timeline: timeline,
+      granularity: granularity,
+    );
+    if (overdueIndex != null && itemIndex > overdueIndex) {
+      return min + itemIndex - 1;
+    }
+    return min + itemIndex;
   }
 
   static int radarItemIndexForPeriod({
@@ -453,7 +492,15 @@ abstract final class DashboardStatsBuilder {
     required int periodIndex,
   }) {
     final (min, _) = radarPeriodRange(granularity);
-    return periodIndex - min + (timeline.hasOverdue ? 1 : 0);
+    final overdueIndex = radarOverdueItemIndex(
+      timeline: timeline,
+      granularity: granularity,
+    );
+    final raw = periodIndex - min;
+    if (overdueIndex != null && raw >= overdueIndex) {
+      return raw + 1;
+    }
+    return raw;
   }
 
   static CashFlowBucket radarBucketAt({
@@ -461,12 +508,17 @@ abstract final class DashboardStatsBuilder {
     required CashFlowGranularity granularity,
     required int itemIndex,
   }) {
-    if (timeline.hasOverdue && itemIndex == 0) {
+    final overdueIndex = radarOverdueItemIndex(
+      timeline: timeline,
+      granularity: granularity,
+    );
+    if (overdueIndex != null && itemIndex == overdueIndex) {
       return CashFlowBucket(
         label: 'Atrasado',
         amount: timeline.overdueAmount,
         installmentCount: timeline.overdueCount,
         isOverdue: true,
+        isConsolidatedOverdue: true,
       );
     }
 
@@ -490,12 +542,11 @@ abstract final class DashboardStatsBuilder {
     required int visibleCount,
     required int itemCount,
   }) {
-    final todayItem = radarItemIndexForPeriod(
+    final homeIndex = radarHomeItemIndex(
       timeline: timeline,
       granularity: granularity,
-      periodIndex: 0,
     );
-    if (firstItemIndex == todayItem) {
+    if (firstItemIndex == homeIndex) {
       return switch (granularity) {
         CashFlowGranularity.day => 'Próximos dias',
         CashFlowGranularity.week => 'Próximas semanas',
@@ -520,6 +571,39 @@ abstract final class DashboardStatsBuilder {
     return _captionFromBuckets(buckets);
   }
 
+  /// Índice inicial do radar: com atraso, começa na coluna "Atrasado" (ao lado de Hoje).
+  static int radarHomeItemIndex({
+    required CashFlowTimeline timeline,
+    required CashFlowGranularity granularity,
+  }) {
+    final overdueIndex = radarOverdueItemIndex(
+      timeline: timeline,
+      granularity: granularity,
+    );
+    if (overdueIndex != null) return overdueIndex;
+    return radarItemIndexForPeriod(
+      timeline: timeline,
+      granularity: granularity,
+      periodIndex: 0,
+    );
+  }
+
+  /// Soma da janela sem contar atraso duas vezes (coluna Atrasado + dia original).
+  static double radarWindowTotal(Iterable<CashFlowBucket> buckets) {
+    final list = buckets.toList();
+    final hasConsolidated = list.any((b) => b.isConsolidatedOverdue);
+    var total = 0.0;
+    for (final bucket in list) {
+      if (hasConsolidated &&
+          bucket.isOverdue &&
+          !bucket.isConsolidatedOverdue) {
+        continue;
+      }
+      total += bucket.amount;
+    }
+    return total;
+  }
+
   static String _captionFromBuckets(List<CashFlowBucket> buckets) {
     final scheduled = buckets.where((b) => !b.isOverdue).toList();
     if (scheduled.isEmpty) {
@@ -537,6 +621,7 @@ abstract final class DashboardStatsBuilder {
   static CashFlowBucket _dayBucket(CashFlowTimeline timeline, int periodIndex) {
     final dayFmt = DateFormat('d/M', 'pt_BR');
     final day = timeline.today.add(Duration(days: periodIndex));
+    final amount = timeline.dayAmounts[day] ?? 0;
     final label = switch (periodIndex) {
       0 => 'Hoje',
       1 => 'Amanhã',
@@ -544,8 +629,9 @@ abstract final class DashboardStatsBuilder {
     };
     return CashFlowBucket(
       label: label,
-      amount: timeline.dayAmounts[day] ?? 0,
+      amount: amount,
       installmentCount: timeline.dayCounts[day] ?? 0,
+      isOverdue: periodIndex < 0 && amount > 0,
       isCurrentPeriod: periodIndex == 0,
     );
   }
@@ -556,10 +642,12 @@ abstract final class DashboardStatsBuilder {
   ) {
     final weekStart =
         timeline.currentWeekStart.add(Duration(days: 7 * periodIndex));
+    final amount = timeline.weekAmounts[weekStart] ?? 0;
     return CashFlowBucket(
       label: periodIndex == 0 ? 'Esta sem.' : _weekRangeLabel(weekStart),
-      amount: timeline.weekAmounts[weekStart] ?? 0,
+      amount: amount,
       installmentCount: timeline.weekCounts[weekStart] ?? 0,
+      isOverdue: periodIndex < 0 && amount > 0,
       isCurrentPeriod: periodIndex == 0,
     );
   }
@@ -575,10 +663,12 @@ abstract final class DashboardStatsBuilder {
     );
     final currentMonth =
         DateTime(timeline.today.year, timeline.today.month);
+    final amount = timeline.monthAmounts[month] ?? 0;
     return CashFlowBucket(
       label: month == currentMonth ? 'Este mês' : monthFmt.format(month),
-      amount: timeline.monthAmounts[month] ?? 0,
+      amount: amount,
       installmentCount: timeline.monthCounts[month] ?? 0,
+      isOverdue: periodIndex < 0 && amount > 0,
       isCurrentPeriod: periodIndex == 0,
     );
   }
@@ -625,6 +715,7 @@ abstract final class DashboardStatsBuilder {
           amount: timeline.overdueAmount,
           installmentCount: timeline.overdueCount,
           isOverdue: true,
+          isConsolidatedOverdue: true,
         ),
       );
     }
@@ -651,6 +742,7 @@ abstract final class DashboardStatsBuilder {
           amount: timeline.overdueAmount,
           installmentCount: timeline.overdueCount,
           isOverdue: true,
+          isConsolidatedOverdue: true,
         ),
       );
     }
@@ -677,6 +769,7 @@ abstract final class DashboardStatsBuilder {
           amount: timeline.overdueAmount,
           installmentCount: timeline.overdueCount,
           isOverdue: true,
+          isConsolidatedOverdue: true,
         ),
       );
     }

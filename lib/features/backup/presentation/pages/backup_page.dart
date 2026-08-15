@@ -14,7 +14,9 @@ import '../../domain/backup_snapshot.dart';
 import '../../../../services/sync/sync_coordinator.dart';
 import '../backup_native_io.dart';
 import '../providers/backup_providers.dart';
+import '../widgets/admin_pin_dialog.dart';
 import '../widgets/backup_pin_dialog.dart';
+import 'backup_admin_users_page.dart';
 
 class BackupPage extends ConsumerStatefulWidget {
   const BackupPage({super.key});
@@ -43,6 +45,13 @@ class _BackupPageState extends ConsumerState<BackupPage> {
       extendBody: true,
       appBar: AppBar(
         title: const Text('Backup'),
+        actions: [
+          IconButton(
+            tooltip: 'Importar da nuvem',
+            onPressed: _busy ? null : _openAdminImport,
+            icon: const Icon(LucideIcons.shield),
+          ),
+        ],
       ),
       body: DecoratedBox(
         decoration: BoxDecoration(
@@ -82,6 +91,19 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _openAdminImport() async {
+    final pin = await showAdminImportPinDialog(context);
+    if (pin == null || !mounted) return;
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => BackupAdminUsersPage(supportPin: pin),
+      ),
+    );
+    if (!mounted) return;
+    ref.invalidate(backupPreviewProvider);
   }
 
   Future<void> _exportBackup() async {

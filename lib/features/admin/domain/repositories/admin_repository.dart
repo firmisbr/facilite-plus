@@ -10,6 +10,9 @@ abstract class AdminRepository {
 
   Future<List<AdminUser>> fetchAppUsers();
 
+  /// Todos os perfis (inclui admins) — requer sessão admin no Supabase.
+  Future<List<AdminUser>> fetchAllProfilesForImport();
+
   Future<AdminUser?> fetchUserById(String userId);
 
   Future<List<Client>> fetchClientsForUser(String userId);

@@ -100,6 +100,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       if (isAdmin) {
         if (location.startsWith('/admin')) return null;
+        if (location.startsWith(AppRoutes.settings)) return null;
         if (_isUserAppRoute(location) ||
             location == AppRoutes.splash ||
             location == AppRoutes.login ||

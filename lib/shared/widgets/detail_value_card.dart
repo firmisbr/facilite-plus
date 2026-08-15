@@ -100,7 +100,7 @@ class DetailInfoListCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (titleTrailing != null) titleTrailing!,
+                  ?titleTrailing,
                 ],
               ),
             ),

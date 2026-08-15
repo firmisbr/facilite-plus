@@ -5,6 +5,7 @@ import '../../../../services/sync/sync_providers.dart';
 import '../../../../services/supabase/supabase_providers.dart';
 import '../../../../shared/providers/app_data_invalidation.dart';
 import '../../data/backup_service.dart';
+import '../../data/support_import_repository.dart';
 import '../../domain/backup_snapshot.dart';
 
 final backupServiceProvider = Provider<BackupService>((ref) {
@@ -12,6 +13,10 @@ final backupServiceProvider = Provider<BackupService>((ref) {
     database: ref.watch(appDatabaseProvider),
     syncQueue: ref.watch(syncQueueRepositoryProvider),
   );
+});
+
+final supportImportRepositoryProvider = Provider<SupportImportRepository>((ref) {
+  return SupportImportRepository(ref.watch(supabaseClientProvider));
 });
 
 final backupPreviewProvider = FutureProvider<BackupSnapshot>((ref) async {

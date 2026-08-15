@@ -120,8 +120,11 @@ class BackupService {
     bool importToCurrentAccount = false,
     String? transferPin,
     bool enqueueCloudSync = true,
+    bool adminCloudImport = false,
   }) async {
-    if (importToCurrentAccount) {
+    if (adminCloudImport) {
+      snapshot.validateIntegrity();
+    } else if (importToCurrentAccount) {
       if (transferPin == null) {
         throw BackupException('Informe o PIN do backup.');
       }
@@ -129,6 +132,9 @@ class BackupService {
     } else {
       snapshot.validateForSameAccountRestore(currentUserId: currentUserId);
     }
+
+    final fromOtherAccount =
+        adminCloudImport ? !snapshot.isSameAccount(currentUserId) : importToCurrentAccount;
 
     await _db.transaction(() async {
       await _clearUserData(currentUserId);
@@ -154,10 +160,70 @@ class BackupService {
       clients: snapshot.clients.length,
       loans: snapshot.loans.length,
       payments: snapshot.payments.length,
-      importedFromOtherAccount: importToCurrentAccount,
-      sourceUserEmail: importToCurrentAccount ? snapshot.userEmail : null,
+      importedFromOtherAccount: fromOtherAccount,
+      sourceUserEmail: fromOtherAccount ? snapshot.userEmail : null,
     );
   }
+
+  Future<BackupRestoreSummary> importCloudUserData({
+    required List<Client> clients,
+    required List<Loan> loans,
+    required List<Payment> payments,
+    required String sourceUserId,
+    required String currentUserId,
+    String? sourceEmail,
+  }) async {
+    final snapshot = BackupSnapshot(
+      version: BackupSnapshot.currentVersion,
+      app: BackupSnapshot.appId,
+      exportedAt: DateTime.now().toUtc().toIso8601String(),
+      userId: sourceUserId,
+      userEmail: sourceEmail,
+      clients: clients.map(_clientEntityToMap).toList(),
+      loans: loans.map(_loanEntityToMap).toList(),
+      payments: payments.map(_paymentEntityToMap).toList(),
+    );
+
+    return restoreSnapshot(
+      snapshot: snapshot,
+      currentUserId: currentUserId,
+      adminCloudImport: true,
+    );
+  }
+
+  Map<String, dynamic> _clientEntityToMap(Client client) => {
+        'id': client.id,
+        'user_id': client.userId,
+        'name': client.name,
+        'phone': client.phone,
+        'email': client.email,
+        'document': client.document,
+        'address': client.address,
+        'notes': client.notes,
+        'created_at': client.createdAt,
+      };
+
+  Map<String, dynamic> _loanEntityToMap(Loan loan) => {
+        'id': loan.id,
+        'client_id': loan.clientId,
+        'amount': loan.amount,
+        'interest': loan.interest,
+        'installments': loan.installments,
+        'periodicity': loan.periodicity,
+        'first_due_date': loan.firstDueDate,
+        'status': loan.status,
+        'created_at': loan.createdAt,
+      };
+
+  Map<String, dynamic> _paymentEntityToMap(Payment payment) => {
+        'id': payment.id,
+        'loan_id': payment.loanId,
+        'amount': payment.amount,
+        'installment_number': payment.installmentNumber,
+        'payment_date': payment.paymentDate,
+        'method': payment.method,
+        'created_at': payment.createdAt,
+      };
 
   Future<void> _clearUserData(String userId) async {
     final clients = await (_db.select(_db.clientsTable)

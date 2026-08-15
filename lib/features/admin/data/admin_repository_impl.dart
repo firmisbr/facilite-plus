@@ -32,15 +32,8 @@ class AdminRepositoryImpl implements AdminRepository {
     );
   }
 
-  @override
-  Future<List<AdminUser>> fetchAppUsers() async {
-    final rows = await _supabase
-        .from('profiles')
-        .select('id, name, email, created_at, role')
-        .eq('role', 'user')
-        .order('created_at', ascending: false);
-
-    return (rows as List<dynamic>).map((raw) {
+  List<AdminUser> _mapProfileRows(List<dynamic> rows) {
+    return rows.map((raw) {
       final row = Map<String, dynamic>.from(raw as Map);
       final name = row['name'] as String?;
       final email = row['email'] as String? ?? '';
@@ -51,6 +44,27 @@ class AdminRepositoryImpl implements AdminRepository {
         createdAt: row['created_at']?.toString(),
       );
     }).toList();
+  }
+
+  @override
+  Future<List<AdminUser>> fetchAppUsers() async {
+    final rows = await _supabase
+        .from('profiles')
+        .select('id, name, email, created_at, role')
+        .eq('role', 'user')
+        .order('created_at', ascending: false);
+
+    return _mapProfileRows(rows as List<dynamic>);
+  }
+
+  @override
+  Future<List<AdminUser>> fetchAllProfilesForImport() async {
+    final rows = await _supabase
+        .from('profiles')
+        .select('id, name, email, created_at, role')
+        .order('created_at', ascending: false);
+
+    return _mapProfileRows(rows as List<dynamic>);
   }
 
   @override

@@ -695,10 +695,9 @@ class _CashFlowRadarCardState extends State<_CashFlowRadarCard> {
         granularity: _granularity,
       );
 
-  int get _todayItemIndex => DashboardStatsBuilder.radarItemIndexForPeriod(
+  int get _homeItemIndex => DashboardStatsBuilder.radarHomeItemIndex(
         timeline: _timeline,
         granularity: _granularity,
-        periodIndex: 0,
       );
 
   void _onScroll() {
@@ -710,18 +709,20 @@ class _CashFlowRadarCardState extends State<_CashFlowRadarCard> {
     final lastIndex = (firstIndex + _visibleColumns - 1).clamp(0, _itemCount - 1);
 
     var maxAmount = 0.0;
-    var windowTotal = 0.0;
+    final windowBuckets = <CashFlowBucket>[];
     for (var i = firstIndex; i <= lastIndex; i++) {
       final bucket = DashboardStatsBuilder.radarBucketAt(
         timeline: _timeline,
         granularity: _granularity,
         itemIndex: i,
       );
+      windowBuckets.add(bucket);
       if (bucket.amount > maxAmount) maxAmount = bucket.amount;
-      windowTotal += bucket.amount;
     }
+    final windowTotal =
+        DashboardStatsBuilder.radarWindowTotal(windowBuckets);
 
-    final atToday = firstIndex == _todayItemIndex;
+    final atToday = firstIndex == _homeItemIndex;
     if (firstIndex == _firstVisibleIndex &&
         maxAmount == _visibleMaxAmount &&
         atToday == _isAtToday &&
@@ -739,7 +740,7 @@ class _CashFlowRadarCardState extends State<_CashFlowRadarCard> {
 
   void _jumpToToday({bool animate = false}) {
     if (!_scrollController.hasClients || _columnWidth <= 0) return;
-    final target = _todayItemIndex * (_columnWidth + _columnGap);
+    final target = _homeItemIndex * (_columnWidth + _columnGap);
     if (animate) {
       _scrollController.animateTo(
         target,

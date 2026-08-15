@@ -192,6 +192,42 @@ function Send-GitHubRelease {
     return $downloadUrl
 }
 
+# ─── Supabase Storage (OTA público) ───────────────────────────────────────────
+
+function Send-SupabaseStorageApk {
+    param($v, $apkPath)
+
+    $baseUrl = [Environment]::GetEnvironmentVariable('SUPABASE_URL').TrimEnd('/')
+    $key     = [Environment]::GetEnvironmentVariable('SUPABASE_SERVICE_ROLE_KEY')
+    $semver  = "$($v.Major).$($v.Minor).$($v.Patch)"
+    $apkName = "facilite-plus-$semver.apk"
+
+    if (-not $baseUrl) { throw 'SUPABASE_URL ausente em .env.release' }
+    if (-not $key)     { throw 'SUPABASE_SERVICE_ROLE_KEY ausente em .env.release' }
+
+    if ($DryRun) {
+        Write-Warn "[DryRun] Upload Storage app-releases/$apkName"
+        return "$baseUrl/storage/v1/object/public/app-releases/$apkName"
+    }
+
+    $uploadUrl = "$baseUrl/storage/v1/object/app-releases/$apkName"
+    $headers = @{
+        Authorization = "Bearer $key"
+        apikey        = $key
+        'Content-Type' = 'application/vnd.android.package-archive'
+        'x-upsert'    = 'true'
+    }
+
+    $apkSizeMb = [math]::Round((Get-Item -LiteralPath $apkPath).Length / 1MB, 2)
+    Write-Step "Supabase Storage: app-releases/$apkName ($apkSizeMb MB)"
+    $bytes = [System.IO.File]::ReadAllBytes($apkPath)
+    Invoke-RestMethod -Uri $uploadUrl -Method Post -Headers $headers -Body $bytes | Out-Null
+
+    $publicUrl = "$baseUrl/storage/v1/object/public/app-releases/$apkName"
+    Write-Ok "OTA URL: $publicUrl"
+    return $publicUrl
+}
+
 # ─── Supabase manifest ────────────────────────────────────────────────────────
 
 function Add-SupabaseVersionHistory {
@@ -328,12 +364,14 @@ if (-not $SkipBuild) {
 }
 
 if (-not $SkipUpload) {
-    $apkUrl = Send-GitHubRelease -v $next -apkPath $apk -changelogText $Changelog
+    $githubUrl = Send-GitHubRelease -v $next -apkPath $apk -changelogText $Changelog
+    $apkUrl = Send-SupabaseStorageApk -v $next -apkPath $apk
     Update-SupabaseManifest -v $next -apkUrl $apkUrl -changelogText $Changelog
 
     Write-Host ''
     Write-Host '  Release concluída!' -ForegroundColor Green
-    Write-Host "  APK:      $apkUrl" -ForegroundColor DarkGray
+    Write-Host "  OTA URL:  $apkUrl" -ForegroundColor DarkGray
+    Write-Host "  GitHub:   $githubUrl" -ForegroundColor DarkGray
     Write-Host "  Usuários com versão antiga verão a bolinha amarela em Config." -ForegroundColor DarkGray
 } else {
     Write-Warn 'SkipUpload: GitHub e manifesto não foram atualizados.'
