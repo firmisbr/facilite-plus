@@ -9,6 +9,114 @@ void main() {
     await initializeDateFormatting('pt_BR');
   });
 
+  test('radar scroll tem colunas individuais por periodo', () {
+    const loan = Loan(
+      id: 'l1',
+      clientId: 'c1',
+      amount: '1000',
+      interest: '0',
+      installments: 12,
+      periodicity: 'mensal',
+      firstDueDate: '2026-06-01',
+      status: 'ativo',
+    );
+
+    final stats = DashboardStatsBuilder.build(
+      loans: [LoanWithClient(loan: loan, clientName: 'Maria')],
+      payments: const [],
+      asOf: DateTime(2026, 5, 25),
+    );
+    final timeline = stats.cashFlowTimeline;
+
+    final itemCount = DashboardStatsBuilder.radarItemCount(
+      timeline: timeline,
+      granularity: CashFlowGranularity.day,
+    );
+    expect(itemCount, greaterThan(5));
+
+    final todayIndex = DashboardStatsBuilder.radarItemIndexForPeriod(
+      timeline: timeline,
+      granularity: CashFlowGranularity.day,
+      periodIndex: 0,
+    );
+    final tomorrowIndex = todayIndex + 1;
+    expect(
+      DashboardStatsBuilder.radarBucketAt(
+        timeline: timeline,
+        granularity: CashFlowGranularity.day,
+        itemIndex: todayIndex,
+      ).label,
+      'Hoje',
+    );
+    expect(
+      DashboardStatsBuilder.radarBucketAt(
+        timeline: timeline,
+        granularity: CashFlowGranularity.day,
+        itemIndex: tomorrowIndex,
+      ).label,
+      'Amanhã',
+    );
+  });
+
+  test('radar de caixa pagina janelas de dias', () {
+    const loan = Loan(
+      id: 'l1',
+      clientId: 'c1',
+      amount: '1000',
+      interest: '0',
+      installments: 12,
+      periodicity: 'mensal',
+      firstDueDate: '2026-06-01',
+      status: 'ativo',
+    );
+
+    final stats = DashboardStatsBuilder.build(
+      loans: [LoanWithClient(loan: loan, clientName: 'Maria')],
+      payments: const [],
+      asOf: DateTime(2026, 5, 25),
+    );
+
+    final page0 = stats.cashFlowFor(CashFlowGranularity.day, offset: 0);
+    final page1 = stats.cashFlowFor(CashFlowGranularity.day, offset: 1);
+    final pagePast = stats.cashFlowFor(CashFlowGranularity.day, offset: -1);
+
+    expect(page0.first.label, anyOf('Hoje', 'Atrasado'));
+    expect(page0.length, lessThanOrEqualTo(5));
+    expect(page1.length, 5);
+    expect(page1.first.label, 'Amanhã');
+    expect(pagePast.length, 5);
+    expect(pagePast.any((b) => b.label == 'Hoje'), isTrue);
+    expect(
+      stats.periodCaption(CashFlowGranularity.day, 0),
+      'Próximos dias',
+    );
+    expect(stats.periodCaption(CashFlowGranularity.day, 1), isNotEmpty);
+  });
+
+  test('rotulo de semana exibe intervalo de dias', () {
+    const loan = Loan(
+      id: 'l1',
+      clientId: 'c1',
+      amount: '1000',
+      interest: '0',
+      installments: 4,
+      periodicity: 'mensal',
+      firstDueDate: '2026-09-01',
+      status: 'ativo',
+    );
+
+    final stats = DashboardStatsBuilder.build(
+      loans: [LoanWithClient(loan: loan, clientName: 'Maria')],
+      payments: const [],
+      asOf: DateTime(2026, 8, 15),
+    );
+
+    final weekBuckets =
+        stats.cashFlowFor(CashFlowGranularity.week, offset: 1);
+    expect(weekBuckets, isNotEmpty);
+    expect(weekBuckets.first.label, matches(RegExp(r'^\d+/\d{2} • \d+/\d{2}$')));
+  });
+
   test('agrega totais de emprestimos ativos', () {
     const loan = Loan(
       id: 'l1',
@@ -34,8 +142,8 @@ void main() {
     expect(stats.upcomingDues, hasLength(1));
     expect(stats.upcomingDues.first.installmentNumber, 1);
     expect(stats.cashFlowByWeek, isNotEmpty);
-    expect(stats.cashFlowByWeek.length, lessThanOrEqualTo(7));
-    expect(stats.cashFlowByDay.length, lessThanOrEqualTo(7));
+    expect(stats.cashFlowByWeek.length, lessThanOrEqualTo(5));
+    expect(stats.cashFlowByDay.length, lessThanOrEqualTo(5));
     expect(
       DashboardStatsBuilder.insightFor(
         granularity: CashFlowGranularity.week,

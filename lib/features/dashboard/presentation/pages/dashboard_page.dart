@@ -660,21 +660,127 @@ class _CashFlowRadarCard extends StatefulWidget {
 
 class _CashFlowRadarCardState extends State<_CashFlowRadarCard> {
   CashFlowGranularity _granularity = CashFlowGranularity.week;
+  final ScrollController _scrollController = ScrollController();
 
-  static const _chartHeight = 108.0;
+  static const _visibleColumns = 5;
+  static const _columnGap = 2.0;
+  static const _chartHeight = 120.0;
   static const _valueRowHeight = 36.0;
+
+  int _firstVisibleIndex = 0;
+  double _visibleMaxAmount = 0;
+  double _columnWidth = 0;
+  double _windowTotal = 0;
+  bool _isAtToday = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToToday());
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  CashFlowTimeline get _timeline => widget.stats.cashFlowTimeline;
+
+  int get _itemCount => DashboardStatsBuilder.radarItemCount(
+        timeline: _timeline,
+        granularity: _granularity,
+      );
+
+  int get _todayItemIndex => DashboardStatsBuilder.radarItemIndexForPeriod(
+        timeline: _timeline,
+        granularity: _granularity,
+        periodIndex: 0,
+      );
+
+  void _onScroll() {
+    if (!_scrollController.hasClients || _columnWidth <= 0) return;
+
+    final stride = _columnWidth + _columnGap;
+    final firstIndex =
+        (_scrollController.offset / stride).floor().clamp(0, _itemCount - 1);
+    final lastIndex = (firstIndex + _visibleColumns - 1).clamp(0, _itemCount - 1);
+
+    var maxAmount = 0.0;
+    var windowTotal = 0.0;
+    for (var i = firstIndex; i <= lastIndex; i++) {
+      final bucket = DashboardStatsBuilder.radarBucketAt(
+        timeline: _timeline,
+        granularity: _granularity,
+        itemIndex: i,
+      );
+      if (bucket.amount > maxAmount) maxAmount = bucket.amount;
+      windowTotal += bucket.amount;
+    }
+
+    final atToday = firstIndex == _todayItemIndex;
+    if (firstIndex == _firstVisibleIndex &&
+        maxAmount == _visibleMaxAmount &&
+        atToday == _isAtToday &&
+        windowTotal == _windowTotal) {
+      return;
+    }
+
+    setState(() {
+      _firstVisibleIndex = firstIndex;
+      _visibleMaxAmount = maxAmount;
+      _isAtToday = atToday;
+      _windowTotal = windowTotal;
+    });
+  }
+
+  void _jumpToToday({bool animate = false}) {
+    if (!_scrollController.hasClients || _columnWidth <= 0) return;
+    final target = _todayItemIndex * (_columnWidth + _columnGap);
+    if (animate) {
+      _scrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _scrollController.jumpTo(target);
+    }
+    _onScroll();
+  }
+
+  List<CashFlowBucket> _visibleBuckets() {
+    final lastIndex =
+        (_firstVisibleIndex + _visibleColumns - 1).clamp(0, _itemCount - 1);
+    return [
+      for (var i = _firstVisibleIndex; i <= lastIndex; i++)
+        DashboardStatsBuilder.radarBucketAt(
+          timeline: _timeline,
+          granularity: _granularity,
+          itemIndex: i,
+        ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final buckets = widget.stats.cashFlowFor(_granularity);
-    final insight = DashboardStatsBuilder.insightFor(
+    final visibleBuckets = _visibleBuckets();
+    final insight = _isAtToday
+        ? DashboardStatsBuilder.insightFor(
+            granularity: _granularity,
+            buckets: visibleBuckets,
+            totalRemaining: widget.stats.totalRemaining,
+          )
+        : null;
+    final periodCaption = widget.stats.periodCaptionForVisible(
       granularity: _granularity,
-      buckets: buckets,
-      totalRemaining: widget.stats.totalRemaining,
+      firstItemIndex: _firstVisibleIndex,
+      visibleCount: _visibleColumns,
+      itemCount: _itemCount,
     );
-    final maxAmount = buckets
-        .map((b) => b.amount)
-        .fold<double>(0, (a, b) => a > b ? a : b);
 
     return _DashboardSurfaceCard(
       padding: const EdgeInsets.fromLTRB(
@@ -686,86 +792,346 @@ class _CashFlowRadarCardState extends State<_CashFlowRadarCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SegmentedButton<CashFlowGranularity>(
-            segments: const [
-              ButtonSegment(
-                value: CashFlowGranularity.day,
-                label: Text('Dia'),
-                icon: Icon(LucideIcons.calendar_days, size: 16),
-              ),
-              ButtonSegment(
-                value: CashFlowGranularity.week,
-                label: Text('Semana'),
-                icon: Icon(LucideIcons.calendar_range, size: 16),
-              ),
-              ButtonSegment(
-                value: CashFlowGranularity.month,
-                label: Text('Mês'),
-                icon: Icon(LucideIcons.calendar, size: 16),
-              ),
-            ],
-            selected: {_granularity},
-            onSelectionChanged: (selected) {
-              setState(() => _granularity = selected.first);
+          _CashFlowGranularityPicker(
+            value: _granularity,
+            onChanged: (value) {
+              if (value == _granularity) return;
+              setState(() {
+                _granularity = value;
+                _firstVisibleIndex = 0;
+                _isAtToday = true;
+              });
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => _jumpToToday());
             },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _CashFlowPeriodHeader(
+            caption: periodCaption,
+            windowTotal: _windowTotal,
+            isOnToday: _isAtToday,
+            onJumpToToday: () => _jumpToToday(animate: true),
           ),
           if (insight != null) ...[
             const SizedBox(height: AppSpacing.md),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Icon(
-                  LucideIcons.sparkles,
-                  size: 16,
-                  color: AppColors.premium,
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.premium.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                border: Border.all(
+                  color: AppColors.premium.withValues(alpha: 0.25),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  insight,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        height: 1.45,
-                        color: context.appTheme.textSecondary,
-                      ),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: _valueRowHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < buckets.length; i++) ...[
-                  if (i > 0) const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: _CashFlowAmountLabel(bucket: buckets[i]),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 1),
+                    child: Icon(
+                      LucideIcons.sparkles,
+                      size: 15,
+                      color: AppColors.premium,
+                    ),
                   ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          SizedBox(
-            height: _chartHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < buckets.length; i++) ...[
-                  if (i > 0) const SizedBox(width: AppSpacing.xs),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
-                    child: _CashFlowColumn(
-                      bucket: buckets[i],
-                      maxAmount: maxAmount,
+                    child: Text(
+                      insight,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            height: 1.45,
+                            color: context.appTheme.textSecondary,
+                          ),
                     ),
                   ),
                 ],
-              ],
+              ),
             ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columnWidth = (constraints.maxWidth -
+                      _columnGap * (_visibleColumns - 1)) /
+                  _visibleColumns;
+              final columnStride = columnWidth + _columnGap;
+
+              if (_columnWidth != columnWidth) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  setState(() => _columnWidth = columnWidth);
+                  _jumpToToday();
+                  _onScroll();
+                });
+              }
+
+              return SizedBox(
+                height: _valueRowHeight + AppSpacing.xs + _chartHeight,
+                child: ListView.builder(
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  itemCount: _itemCount,
+                  itemExtent: columnStride,
+                  itemBuilder: (context, index) {
+                    final bucket = DashboardStatsBuilder.radarBucketAt(
+                      timeline: _timeline,
+                      granularity: _granularity,
+                      itemIndex: index,
+                    );
+
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        right: index < _itemCount - 1 ? _columnGap : 0,
+                      ),
+                      child: SizedBox(
+                        width: columnWidth,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              height: _valueRowHeight,
+                              child: _CashFlowAmountLabel(bucket: bucket),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            SizedBox(
+                              height: _chartHeight,
+                              child: _CashFlowColumn(
+                                bucket: bucket,
+                                maxAmount: _visibleMaxAmount,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                LucideIcons.chevron_left,
+                size: 14,
+                color: context.appTheme.textSecondary.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                'Arraste livremente para explorar os períodos',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: context.appTheme.textSecondary,
+                      fontSize: 10,
+                    ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(
+                LucideIcons.chevron_right,
+                size: 14,
+                color: context.appTheme.textSecondary.withValues(alpha: 0.7),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CashFlowGranularityPicker extends StatelessWidget {
+  const _CashFlowGranularityPicker({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final CashFlowGranularity value;
+  final ValueChanged<CashFlowGranularity> onChanged;
+
+  static const _options = [
+    (CashFlowGranularity.day, 'Dia', LucideIcons.calendar_days),
+    (CashFlowGranularity.week, 'Semana', LucideIcons.calendar_range),
+    (CashFlowGranularity.month, 'Mês', LucideIcons.calendar),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: context.appTheme.border.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final segmentWidth = constraints.maxWidth / _options.length;
+
+          return Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                left: segmentWidth * value.index,
+                width: segmentWidth,
+                top: 0,
+                bottom: 0,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.accent.withValues(alpha: 0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.18),
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  for (final option in _options)
+                    Expanded(
+                      child: _CashFlowGranularitySegment(
+                        label: option.$2,
+                        icon: option.$3,
+                        selected: value == option.$1,
+                        onTap: () => onChanged(option.$1),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CashFlowGranularitySegment extends StatelessWidget {
+  const _CashFlowGranularitySegment({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected
+        ? AppColors.accent
+        : context.appTheme.textSecondary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.sm + 2,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 11,
+                      color: color,
+                      height: 1.1,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CashFlowPeriodHeader extends StatelessWidget {
+  const _CashFlowPeriodHeader({
+    required this.caption,
+    required this.windowTotal,
+    required this.isOnToday,
+    required this.onJumpToToday,
+  });
+
+  final String caption;
+  final double windowTotal;
+  final bool isOnToday;
+  final VoidCallback onJumpToToday;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                caption,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: isOnToday
+                          ? AppColors.accent
+                          : Theme.of(context).colorScheme.onSurface,
+                    ),
+              ),
+              if (windowTotal > 0) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Total na janela: ${LoanSimulator.formatMoney(windowTotal)}',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: context.appTheme.textSecondary,
+                        fontSize: 10,
+                      ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (!isOnToday)
+          TextButton.icon(
+            onPressed: onJumpToToday,
+            icon: const Icon(LucideIcons.rotate_ccw, size: 14),
+            label: const Text('Hoje'),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              textStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -793,7 +1159,7 @@ class _CashFlowAmountLabel extends StatelessWidget {
           LoanSimulator.formatMoney(bucket.amount),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: color,
                 height: 1.1,
@@ -826,26 +1192,65 @@ class _CashFlowColumn extends StatelessWidget {
         const gap = AppSpacing.sm;
         final footerHeight = bucket.installmentCount > 0 ? 30.0 : 18.0;
         final barMaxHeight =
-            (constraints.maxHeight - footerHeight - gap).clamp(4.0, 72.0);
+            (constraints.maxHeight - footerHeight - gap).clamp(4.0, 84.0);
         final barHeight = maxAmount <= 0 || bucket.amount <= 0
             ? 4.0
             : (bucket.amount / maxAmount * barMaxHeight)
                 .clamp(4.0, barMaxHeight);
+        final barWidth = (constraints.maxWidth * 0.88).clamp(40.0, 72.0);
+        final hasValue = bucket.amount > 0;
 
         return Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Container(
-              width: 24,
-              height: barHeight,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    color.withValues(alpha: 0.35),
-                    color.withValues(alpha: 0.9),
+            SizedBox(
+              height: barMaxHeight,
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    Container(
+                      width: barWidth,
+                      height: barMaxHeight,
+                      decoration: BoxDecoration(
+                        color: context.appTheme.border.withValues(alpha: 0.4),
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.radiusMd),
+                      ),
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      width: barWidth,
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.radiusMd),
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: hasValue
+                              ? [
+                                  color.withValues(alpha: 0.55),
+                                  color,
+                                ]
+                              : [
+                                  color.withValues(alpha: 0.2),
+                                  color.withValues(alpha: 0.32),
+                                ],
+                        ),
+                        boxShadow: hasValue && bucket.isCurrentPeriod
+                            ? [
+                                BoxShadow(
+                                  color: color.withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -856,19 +1261,25 @@ class _CashFlowColumn extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Text(
-                    bucket.label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontWeight: bucket.isCurrentPeriod
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          fontSize: 9,
-                          height: 1.15,
-                          color: bucket.isOverdue ? AppColors.error : null,
-                        ),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      bucket.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontWeight: bucket.isCurrentPeriod
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            fontSize: 10,
+                            height: 1.15,
+                            color: bucket.isOverdue
+                                ? AppColors.error
+                                : bucket.isCurrentPeriod
+                                    ? AppColors.accent
+                                    : null,
+                          ),
+                    ),
                   ),
                   if (bucket.installmentCount > 0)
                     Text(

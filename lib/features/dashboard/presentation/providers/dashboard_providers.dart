@@ -10,7 +10,7 @@ final dashboardStatsProvider = Provider<AsyncValue<DashboardStats>>((ref) {
   ref.watch(dailyLoanSkipSundayProvider);
   final userId = ref.watch(currentUserIdProvider);
   if (userId == null) {
-    return const AsyncValue.data(DashboardStats.empty);
+    return AsyncValue.data(DashboardStats.empty);
   }
 
   final loans = ref.watch(allLoansProvider);

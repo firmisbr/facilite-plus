@@ -37,7 +37,7 @@ class UpcomingDueItem {
       '$paidInstallments/$totalInstallments';
 }
 
-/// Agrupamento do radar de caixa (7 colunas no máximo).
+/// Agrupamento do radar de caixa (5 colunas no máximo).
 enum CashFlowGranularity { day, week, month }
 
 /// Coluna do radar: quanto pode entrar no período (ou atrasado).
@@ -59,6 +59,50 @@ class CashFlowBucket {
   final bool isCurrentPeriod;
 }
 
+/// Dados brutos do radar — permite paginar janelas de tempo na UI.
+class CashFlowTimeline {
+  const CashFlowTimeline({
+    required this.today,
+    required this.currentWeekStart,
+    required this.overdueAmount,
+    required this.overdueCount,
+    required this.dayAmounts,
+    required this.dayCounts,
+    required this.weekAmounts,
+    required this.weekCounts,
+    required this.monthAmounts,
+    required this.monthCounts,
+  });
+
+  static final empty = CashFlowTimeline(
+    today: _epoch,
+    currentWeekStart: _epoch,
+    overdueAmount: 0,
+    overdueCount: 0,
+    dayAmounts: const {},
+    dayCounts: const {},
+    weekAmounts: const {},
+    weekCounts: const {},
+    monthAmounts: const {},
+    monthCounts: const {},
+  );
+
+  static final _epoch = DateTime(1970);
+
+  final DateTime today;
+  final DateTime currentWeekStart;
+  final double overdueAmount;
+  final int overdueCount;
+  final Map<DateTime, double> dayAmounts;
+  final Map<DateTime, int> dayCounts;
+  final Map<DateTime, double> weekAmounts;
+  final Map<DateTime, int> weekCounts;
+  final Map<DateTime, double> monthAmounts;
+  final Map<DateTime, int> monthCounts;
+
+  bool get hasOverdue => overdueAmount > 0;
+}
+
 class DashboardStats {
   const DashboardStats({
     required this.activeLoansCount,
@@ -74,6 +118,7 @@ class DashboardStats {
     required this.cashFlowByDay,
     required this.cashFlowByWeek,
     required this.cashFlowByMonth,
+    required this.cashFlowTimeline,
     required this.lifetime,
   });
 
@@ -94,6 +139,7 @@ class DashboardStats {
   final List<CashFlowBucket> cashFlowByDay;
   final List<CashFlowBucket> cashFlowByWeek;
   final List<CashFlowBucket> cashFlowByMonth;
+  final CashFlowTimeline cashFlowTimeline;
   final PortfolioLifetimeStats lifetime;
 
   bool get hasAnyLoans => lifetime.hasLoans;
@@ -101,7 +147,7 @@ class DashboardStats {
   /// Carteira só com empréstimos quitados (ou sem saldo em aberto).
   bool get isHistoricalOnly => lifetime.hasLoans && activeLoansCount == 0;
 
-  static const empty = DashboardStats(
+  static final empty = DashboardStats(
     activeLoansCount: 0,
     clientsCount: 0,
     totalLent: 0,
@@ -115,19 +161,52 @@ class DashboardStats {
     cashFlowByDay: [],
     cashFlowByWeek: [],
     cashFlowByMonth: [],
+    cashFlowTimeline: CashFlowTimeline.empty,
     lifetime: PortfolioLifetimeStats.empty,
   );
 
-  List<CashFlowBucket> cashFlowFor(CashFlowGranularity granularity) =>
-      switch (granularity) {
+  List<CashFlowBucket> cashFlowFor(
+    CashFlowGranularity granularity, {
+    int offset = 0,
+  }) {
+    if (offset == 0) {
+      return switch (granularity) {
         CashFlowGranularity.day => cashFlowByDay,
         CashFlowGranularity.week => cashFlowByWeek,
         CashFlowGranularity.month => cashFlowByMonth,
       };
+    }
+    return DashboardStatsBuilder.bucketsFor(
+      granularity: granularity,
+      timeline: cashFlowTimeline,
+      offset: offset,
+    );
+  }
+
+  String periodCaption(CashFlowGranularity granularity, int offset) =>
+      DashboardStatsBuilder.periodCaption(
+        granularity: granularity,
+        timeline: cashFlowTimeline,
+        offset: offset,
+      );
+
+  String periodCaptionForVisible({
+    required CashFlowGranularity granularity,
+    required int firstItemIndex,
+    required int visibleCount,
+    required int itemCount,
+  }) =>
+      DashboardStatsBuilder.periodCaptionForVisible(
+        granularity: granularity,
+        timeline: cashFlowTimeline,
+        firstItemIndex: firstItemIndex,
+        visibleCount: visibleCount,
+        itemCount: itemCount,
+      );
 }
 
 abstract final class DashboardStatsBuilder {
-  static const _maxRadarColumns = 7;
+  static const _maxRadarColumns = 5;
 
   static DashboardStats build({
     required List<LoanWithClient> loans,
@@ -258,26 +337,29 @@ abstract final class DashboardStatsBuilder {
       return a.dueDate.compareTo(b.dueDate);
     });
 
-    final cashFlowByDay = _buildDayBuckets(
+    final cashFlowTimeline = CashFlowTimeline(
       today: today,
+      currentWeekStart: currentWeekStart,
       overdueAmount: overdueBucketAmount,
       overdueCount: overdueBucketCount,
       dayAmounts: dayAmounts,
       dayCounts: dayCounts,
-    );
-    final cashFlowByWeek = _buildWeekBuckets(
-      currentWeekStart: currentWeekStart,
-      overdueAmount: overdueBucketAmount,
-      overdueCount: overdueBucketCount,
       weekAmounts: weekAmounts,
       weekCounts: weekCounts,
-    );
-    final cashFlowByMonth = _buildMonthBuckets(
-      today: today,
-      overdueAmount: overdueBucketAmount,
-      overdueCount: overdueBucketCount,
       monthAmounts: monthAmounts,
       monthCounts: monthCounts,
+    );
+    final cashFlowByDay = bucketsFor(
+      granularity: CashFlowGranularity.day,
+      timeline: cashFlowTimeline,
+    );
+    final cashFlowByWeek = bucketsFor(
+      granularity: CashFlowGranularity.week,
+      timeline: cashFlowTimeline,
+    );
+    final cashFlowByMonth = bucketsFor(
+      granularity: CashFlowGranularity.month,
+      timeline: cashFlowTimeline,
     );
 
     return DashboardStats(
@@ -294,7 +376,210 @@ abstract final class DashboardStatsBuilder {
       cashFlowByDay: cashFlowByDay,
       cashFlowByWeek: cashFlowByWeek,
       cashFlowByMonth: cashFlowByMonth,
+      cashFlowTimeline: cashFlowTimeline,
       lifetime: lifetime,
+    );
+  }
+
+  static List<CashFlowBucket> bucketsFor({
+    required CashFlowGranularity granularity,
+    required CashFlowTimeline timeline,
+    int offset = 0,
+  }) {
+    return switch (granularity) {
+      CashFlowGranularity.day => _buildDayBuckets(
+          timeline: timeline,
+          offset: offset,
+        ),
+      CashFlowGranularity.week => _buildWeekBuckets(
+          timeline: timeline,
+          offset: offset,
+        ),
+      CashFlowGranularity.month => _buildMonthBuckets(
+          timeline: timeline,
+          offset: offset,
+        ),
+    };
+  }
+
+  static String periodCaption({
+    required CashFlowGranularity granularity,
+    required CashFlowTimeline timeline,
+    required int offset,
+  }) {
+    if (offset == 0) {
+      return switch (granularity) {
+        CashFlowGranularity.day => 'Próximos dias',
+        CashFlowGranularity.week => 'Próximas semanas',
+        CashFlowGranularity.month => 'Próximos meses',
+      };
+    }
+
+    final buckets = bucketsFor(
+      granularity: granularity,
+      timeline: timeline,
+      offset: offset,
+    );
+    return _captionFromBuckets(buckets);
+  }
+
+  static (int min, int max) radarPeriodRange(CashFlowGranularity granularity) =>
+      switch (granularity) {
+        CashFlowGranularity.day => (-90, 365),
+        CashFlowGranularity.week => (-52, 104),
+        CashFlowGranularity.month => (-24, 36),
+      };
+
+  static int radarItemCount({
+    required CashFlowTimeline timeline,
+    required CashFlowGranularity granularity,
+  }) {
+    final (min, max) = radarPeriodRange(granularity);
+    return (timeline.hasOverdue ? 1 : 0) + (max - min + 1);
+  }
+
+  static int radarPeriodIndexForItem({
+    required CashFlowTimeline timeline,
+    required CashFlowGranularity granularity,
+    required int itemIndex,
+  }) {
+    final (min, _) = radarPeriodRange(granularity);
+    return min + itemIndex - (timeline.hasOverdue ? 1 : 0);
+  }
+
+  static int radarItemIndexForPeriod({
+    required CashFlowTimeline timeline,
+    required CashFlowGranularity granularity,
+    required int periodIndex,
+  }) {
+    final (min, _) = radarPeriodRange(granularity);
+    return periodIndex - min + (timeline.hasOverdue ? 1 : 0);
+  }
+
+  static CashFlowBucket radarBucketAt({
+    required CashFlowTimeline timeline,
+    required CashFlowGranularity granularity,
+    required int itemIndex,
+  }) {
+    if (timeline.hasOverdue && itemIndex == 0) {
+      return CashFlowBucket(
+        label: 'Atrasado',
+        amount: timeline.overdueAmount,
+        installmentCount: timeline.overdueCount,
+        isOverdue: true,
+      );
+    }
+
+    final periodIndex = radarPeriodIndexForItem(
+      timeline: timeline,
+      granularity: granularity,
+      itemIndex: itemIndex,
+    );
+
+    return switch (granularity) {
+      CashFlowGranularity.day => _dayBucket(timeline, periodIndex),
+      CashFlowGranularity.week => _weekBucket(timeline, periodIndex),
+      CashFlowGranularity.month => _monthBucket(timeline, periodIndex),
+    };
+  }
+
+  static String periodCaptionForVisible({
+    required CashFlowGranularity granularity,
+    required CashFlowTimeline timeline,
+    required int firstItemIndex,
+    required int visibleCount,
+    required int itemCount,
+  }) {
+    final todayItem = radarItemIndexForPeriod(
+      timeline: timeline,
+      granularity: granularity,
+      periodIndex: 0,
+    );
+    if (firstItemIndex == todayItem) {
+      return switch (granularity) {
+        CashFlowGranularity.day => 'Próximos dias',
+        CashFlowGranularity.week => 'Próximas semanas',
+        CashFlowGranularity.month => 'Próximos meses',
+      };
+    }
+
+    final lastItem =
+        (firstItemIndex + visibleCount - 1).clamp(0, itemCount - 1);
+    final buckets = [
+      radarBucketAt(
+        timeline: timeline,
+        granularity: granularity,
+        itemIndex: firstItemIndex,
+      ),
+      radarBucketAt(
+        timeline: timeline,
+        granularity: granularity,
+        itemIndex: lastItem,
+      ),
+    ];
+    return _captionFromBuckets(buckets);
+  }
+
+  static String _captionFromBuckets(List<CashFlowBucket> buckets) {
+    final scheduled = buckets.where((b) => !b.isOverdue).toList();
+    if (scheduled.isEmpty) {
+      final overdue = buckets.where((b) => b.isOverdue);
+      if (overdue.isNotEmpty) return overdue.first.label;
+      return '';
+    }
+
+    final first = scheduled.first.label;
+    final last = scheduled.last.label;
+    if (first == last) return first;
+    return '$first – $last';
+  }
+
+  static CashFlowBucket _dayBucket(CashFlowTimeline timeline, int periodIndex) {
+    final dayFmt = DateFormat('d/M', 'pt_BR');
+    final day = timeline.today.add(Duration(days: periodIndex));
+    final label = switch (periodIndex) {
+      0 => 'Hoje',
+      1 => 'Amanhã',
+      _ => dayFmt.format(day),
+    };
+    return CashFlowBucket(
+      label: label,
+      amount: timeline.dayAmounts[day] ?? 0,
+      installmentCount: timeline.dayCounts[day] ?? 0,
+      isCurrentPeriod: periodIndex == 0,
+    );
+  }
+
+  static CashFlowBucket _weekBucket(
+    CashFlowTimeline timeline,
+    int periodIndex,
+  ) {
+    final weekStart =
+        timeline.currentWeekStart.add(Duration(days: 7 * periodIndex));
+    return CashFlowBucket(
+      label: periodIndex == 0 ? 'Esta sem.' : _weekRangeLabel(weekStart),
+      amount: timeline.weekAmounts[weekStart] ?? 0,
+      installmentCount: timeline.weekCounts[weekStart] ?? 0,
+      isCurrentPeriod: periodIndex == 0,
+    );
+  }
+
+  static CashFlowBucket _monthBucket(
+    CashFlowTimeline timeline,
+    int periodIndex,
+  ) {
+    final monthFmt = DateFormat('MMM/yy', 'pt_BR');
+    final month = DateTime(
+      timeline.today.year,
+      timeline.today.month + periodIndex,
+    );
+    final currentMonth =
+        DateTime(timeline.today.year, timeline.today.month);
+    return CashFlowBucket(
+      label: month == currentMonth ? 'Este mês' : monthFmt.format(month),
+      amount: timeline.monthAmounts[month] ?? 0,
+      installmentCount: timeline.monthCounts[month] ?? 0,
+      isCurrentPeriod: periodIndex == 0,
     );
   }
 
@@ -302,136 +587,102 @@ abstract final class DashboardStatsBuilder {
     return date.subtract(Duration(days: date.weekday - 1));
   }
 
-  static int _periodSlots({required double overdueAmount}) {
-    final hasOverdue = overdueAmount > 0;
-    return _maxRadarColumns - (hasOverdue ? 1 : 0);
+  static String _weekRangeLabel(DateTime weekStart) {
+    final weekEnd = weekStart.add(const Duration(days: 6));
+    final fmt = DateFormat('d/MM', 'pt_BR');
+    return '${fmt.format(weekStart)} • ${fmt.format(weekEnd)}';
+  }
+
+  static int _periodSlots({
+    required CashFlowTimeline timeline,
+    required int offset,
+  }) {
+    if (offset == 0 && timeline.hasOverdue) {
+      return _maxRadarColumns - 1;
+    }
+    return _maxRadarColumns;
+  }
+
+  static int _startPeriodIndex({
+    required CashFlowTimeline timeline,
+    required int offset,
+  }) {
+    return offset;
   }
 
   static List<CashFlowBucket> _buildDayBuckets({
-    required DateTime today,
-    required double overdueAmount,
-    required int overdueCount,
-    required Map<DateTime, double> dayAmounts,
-    required Map<DateTime, int> dayCounts,
+    required CashFlowTimeline timeline,
+    int offset = 0,
   }) {
     final buckets = <CashFlowBucket>[];
-    final dayFmt = DateFormat('d/M', 'pt_BR');
-    final slots = _periodSlots(overdueAmount: overdueAmount);
+    final slots = _periodSlots(timeline: timeline, offset: offset);
+    final startIndex = _startPeriodIndex(timeline: timeline, offset: offset);
 
-    if (overdueAmount > 0) {
+    if (offset == 0 && timeline.hasOverdue) {
       buckets.add(
         CashFlowBucket(
           label: 'Atrasado',
-          amount: overdueAmount,
-          installmentCount: overdueCount,
+          amount: timeline.overdueAmount,
+          installmentCount: timeline.overdueCount,
           isOverdue: true,
         ),
       );
     }
 
     for (var i = 0; i < slots; i++) {
-      final day = today.add(Duration(days: i));
-      final amount = dayAmounts[day] ?? 0;
-      final count = dayCounts[day] ?? 0;
-      final label = switch (i) {
-        0 => 'Hoje',
-        1 => 'Amanhã',
-        _ => dayFmt.format(day),
-      };
-
-      buckets.add(
-        CashFlowBucket(
-          label: label,
-          amount: amount,
-          installmentCount: count,
-          isCurrentPeriod: i == 0,
-        ),
-      );
+      buckets.add(_dayBucket(timeline, startIndex + i));
     }
 
     return buckets;
   }
 
   static List<CashFlowBucket> _buildWeekBuckets({
-    required DateTime currentWeekStart,
-    required double overdueAmount,
-    required int overdueCount,
-    required Map<DateTime, double> weekAmounts,
-    required Map<DateTime, int> weekCounts,
+    required CashFlowTimeline timeline,
+    int offset = 0,
   }) {
     final buckets = <CashFlowBucket>[];
-    final weekFmt = DateFormat('d MMM', 'pt_BR');
-    final slots = _periodSlots(overdueAmount: overdueAmount);
+    final slots = _periodSlots(timeline: timeline, offset: offset);
+    final startIndex = _startPeriodIndex(timeline: timeline, offset: offset);
 
-    if (overdueAmount > 0) {
+    if (offset == 0 && timeline.hasOverdue) {
       buckets.add(
         CashFlowBucket(
           label: 'Atrasado',
-          amount: overdueAmount,
-          installmentCount: overdueCount,
+          amount: timeline.overdueAmount,
+          installmentCount: timeline.overdueCount,
           isOverdue: true,
         ),
       );
     }
 
     for (var i = 0; i < slots; i++) {
-      final weekStart = currentWeekStart.add(Duration(days: 7 * i));
-      final amount = weekAmounts[weekStart] ?? 0;
-      final count = weekCounts[weekStart] ?? 0;
-      final label = i == 0 ? 'Esta sem.' : weekFmt.format(weekStart);
-
-      buckets.add(
-        CashFlowBucket(
-          label: label,
-          amount: amount,
-          installmentCount: count,
-          isCurrentPeriod: i == 0,
-        ),
-      );
+      buckets.add(_weekBucket(timeline, startIndex + i));
     }
 
     return buckets;
   }
 
   static List<CashFlowBucket> _buildMonthBuckets({
-    required DateTime today,
-    required double overdueAmount,
-    required int overdueCount,
-    required Map<DateTime, double> monthAmounts,
-    required Map<DateTime, int> monthCounts,
+    required CashFlowTimeline timeline,
+    int offset = 0,
   }) {
     final buckets = <CashFlowBucket>[];
-    final monthFmt = DateFormat('MMM', 'pt_BR');
-    final slots = _periodSlots(overdueAmount: overdueAmount);
-    final currentMonth = DateTime(today.year, today.month);
+    final slots = _periodSlots(timeline: timeline, offset: offset);
+    final startIndex = _startPeriodIndex(timeline: timeline, offset: offset);
 
-    if (overdueAmount > 0) {
+    if (offset == 0 && timeline.hasOverdue) {
       buckets.add(
         CashFlowBucket(
           label: 'Atrasado',
-          amount: overdueAmount,
-          installmentCount: overdueCount,
+          amount: timeline.overdueAmount,
+          installmentCount: timeline.overdueCount,
           isOverdue: true,
         ),
       );
     }
 
     for (var i = 0; i < slots; i++) {
-      final month = DateTime(today.year, today.month + i);
-      final amount = monthAmounts[month] ?? 0;
-      final count = monthCounts[month] ?? 0;
-      final label = month == currentMonth
-          ? 'Este mês'
-          : monthFmt.format(month);
-
-      buckets.add(
-        CashFlowBucket(
-          label: label,
-          amount: amount,
-          installmentCount: count,
-          isCurrentPeriod: i == 0,
-        ),
-      );
+      buckets.add(_monthBucket(timeline, startIndex + i));
     }
 
     return buckets;
