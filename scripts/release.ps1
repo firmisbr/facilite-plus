@@ -160,7 +160,7 @@ function Send-GitHubRelease {
         return "https://github.com/$repo/releases/download/$tagName/$apkName"
     }
 
-    # Criar a release
+    # Criar a release (UTF-8 explícito — PowerShell 5.x quebra JSON com acentos)
     $releaseBody = @{
         tag_name         = $tagName
         name             = "Facilite Plus $semver"
@@ -168,11 +168,12 @@ function Send-GitHubRelease {
         draft            = $false
         prerelease       = $false
         target_commitish = 'main'
-    } | ConvertTo-Json -Compress
+    } | ConvertTo-Json -Compress -Depth 5
+    $releaseBytes = [System.Text.Encoding]::UTF8.GetBytes($releaseBody)
 
     $release = Invoke-RestMethod -Uri "$apiBase/releases" -Method Post `
-        -Headers ($ghHeaders + @{ 'Content-Type' = 'application/json' }) `
-        -Body $releaseBody
+        -Headers ($ghHeaders + @{ 'Content-Type' = 'application/json; charset=utf-8' }) `
+        -Body $releaseBytes
     Write-Ok "Release criada: $($release.html_url)"
 
     # Upload do APK como asset
@@ -365,7 +366,13 @@ if (-not $SkipBuild) {
 
 if (-not $SkipUpload) {
     $githubUrl = Send-GitHubRelease -v $next -apkPath $apk -changelogText $Changelog
-    $apkUrl = Send-SupabaseStorageApk -v $next -apkPath $apk
+    $apkUrl = $githubUrl
+    try {
+        $apkUrl = Send-SupabaseStorageApk -v $next -apkPath $apk
+    } catch {
+        Write-Warn "Storage falhou ($($_.Exception.Message)) — OTA usa URL do GitHub."
+        $apkUrl = $githubUrl
+    }
     Update-SupabaseManifest -v $next -apkUrl $apkUrl -changelogText $Changelog
 
     Write-Host ''
