@@ -23,7 +23,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -59,6 +59,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 6) {
             await m.createTable(supportTicketsTable);
             await m.createTable(ticketMessagesTable);
+          }
+          if (from < 7) {
+            await m.addColumn(loansTable, loansTable.quinzenalDay1);
+            await m.addColumn(loansTable, loansTable.quinzenalDay2);
           }
         },
       );

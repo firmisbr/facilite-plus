@@ -2,6 +2,7 @@ import '../../../shared/utils/br_currency_input_formatter.dart';
 import '../../settings/domain/daily_loan_sunday_policy.dart';
 import 'daily_loan_due_dates.dart';
 import 'loan_periodicity.dart';
+import 'quinzenal_fixed_days.dart';
 
 class LoanInstallmentPreview {
   const LoanInstallmentPreview({
@@ -97,6 +98,8 @@ abstract final class LoanSimulator {
     required DateTime firstDueDate,
     int maxScheduleRows = 6,
     bool? skipSundayOnDaily,
+    int? quinzenalDay1,
+    int? quinzenalDay2,
   }) {
     if (principal <= 0 || installments < 1 || interestPercent < 0) {
       return null;
@@ -119,6 +122,8 @@ abstract final class LoanSimulator {
             periodicity,
             i,
             skipSundayOnDaily: skipSundayOnDaily,
+            quinzenalDay1: quinzenalDay1,
+            quinzenalDay2: quinzenalDay2,
           ),
           amount: installment,
         ),
@@ -142,6 +147,8 @@ abstract final class LoanSimulator {
     required LoanPeriodicity periodicity,
     required DateTime firstDueDate,
     bool? skipSundayOnDaily,
+    int? quinzenalDay1,
+    int? quinzenalDay2,
   }) {
     final sim = simulate(
       principal: principal,
@@ -151,6 +158,8 @@ abstract final class LoanSimulator {
       firstDueDate: firstDueDate,
       maxScheduleRows: installments,
       skipSundayOnDaily: skipSundayOnDaily,
+      quinzenalDay1: quinzenalDay1,
+      quinzenalDay2: quinzenalDay2,
     );
     if (sim == null) return null;
 
@@ -163,6 +172,8 @@ abstract final class LoanSimulator {
           periodicity,
           i,
           skipSundayOnDaily: skipSundayOnDaily,
+          quinzenalDay1: quinzenalDay1,
+          quinzenalDay2: quinzenalDay2,
         ),
         amount: sim.installmentAmount,
       ),
@@ -174,6 +185,8 @@ abstract final class LoanSimulator {
     LoanPeriodicity periodicity,
     int index, {
     bool? skipSundayOnDaily,
+    int? quinzenalDay1,
+    int? quinzenalDay2,
   }) {
     final skipSunday = skipSundayOnDaily ?? DailyLoanSundayPolicy.skipSunday;
     return switch (periodicity) {
@@ -183,7 +196,15 @@ abstract final class LoanSimulator {
           skipSunday: skipSunday,
         ),
       LoanPeriodicity.semanal => first.add(Duration(days: 7 * index)),
-      LoanPeriodicity.quinzenal => first.add(Duration(days: 14 * index)),
+      LoanPeriodicity.quinzenal =>
+        QuinzenalFixedDays.isActive(quinzenalDay1, quinzenalDay2)
+            ? QuinzenalFixedDays.dueDate(
+                firstDueDate: first,
+                day1: quinzenalDay1!,
+                day2: quinzenalDay2!,
+                index: index,
+              )
+            : first.add(Duration(days: 14 * index)),
       LoanPeriodicity.mensal => DateTime(
           first.year,
           first.month + index,

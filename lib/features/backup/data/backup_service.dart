@@ -211,6 +211,8 @@ class BackupService {
         'installments': loan.installments,
         'periodicity': loan.periodicity,
         'first_due_date': loan.firstDueDate,
+        'quinzenal_day_1': loan.quinzenalDay1,
+        'quinzenal_day_2': loan.quinzenalDay2,
         'status': loan.status,
         'created_at': loan.createdAt,
       };
@@ -318,6 +320,8 @@ class BackupService {
         'installments': row.installments,
         'periodicity': row.periodicity,
         'first_due_date': row.firstDueDate,
+        'quinzenal_day_1': row.quinzenalDay1,
+        'quinzenal_day_2': row.quinzenalDay2,
         'status': row.status,
         'created_at': row.createdAt,
       };
@@ -358,6 +362,8 @@ class BackupService {
       installments: Value(_readInt(raw['installments'])),
       periodicity: Value(raw['periodicity'] as String?),
       firstDueDate: Value(raw['first_due_date'] as String?),
+      quinzenalDay1: Value(_readInt(raw['quinzenal_day_1'])),
+      quinzenalDay2: Value(_readInt(raw['quinzenal_day_2'])),
       status: Value(raw['status'] as String?),
       createdAt: Value(raw['created_at'] as String?),
     );
@@ -395,6 +401,8 @@ class BackupService {
         installments: row.installments,
         periodicity: row.periodicity,
         firstDueDate: row.firstDueDate,
+        quinzenalDay1: row.quinzenalDay1,
+        quinzenalDay2: row.quinzenalDay2,
         status: row.status,
         createdAt: row.createdAt,
       );

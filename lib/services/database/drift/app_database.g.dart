@@ -642,6 +642,28 @@ class $LoansTableTable extends LoansTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _quinzenalDay1Meta = const VerificationMeta(
+    'quinzenalDay1',
+  );
+  @override
+  late final GeneratedColumn<int> quinzenalDay1 = GeneratedColumn<int>(
+    'quinzenal_day_1',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _quinzenalDay2Meta = const VerificationMeta(
+    'quinzenalDay2',
+  );
+  @override
+  late final GeneratedColumn<int> quinzenalDay2 = GeneratedColumn<int>(
+    'quinzenal_day_2',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -671,6 +693,8 @@ class $LoansTableTable extends LoansTable
     installments,
     periodicity,
     firstDueDate,
+    quinzenalDay1,
+    quinzenalDay2,
     status,
     createdAt,
   ];
@@ -740,6 +764,24 @@ class $LoansTableTable extends LoansTable
         ),
       );
     }
+    if (data.containsKey('quinzenal_day_1')) {
+      context.handle(
+        _quinzenalDay1Meta,
+        quinzenalDay1.isAcceptableOrUnknown(
+          data['quinzenal_day_1']!,
+          _quinzenalDay1Meta,
+        ),
+      );
+    }
+    if (data.containsKey('quinzenal_day_2')) {
+      context.handle(
+        _quinzenalDay2Meta,
+        quinzenalDay2.isAcceptableOrUnknown(
+          data['quinzenal_day_2']!,
+          _quinzenalDay2Meta,
+        ),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -789,6 +831,14 @@ class $LoansTableTable extends LoansTable
         DriftSqlType.string,
         data['${effectivePrefix}first_due_date'],
       ),
+      quinzenalDay1: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quinzenal_day_1'],
+      ),
+      quinzenalDay2: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quinzenal_day_2'],
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -814,6 +864,10 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
   final int? installments;
   final String? periodicity;
   final String? firstDueDate;
+
+  /// Dias fixos do mês para quinzenal (1–31). Null = intervalo de 14 dias.
+  final int? quinzenalDay1;
+  final int? quinzenalDay2;
   final String? status;
   final String? createdAt;
   const LoansTableData({
@@ -824,6 +878,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     this.installments,
     this.periodicity,
     this.firstDueDate,
+    this.quinzenalDay1,
+    this.quinzenalDay2,
     this.status,
     this.createdAt,
   });
@@ -844,6 +900,12 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     }
     if (!nullToAbsent || firstDueDate != null) {
       map['first_due_date'] = Variable<String>(firstDueDate);
+    }
+    if (!nullToAbsent || quinzenalDay1 != null) {
+      map['quinzenal_day_1'] = Variable<int>(quinzenalDay1);
+    }
+    if (!nullToAbsent || quinzenalDay2 != null) {
+      map['quinzenal_day_2'] = Variable<int>(quinzenalDay2);
     }
     if (!nullToAbsent || status != null) {
       map['status'] = Variable<String>(status);
@@ -871,6 +933,12 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
       firstDueDate: firstDueDate == null && nullToAbsent
           ? const Value.absent()
           : Value(firstDueDate),
+      quinzenalDay1: quinzenalDay1 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quinzenalDay1),
+      quinzenalDay2: quinzenalDay2 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quinzenalDay2),
       status: status == null && nullToAbsent
           ? const Value.absent()
           : Value(status),
@@ -893,6 +961,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
       installments: serializer.fromJson<int?>(json['installments']),
       periodicity: serializer.fromJson<String?>(json['periodicity']),
       firstDueDate: serializer.fromJson<String?>(json['firstDueDate']),
+      quinzenalDay1: serializer.fromJson<int?>(json['quinzenalDay1']),
+      quinzenalDay2: serializer.fromJson<int?>(json['quinzenalDay2']),
       status: serializer.fromJson<String?>(json['status']),
       createdAt: serializer.fromJson<String?>(json['createdAt']),
     );
@@ -908,6 +978,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
       'installments': serializer.toJson<int?>(installments),
       'periodicity': serializer.toJson<String?>(periodicity),
       'firstDueDate': serializer.toJson<String?>(firstDueDate),
+      'quinzenalDay1': serializer.toJson<int?>(quinzenalDay1),
+      'quinzenalDay2': serializer.toJson<int?>(quinzenalDay2),
       'status': serializer.toJson<String?>(status),
       'createdAt': serializer.toJson<String?>(createdAt),
     };
@@ -921,6 +993,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     Value<int?> installments = const Value.absent(),
     Value<String?> periodicity = const Value.absent(),
     Value<String?> firstDueDate = const Value.absent(),
+    Value<int?> quinzenalDay1 = const Value.absent(),
+    Value<int?> quinzenalDay2 = const Value.absent(),
     Value<String?> status = const Value.absent(),
     Value<String?> createdAt = const Value.absent(),
   }) => LoansTableData(
@@ -931,6 +1005,12 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     installments: installments.present ? installments.value : this.installments,
     periodicity: periodicity.present ? periodicity.value : this.periodicity,
     firstDueDate: firstDueDate.present ? firstDueDate.value : this.firstDueDate,
+    quinzenalDay1: quinzenalDay1.present
+        ? quinzenalDay1.value
+        : this.quinzenalDay1,
+    quinzenalDay2: quinzenalDay2.present
+        ? quinzenalDay2.value
+        : this.quinzenalDay2,
     status: status.present ? status.value : this.status,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
   );
@@ -949,6 +1029,12 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
       firstDueDate: data.firstDueDate.present
           ? data.firstDueDate.value
           : this.firstDueDate,
+      quinzenalDay1: data.quinzenalDay1.present
+          ? data.quinzenalDay1.value
+          : this.quinzenalDay1,
+      quinzenalDay2: data.quinzenalDay2.present
+          ? data.quinzenalDay2.value
+          : this.quinzenalDay2,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -964,6 +1050,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
           ..write('installments: $installments, ')
           ..write('periodicity: $periodicity, ')
           ..write('firstDueDate: $firstDueDate, ')
+          ..write('quinzenalDay1: $quinzenalDay1, ')
+          ..write('quinzenalDay2: $quinzenalDay2, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -979,6 +1067,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
     installments,
     periodicity,
     firstDueDate,
+    quinzenalDay1,
+    quinzenalDay2,
     status,
     createdAt,
   );
@@ -993,6 +1083,8 @@ class LoansTableData extends DataClass implements Insertable<LoansTableData> {
           other.installments == this.installments &&
           other.periodicity == this.periodicity &&
           other.firstDueDate == this.firstDueDate &&
+          other.quinzenalDay1 == this.quinzenalDay1 &&
+          other.quinzenalDay2 == this.quinzenalDay2 &&
           other.status == this.status &&
           other.createdAt == this.createdAt);
 }
@@ -1005,6 +1097,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
   final Value<int?> installments;
   final Value<String?> periodicity;
   final Value<String?> firstDueDate;
+  final Value<int?> quinzenalDay1;
+  final Value<int?> quinzenalDay2;
   final Value<String?> status;
   final Value<String?> createdAt;
   final Value<int> rowid;
@@ -1016,6 +1110,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     this.installments = const Value.absent(),
     this.periodicity = const Value.absent(),
     this.firstDueDate = const Value.absent(),
+    this.quinzenalDay1 = const Value.absent(),
+    this.quinzenalDay2 = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1028,6 +1124,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     this.installments = const Value.absent(),
     this.periodicity = const Value.absent(),
     this.firstDueDate = const Value.absent(),
+    this.quinzenalDay1 = const Value.absent(),
+    this.quinzenalDay2 = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1042,6 +1140,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     Expression<int>? installments,
     Expression<String>? periodicity,
     Expression<String>? firstDueDate,
+    Expression<int>? quinzenalDay1,
+    Expression<int>? quinzenalDay2,
     Expression<String>? status,
     Expression<String>? createdAt,
     Expression<int>? rowid,
@@ -1054,6 +1154,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
       if (installments != null) 'installments': installments,
       if (periodicity != null) 'periodicity': periodicity,
       if (firstDueDate != null) 'first_due_date': firstDueDate,
+      if (quinzenalDay1 != null) 'quinzenal_day_1': quinzenalDay1,
+      if (quinzenalDay2 != null) 'quinzenal_day_2': quinzenalDay2,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
@@ -1068,6 +1170,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     Value<int?>? installments,
     Value<String?>? periodicity,
     Value<String?>? firstDueDate,
+    Value<int?>? quinzenalDay1,
+    Value<int?>? quinzenalDay2,
     Value<String?>? status,
     Value<String?>? createdAt,
     Value<int>? rowid,
@@ -1080,6 +1184,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
       installments: installments ?? this.installments,
       periodicity: periodicity ?? this.periodicity,
       firstDueDate: firstDueDate ?? this.firstDueDate,
+      quinzenalDay1: quinzenalDay1 ?? this.quinzenalDay1,
+      quinzenalDay2: quinzenalDay2 ?? this.quinzenalDay2,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
@@ -1110,6 +1216,12 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
     if (firstDueDate.present) {
       map['first_due_date'] = Variable<String>(firstDueDate.value);
     }
+    if (quinzenalDay1.present) {
+      map['quinzenal_day_1'] = Variable<int>(quinzenalDay1.value);
+    }
+    if (quinzenalDay2.present) {
+      map['quinzenal_day_2'] = Variable<int>(quinzenalDay2.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -1132,6 +1244,8 @@ class LoansTableCompanion extends UpdateCompanion<LoansTableData> {
           ..write('installments: $installments, ')
           ..write('periodicity: $periodicity, ')
           ..write('firstDueDate: $firstDueDate, ')
+          ..write('quinzenalDay1: $quinzenalDay1, ')
+          ..write('quinzenalDay2: $quinzenalDay2, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
@@ -3669,6 +3783,8 @@ typedef $$LoansTableTableCreateCompanionBuilder =
       Value<int?> installments,
       Value<String?> periodicity,
       Value<String?> firstDueDate,
+      Value<int?> quinzenalDay1,
+      Value<int?> quinzenalDay2,
       Value<String?> status,
       Value<String?> createdAt,
       Value<int> rowid,
@@ -3682,6 +3798,8 @@ typedef $$LoansTableTableUpdateCompanionBuilder =
       Value<int?> installments,
       Value<String?> periodicity,
       Value<String?> firstDueDate,
+      Value<int?> quinzenalDay1,
+      Value<int?> quinzenalDay2,
       Value<String?> status,
       Value<String?> createdAt,
       Value<int> rowid,
@@ -3765,6 +3883,16 @@ class $$LoansTableTableFilterComposer
 
   ColumnFilters<String> get firstDueDate => $composableBuilder(
     column: $table.firstDueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quinzenalDay1 => $composableBuilder(
+    column: $table.quinzenalDay1,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quinzenalDay2 => $composableBuilder(
+    column: $table.quinzenalDay2,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3866,6 +3994,16 @@ class $$LoansTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get quinzenalDay1 => $composableBuilder(
+    column: $table.quinzenalDay1,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quinzenalDay2 => $composableBuilder(
+    column: $table.quinzenalDay2,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -3930,6 +4068,16 @@ class $$LoansTableTableAnnotationComposer
 
   GeneratedColumn<String> get firstDueDate => $composableBuilder(
     column: $table.firstDueDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quinzenalDay1 => $composableBuilder(
+    column: $table.quinzenalDay1,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quinzenalDay2 => $composableBuilder(
+    column: $table.quinzenalDay2,
     builder: (column) => column,
   );
 
@@ -4023,6 +4171,8 @@ class $$LoansTableTableTableManager
                 Value<int?> installments = const Value.absent(),
                 Value<String?> periodicity = const Value.absent(),
                 Value<String?> firstDueDate = const Value.absent(),
+                Value<int?> quinzenalDay1 = const Value.absent(),
+                Value<int?> quinzenalDay2 = const Value.absent(),
                 Value<String?> status = const Value.absent(),
                 Value<String?> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4034,6 +4184,8 @@ class $$LoansTableTableTableManager
                 installments: installments,
                 periodicity: periodicity,
                 firstDueDate: firstDueDate,
+                quinzenalDay1: quinzenalDay1,
+                quinzenalDay2: quinzenalDay2,
                 status: status,
                 createdAt: createdAt,
                 rowid: rowid,
@@ -4047,6 +4199,8 @@ class $$LoansTableTableTableManager
                 Value<int?> installments = const Value.absent(),
                 Value<String?> periodicity = const Value.absent(),
                 Value<String?> firstDueDate = const Value.absent(),
+                Value<int?> quinzenalDay1 = const Value.absent(),
+                Value<int?> quinzenalDay2 = const Value.absent(),
                 Value<String?> status = const Value.absent(),
                 Value<String?> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4058,6 +4212,8 @@ class $$LoansTableTableTableManager
                 installments: installments,
                 periodicity: periodicity,
                 firstDueDate: firstDueDate,
+                quinzenalDay1: quinzenalDay1,
+                quinzenalDay2: quinzenalDay2,
                 status: status,
                 createdAt: createdAt,
                 rowid: rowid,

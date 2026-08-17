@@ -24,12 +24,21 @@ abstract final class AdminRowMapper {
       clientId: row['client_id'] as String,
       amount: row['amount'] as String,
       interest: row['interest'] as String?,
-      installments: row['installments'] as int?,
+      installments: _readInt(row['installments']),
       periodicity: row['periodicity'] as String?,
       firstDueDate: row['first_due_date'] as String?,
+      quinzenalDay1: _readInt(row['quinzenal_day_1']),
+      quinzenalDay2: _readInt(row['quinzenal_day_2']),
       status: row['status'] as String?,
       createdAt: _formatDate(row['created_at']),
     );
+  }
+
+  static int? _readInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
   static Payment paymentFromRow(Map<String, dynamic> row) {

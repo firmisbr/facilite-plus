@@ -17,6 +17,11 @@ class LoansTable extends Table {
       text().nullable()(); // diaria, semanal, quinzenal, mensal
   TextColumn get firstDueDate =>
       text().named('first_due_date').nullable()();
+  /// Dias fixos do mês para quinzenal (1–31). Null = intervalo de 14 dias.
+  IntColumn get quinzenalDay1 =>
+      integer().named('quinzenal_day_1').nullable()();
+  IntColumn get quinzenalDay2 =>
+      integer().named('quinzenal_day_2').nullable()();
   TextColumn get status => text().nullable()();
   TextColumn get createdAt => text().named('created_at').nullable()();
 }

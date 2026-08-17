@@ -116,6 +116,8 @@ class SyncService {
             installments: Value(row['installments'] as int?),
             periodicity: Value(row['periodicity'] as String?),
             firstDueDate: Value(row['first_due_date'] as String?),
+            quinzenalDay1: Value(_readNullableInt(row['quinzenal_day_1'])),
+            quinzenalDay2: Value(_readNullableInt(row['quinzenal_day_2'])),
             status: Value(row['status'] as String?),
             createdAt: Value(_formatRemoteDate(row['created_at'])),
           ),
@@ -126,6 +128,8 @@ class SyncService {
               installments: Value(row['installments'] as int?),
               periodicity: Value(row['periodicity'] as String?),
               firstDueDate: Value(row['first_due_date'] as String?),
+              quinzenalDay1: Value(_readNullableInt(row['quinzenal_day_1'])),
+              quinzenalDay2: Value(_readNullableInt(row['quinzenal_day_2'])),
               status: Value(row['status'] as String?),
               createdAt: Value(_formatRemoteDate(row['created_at'])),
             ),
@@ -331,6 +335,13 @@ class SyncService {
     if (value is String) return value;
     if (value is DateTime) return value.toUtc().toIso8601String();
     return value.toString();
+  }
+
+  int? _readNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
   Future<void> _applyToSupabase(SyncQueueTableData item) async {

@@ -19,6 +19,7 @@ import '../../../../shared/widgets/app_wheel_picker_dialog.dart';
 import '../../../../shared/widgets/floating_label_input_card.dart';
 import '../../domain/loan_periodicity.dart';
 import '../../domain/loan_simulator.dart';
+import '../../domain/quinzenal_fixed_days.dart';
 import '../../../notifications/notification_reschedule.dart';
 import '../../../settings/presentation/providers/daily_loan_skip_sunday_provider.dart';
 import '../providers/loans_providers.dart';
@@ -49,6 +50,9 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   final _dueDateController = TextEditingController();
 
   LoanPeriodicity _periodicity = LoanPeriodicity.mensal;
+  bool _quinzenalFixedDays = false;
+  int _quinzenalDay1 = 5;
+  int _quinzenalDay2 = 20;
   bool _loading = false;
   bool _showFullSchedule = false;
   bool _lockPersonalFields = false;
@@ -186,10 +190,67 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
       itemLabel: (p) => p.label,
       initialValue: _periodicity,
     );
-    if (picked != null) {
-      setState(() => _periodicity = picked);
-    }
+    if (picked == null) return;
+    setState(() {
+      _periodicity = picked;
+      if (picked != LoanPeriodicity.quinzenal) {
+        _quinzenalFixedDays = false;
+      }
+    });
   }
+
+  Future<void> _openQuinzenalDayPicker({required bool first}) async {
+    final current = first ? _quinzenalDay1 : _quinzenalDay2;
+    final picked = await AppWheelPickerDialog.show<int>(
+      context: context,
+      title: first ? 'Primeiro dia do mês' : 'Segundo dia do mês',
+      items: List.generate(31, (i) => i + 1),
+      itemLabel: (d) => 'Dia $d',
+      initialValue: current,
+    );
+    if (picked == null) return;
+    setState(() {
+      if (first) {
+        _quinzenalDay1 = picked;
+      } else {
+        _quinzenalDay2 = picked;
+      }
+      _syncDueDateToFixedDays();
+    });
+  }
+
+  void _setQuinzenalFixedDays(bool enabled) {
+    setState(() {
+      _quinzenalFixedDays = enabled;
+      if (enabled) {
+        if (_quinzenalDay1 == _quinzenalDay2) {
+          _quinzenalDay2 = _quinzenalDay1 == 20 ? 5 : 20;
+        }
+        _syncDueDateToFixedDays();
+      }
+    });
+  }
+
+  void _syncDueDateToFixedDays() {
+    if (!_quinzenalFixedDays) return;
+    if (!QuinzenalFixedDays.isActive(_quinzenalDay1, _quinzenalDay2)) return;
+    final next = QuinzenalFixedDays.nextOccurrence(
+      DateTime.now(),
+      _quinzenalDay1,
+      _quinzenalDay2,
+    );
+    _dueDateController.text = _formatIsoDate(next);
+  }
+
+  int? get _activeQuinzenalDay1 =>
+      _periodicity == LoanPeriodicity.quinzenal && _quinzenalFixedDays
+          ? _quinzenalDay1
+          : null;
+
+  int? get _activeQuinzenalDay2 =>
+      _periodicity == LoanPeriodicity.quinzenal && _quinzenalFixedDays
+          ? _quinzenalDay2
+          : null;
 
   bool get _clientStepValid {
     if (_selectedClientId != null) return true;
@@ -272,6 +333,8 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
       periodicity: _periodicity,
       firstDueDate: due,
       maxScheduleRows: _showFullSchedule ? installments : 6,
+      quinzenalDay1: _activeQuinzenalDay1,
+      quinzenalDay2: _activeQuinzenalDay2,
     );
   }
 
@@ -285,6 +348,11 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
   bool _validateLoan() {
     if (!_formKey.currentState!.validate()) return false;
     if (_parseDueDate() == null) return false;
+    if (_periodicity == LoanPeriodicity.quinzenal &&
+        _quinzenalFixedDays &&
+        !QuinzenalFixedDays.isActive(_quinzenalDay1, _quinzenalDay2)) {
+      return false;
+    }
     if (_simulation == null) return false;
     return true;
   }
@@ -359,6 +427,8 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
         installments: int.parse(_installmentsController.text.trim()),
         periodicity: _periodicity.value,
         firstDueDate: dueIso,
+        quinzenalDay1: _activeQuinzenalDay1,
+        quinzenalDay2: _activeQuinzenalDay2,
       );
 
       await ref.read(syncServiceProvider).processQueue();
@@ -438,8 +508,16 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
                         interestController: _interestController,
                         periodicity: _periodicity,
                         dueDateLabel: _dueDateDisplayLabel,
+                        quinzenalFixedDays: _quinzenalFixedDays,
+                        quinzenalDay1: _quinzenalDay1,
+                        quinzenalDay2: _quinzenalDay2,
                         onPeriodicityTap: _openPeriodicityPicker,
                         onDueDateTap: _openDueDatePicker,
+                        onQuinzenalFixedDaysChanged: _setQuinzenalFixedDays,
+                        onQuinzenalDay1Tap: () =>
+                            _openQuinzenalDayPicker(first: true),
+                        onQuinzenalDay2Tap: () =>
+                            _openQuinzenalDayPicker(first: false),
                       ),
                       _SummaryStepPage(
                         clientName: _lockPersonalFields
@@ -450,6 +528,16 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
                         interestText: _interestController.text.trim(),
                         periodicity: _periodicity,
                         dueDateLabel: _dueDateDisplayLabel,
+                        quinzenalFixedLabel:
+                            QuinzenalFixedDays.isActive(
+                                  _activeQuinzenalDay1,
+                                  _activeQuinzenalDay2,
+                                )
+                            ? QuinzenalFixedDays.label(
+                                _activeQuinzenalDay1!,
+                                _activeQuinzenalDay2!,
+                              )
+                            : null,
                         simulation: simulation,
                         showFullSchedule: _showFullSchedule,
                         onToggleSchedule: () => setState(
@@ -910,8 +998,14 @@ class _LoanStepPage extends StatelessWidget {
     required this.interestController,
     required this.periodicity,
     required this.dueDateLabel,
+    required this.quinzenalFixedDays,
+    required this.quinzenalDay1,
+    required this.quinzenalDay2,
     required this.onPeriodicityTap,
     required this.onDueDateTap,
+    required this.onQuinzenalFixedDaysChanged,
+    required this.onQuinzenalDay1Tap,
+    required this.onQuinzenalDay2Tap,
   });
 
   final TextEditingController amountController;
@@ -919,8 +1013,14 @@ class _LoanStepPage extends StatelessWidget {
   final TextEditingController interestController;
   final LoanPeriodicity periodicity;
   final String dueDateLabel;
+  final bool quinzenalFixedDays;
+  final int quinzenalDay1;
+  final int quinzenalDay2;
   final VoidCallback onPeriodicityTap;
   final VoidCallback onDueDateTap;
+  final ValueChanged<bool> onQuinzenalFixedDaysChanged;
+  final VoidCallback onQuinzenalDay1Tap;
+  final VoidCallback onQuinzenalDay2Tap;
 
   @override
   Widget build(BuildContext context) {
@@ -974,10 +1074,80 @@ class _LoanStepPage extends StatelessWidget {
             value: periodicity.label,
             onTap: onPeriodicityTap,
           ),
+          if (periodicity == LoanPeriodicity.quinzenal) ...[
+            const SizedBox(height: AppSpacing.md),
+            _QuinzenalFixedDaysToggle(
+              enabled: quinzenalFixedDays,
+              onChanged: onQuinzenalFixedDaysChanged,
+            ),
+            if (quinzenalFixedDays) ...[
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: _PickerTile(
+                      icon: LucideIcons.calendar_days,
+                      label: '1º dia',
+                      value: 'Dia $quinzenalDay1',
+                      onTap: onQuinzenalDay1Tap,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: _PickerTile(
+                      icon: LucideIcons.calendar_days,
+                      label: '2º dia',
+                      value: 'Dia $quinzenalDay2',
+                      onTap: onQuinzenalDay2Tap,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
           const SizedBox(height: AppSpacing.md),
           _DueDateCard(label: dueDateLabel, onTap: onDueDateTap),
           const SizedBox(height: AppSpacing.xxl),
         ],
+      ),
+    );
+  }
+}
+
+class _QuinzenalFixedDaysToggle extends StatelessWidget {
+  const _QuinzenalFixedDaysToggle({
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      child: SwitchListTile.adaptive(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        title: Text(
+          'Dias fixos no mês',
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        subtitle: Text(
+          enabled
+              ? 'Paga sempre nos mesmos dias (ex.: 5 e 20)'
+              : 'Padrão: a cada 14 dias corridos',
+          style: theme.textTheme.bodySmall,
+        ),
+        value: enabled,
+        onChanged: onChanged,
       ),
     );
   }
@@ -1183,6 +1353,7 @@ class _SummaryStepPage extends StatelessWidget {
     required this.interestText,
     required this.periodicity,
     required this.dueDateLabel,
+    this.quinzenalFixedLabel,
     required this.simulation,
     required this.showFullSchedule,
     required this.onToggleSchedule,
@@ -1194,6 +1365,7 @@ class _SummaryStepPage extends StatelessWidget {
   final String interestText;
   final LoanPeriodicity periodicity;
   final String dueDateLabel;
+  final String? quinzenalFixedLabel;
   final LoanSimulationResult? simulation;
   final bool showFullSchedule;
   final VoidCallback onToggleSchedule;
@@ -1203,6 +1375,11 @@ class _SummaryStepPage extends StatelessWidget {
     final parsed = LoanSimulator.parseAmount(amountText);
     if (parsed != null) return LoanSimulator.formatMoney(parsed);
     return 'R\$ $amountText';
+  }
+
+  String get _periodicityLabel {
+    if (quinzenalFixedLabel == null) return periodicity.label;
+    return '${periodicity.label} ($quinzenalFixedLabel)';
   }
 
   @override
@@ -1216,7 +1393,7 @@ class _SummaryStepPage extends StatelessWidget {
           _ContractSummaryCard(
             amountDisplay: _amountDisplay,
             installments: installments,
-            periodicityLabel: periodicity.label,
+            periodicityLabel: _periodicityLabel,
             interestText: interestText,
             dueDateLabel: dueDateLabel,
             clientName: clientName,

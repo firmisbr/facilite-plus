@@ -75,6 +75,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
     int? installments,
     String? periodicity,
     String? firstDueDate,
+    int? quinzenalDay1,
+    int? quinzenalDay2,
     String? status,
   }) async {
     final id = _uuid.v4();
@@ -87,6 +89,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
       installments: installments,
       periodicity: periodicity,
       firstDueDate: firstDueDate,
+      quinzenalDay1: quinzenalDay1,
+      quinzenalDay2: quinzenalDay2,
       status: status ?? 'ativo',
       createdAt: createdAt,
     );
@@ -100,6 +104,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
             installments: Value(installments),
             periodicity: Value(periodicity),
             firstDueDate: Value(firstDueDate),
+            quinzenalDay1: Value(quinzenalDay1),
+            quinzenalDay2: Value(quinzenalDay2),
             status: Value(loan.status),
             createdAt: Value(createdAt),
           ),
@@ -125,6 +131,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
         installments: Value(loan.installments),
         periodicity: Value(loan.periodicity),
         firstDueDate: Value(loan.firstDueDate),
+        quinzenalDay1: Value(loan.quinzenalDay1),
+        quinzenalDay2: Value(loan.quinzenalDay2),
         status: Value(loan.status),
       ),
     );
@@ -164,6 +172,8 @@ class LoansRepositoryImpl extends SyncableRepository implements LoansRepository 
       installments: row.installments,
       periodicity: row.periodicity,
       firstDueDate: row.firstDueDate,
+      quinzenalDay1: row.quinzenalDay1,
+      quinzenalDay2: row.quinzenalDay2,
       status: row.status,
       createdAt: row.createdAt,
     );

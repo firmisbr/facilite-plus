@@ -15,6 +15,7 @@ import '../../../payments/presentation/providers/payments_providers.dart';
 import '../../domain/loan_periodicity.dart';
 import '../../domain/loan_simulator.dart';
 import '../../domain/loan_status_sync.dart';
+import '../../domain/quinzenal_fixed_days.dart';
 import '../providers/loans_providers.dart';
 
 class LoanFormPage extends ConsumerStatefulWidget {
@@ -37,6 +38,9 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
   final _installmentsController = TextEditingController();
   final _dueDateController = TextEditingController();
   LoanPeriodicity _periodicity = LoanPeriodicity.mensal;
+  bool _quinzenalFixedDays = false;
+  int _quinzenalDay1 = 5;
+  int _quinzenalDay2 = 20;
   String _status = 'ativo';
   String? _clientId;
   String _originalClientName = '';
@@ -75,6 +79,14 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
         loan.installments?.toString() ?? '';
     _dueDateController.text = _normalizeDueDate(loan.firstDueDate);
     _periodicity = LoanPeriodicity.fromValue(loan.periodicity);
+    _quinzenalFixedDays = QuinzenalFixedDays.isActive(
+      loan.quinzenalDay1,
+      loan.quinzenalDay2,
+    );
+    if (_quinzenalFixedDays) {
+      _quinzenalDay1 = loan.quinzenalDay1!;
+      _quinzenalDay2 = loan.quinzenalDay2!;
+    }
     _status = loan.status ?? 'ativo';
     setState(() => _initialLoad = false);
   }
@@ -151,6 +163,9 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
       }
 
       // Persiste no mesmo formato da criação (máscara BR) para o cronograma.
+      final useFixed = _periodicity == LoanPeriodicity.quinzenal &&
+          _quinzenalFixedDays &&
+          QuinzenalFixedDays.isActive(_quinzenalDay1, _quinzenalDay2);
       await repo.update(
         existing.copyWith(
           amount: amountText,
@@ -158,6 +173,9 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
           installments: installments,
           periodicity: _periodicity.value,
           firstDueDate: dueVal,
+          quinzenalDay1: useFixed ? _quinzenalDay1 : null,
+          quinzenalDay2: useFixed ? _quinzenalDay2 : null,
+          clearQuinzenalDays: !useFixed,
           status: _status,
         ),
       );
@@ -265,9 +283,84 @@ class _LoanFormPageState extends ConsumerState<LoanFormPage> {
                         )
                         .toList(),
                     onChanged: (v) {
-                      if (v != null) setState(() => _periodicity = v);
+                      if (v == null) return;
+                      setState(() {
+                        _periodicity = v;
+                        if (v != LoanPeriodicity.quinzenal) {
+                          _quinzenalFixedDays = false;
+                        }
+                      });
                     },
                   ),
+                  if (_periodicity == LoanPeriodicity.quinzenal) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Dias fixos no mês'),
+                      subtitle: Text(
+                        _quinzenalFixedDays
+                            ? 'Paga sempre nos mesmos dias'
+                            : 'Padrão: a cada 14 dias corridos',
+                      ),
+                      value: _quinzenalFixedDays,
+                      onChanged: (v) {
+                        setState(() {
+                          _quinzenalFixedDays = v;
+                          if (v && _quinzenalDay1 == _quinzenalDay2) {
+                            _quinzenalDay2 = _quinzenalDay1 == 20 ? 5 : 20;
+                          }
+                        });
+                      },
+                    ),
+                    if (_quinzenalFixedDays) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              initialValue: _quinzenalDay1,
+                              decoration: const InputDecoration(
+                                labelText: '1º dia',
+                              ),
+                              items: [
+                                for (var d = 1; d <= 31; d++)
+                                  DropdownMenuItem(
+                                    value: d,
+                                    child: Text('Dia $d'),
+                                  ),
+                              ],
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setState(() => _quinzenalDay1 = v);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              initialValue: _quinzenalDay2,
+                              decoration: const InputDecoration(
+                                labelText: '2º dia',
+                              ),
+                              items: [
+                                for (var d = 1; d <= 31; d++)
+                                  DropdownMenuItem(
+                                    value: d,
+                                    child: Text('Dia $d'),
+                                  ),
+                              ],
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setState(() => _quinzenalDay2 = v);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
                     controller: _interestController,

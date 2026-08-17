@@ -17,6 +17,8 @@ abstract class LoansRepository {
     int? installments,
     String? periodicity,
     String? firstDueDate,
+    int? quinzenalDay1,
+    int? quinzenalDay2,
     String? status,
   });
 

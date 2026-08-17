@@ -4,6 +4,7 @@ import 'entities/loan.dart' show Loan;
 import 'loan_installment_status.dart';
 import 'loan_periodicity.dart';
 import 'loan_simulator.dart';
+import 'quinzenal_fixed_days.dart';
 
 /// Monta cronograma, status das parcelas e resumos a partir do empréstimo e pagamentos.
 abstract final class LoanScheduleBuilder {
@@ -37,6 +38,8 @@ abstract final class LoanScheduleBuilder {
       periodicity: periodicity,
       firstDueDate: due,
       skipSundayOnDaily: DailyLoanSundayPolicy.appliesTo(periodicity),
+      quinzenalDay1: loan.quinzenalDay1,
+      quinzenalDay2: loan.quinzenalDay2,
     );
     if (schedule == null || schedule.isEmpty) return null;
 
@@ -159,7 +162,9 @@ abstract final class LoanScheduleBuilder {
         installmentCount: installments,
         installmentAmount: installmentAmount,
         interestPercent: interest,
-        periodicityLabel: periodicity.label,
+        periodicityLabel: loan.hasQuinzenalFixedDays
+            ? '${periodicity.label} (${QuinzenalFixedDays.label(loan.quinzenalDay1!, loan.quinzenalDay2!)})'
+            : periodicity.label,
         totalProfit: totalProfit,
         profitPerInstallment: profitPerInstallment,
       ),
