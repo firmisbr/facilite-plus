@@ -3,7 +3,7 @@
 /// VersÃ£o do app (fonte: `pubspec.yaml` via build nativo).
 abstract final class AppVersion {
   /// Fallback sÃ­ncrono â€” manter igual ao campo `version` do pubspec.
-  static const fallback = '1.5.5';
+  static const fallback = '1.5.6';
 
   static Future<String> resolve() async {
     try {
