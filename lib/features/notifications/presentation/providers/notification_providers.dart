@@ -21,6 +21,8 @@ final notificationPreviewProvider =
 });
 
 final notificationCoordinatorProvider = Provider<void>((ref) {
+  ref.watch(dailyLoanSkipSundayProvider);
+
   ref.listen(sessionProvider, (previous, next) {
     if (next.valueOrNull != null) {
       LocalNotificationService.ensureInitialized().then((_) {
@@ -31,6 +33,13 @@ final notificationCoordinatorProvider = Provider<void>((ref) {
 
   ref.listen(allLoansProvider, (previous, next) {
     if (next.hasValue && ref.read(sessionProvider).valueOrNull != null) {
+      rescheduleLoanNotificationsFromRef(ref);
+    }
+  });
+
+  ref.listen(dailyLoanSkipSundayProvider, (previous, next) {
+    if (previous == next) return;
+    if (ref.read(sessionProvider).valueOrNull != null) {
       rescheduleLoanNotificationsFromRef(ref);
     }
   });

@@ -7,6 +7,7 @@ import '../../../../core/theme/app_decorations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/floating_notched_nav_bar.dart';
 import '../../../dashboard/presentation/providers/dashboard_providers.dart';
+import '../../../loans/domain/entities/loan_with_client.dart';
 import '../../../loans/domain/loan_periodicity.dart';
 import '../../../loans/domain/loan_status_sync.dart';
 import '../../../loans/presentation/providers/loans_providers.dart';
@@ -18,12 +19,21 @@ import '../providers/daily_loan_skip_sunday_provider.dart';
 class AppAdjustmentsPage extends ConsumerWidget {
   const AppAdjustmentsPage({super.key});
 
-  Future<void> _onSkipSundayChanged(WidgetRef ref, bool enabled) async {
+  Future<void> _onSkipSundayChanged(
+    BuildContext context,
+    WidgetRef ref,
+    bool enabled,
+  ) async {
     await ref.read(dailyLoanSkipSundayProvider.notifier).setEnabled(enabled);
 
     final loansRepo = ref.read(loansRepositoryProvider);
     final paymentsRepo = ref.read(paymentsRepositoryProvider);
-    final loans = ref.read(allLoansProvider).valueOrNull ?? [];
+    List<LoanWithClient> loans;
+    try {
+      loans = await ref.read(allLoansProvider.future);
+    } catch (_) {
+      loans = const [];
+    }
 
     final dailyIds = loans
         .where(
@@ -45,6 +55,18 @@ class AppAdjustmentsPage extends ConsumerWidget {
     ref.invalidate(dashboardStatsProvider);
     ref.invalidate(notificationPreviewProvider);
     await rescheduleLoanNotifications(ref);
+
+    if (!context.mounted) return;
+    final message = enabled
+        ? dailyIds.isEmpty
+            ? 'Folga aos domingos ativa. Empréstimos diários não vencem no domingo.'
+            : 'Folga aos domingos ativa em ${dailyIds.length} empréstimo(s) diário(s).'
+        : dailyIds.isEmpty
+            ? 'Folga aos domingos desligada. Diários voltam a vencer todos os dias.'
+            : 'Folga desligada: ${dailyIds.length} empréstimo(s) diário(s) voltam a vencer no domingo.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -99,7 +121,7 @@ class AppAdjustmentsPage extends ConsumerWidget {
                             'Sem parcela no domingo; atraso e lembretes '
                             'seguem seg–sáb',
                         value: skipSunday,
-                        onChanged: (v) => _onSkipSundayChanged(ref, v),
+                        onChanged: (v) => _onSkipSundayChanged(context, ref, v),
                       ),
                     ],
                   ),

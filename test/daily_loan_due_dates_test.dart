@@ -6,8 +6,9 @@ import 'package:facilite_plus/features/settings/domain/daily_loan_sunday_policy.
 
 void main() {
   tearDown(() {
-    DailyLoanSundayPolicy.skipSunday = false;
+    DailyLoanSundayPolicy.apply(false);
   });
+
   group('DailyLoanDueDates', () {
     test('sem folga mantém dias corridos', () {
       final first = DateTime(2026, 5, 1); // sexta
@@ -39,7 +40,7 @@ void main() {
   });
 
   test('cronograma diário com folga não vence domingo', () {
-    DailyLoanSundayPolicy.skipSunday = true;
+    DailyLoanSundayPolicy.apply(true);
     const loan = Loan(
       id: 'l1',
       clientId: 'c1',
@@ -62,5 +63,42 @@ void main() {
       expect(item.dueDate.weekday, isNot(DateTime.sunday));
     }
     expect(detail.installments[2].dueDate, DateTime(2026, 5, 4));
+  });
+
+  test('ligar e desligar folga muda o cronograma na hora', () {
+    const loan = Loan(
+      id: 'l1',
+      clientId: 'c1',
+      amount: '1000',
+      interest: '0',
+      installments: 4,
+      periodicity: 'diaria',
+      firstDueDate: '2026-05-01',
+      status: 'ativo',
+    );
+
+    DailyLoanSundayPolicy.apply(false);
+    final withSunday = LoanScheduleBuilder.build(
+      loan: loan,
+      payments: const [],
+      asOf: DateTime(2026, 5, 10),
+    )!;
+    expect(withSunday.installments[2].dueDate, DateTime(2026, 5, 3));
+    expect(
+      withSunday.installments.any((i) => i.dueDate.weekday == DateTime.sunday),
+      isTrue,
+    );
+
+    DailyLoanSundayPolicy.apply(true);
+    final withoutSunday = LoanScheduleBuilder.build(
+      loan: loan,
+      payments: const [],
+      asOf: DateTime(2026, 5, 10),
+    )!;
+    expect(withoutSunday.installments[2].dueDate, DateTime(2026, 5, 4));
+    expect(
+      withoutSunday.installments.any((i) => i.dueDate.weekday == DateTime.sunday),
+      isFalse,
+    );
   });
 }

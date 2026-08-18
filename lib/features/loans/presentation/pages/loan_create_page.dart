@@ -21,6 +21,7 @@ import '../../domain/loan_periodicity.dart';
 import '../../domain/loan_simulator.dart';
 import '../../domain/quinzenal_fixed_days.dart';
 import '../../../notifications/notification_reschedule.dart';
+import '../../../settings/domain/daily_loan_sunday_policy.dart';
 import '../../../settings/presentation/providers/daily_loan_skip_sunday_provider.dart';
 import '../providers/loans_providers.dart';
 import '../widgets/select_existing_client_dialog.dart';
@@ -333,6 +334,7 @@ class _LoanCreatePageState extends ConsumerState<LoanCreatePage> {
       periodicity: _periodicity,
       firstDueDate: due,
       maxScheduleRows: _showFullSchedule ? installments : 6,
+      skipSundayOnDaily: DailyLoanSundayPolicy.appliesTo(_periodicity),
       quinzenalDay1: _activeQuinzenalDay1,
       quinzenalDay2: _activeQuinzenalDay2,
     );
